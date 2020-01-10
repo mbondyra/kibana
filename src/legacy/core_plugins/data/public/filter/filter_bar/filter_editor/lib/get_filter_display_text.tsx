@@ -37,7 +37,12 @@ export function getFilterDisplayText(filter: Filter, filterDisplayName: string) 
     );
 
   if (filter.meta.alias !== null) {
-    return `${prefix}${filter.meta.alias}`;
+    return (
+      <Fragment>
+        {prefix}
+        {filter.meta.alias}
+      </Fragment>
+    );
   }
 
   switch (filter.meta.type) {
