@@ -44,9 +44,13 @@ module.service(`config`, function($rootScope, Promise) {
   // modify remove() to use angular Promises
   this.remove = key => Promise.resolve(uiSettings.remove(key));
 
-  // modify set() to use angular Promises and angular.toJson()
   this.set = (key, value) =>
     Promise.resolve(uiSettings.set(key, isPlainObject(value) ? angular.toJson(value) : value));
+
+  this.batchSet = changes => {
+    const processedChanges = Object.entries(changes).map(([key, value]) => this.set(key, value));
+    return Promise.all(processedChanges);
+  };
 
   //////////////////////////////
   //* angular specific methods *

@@ -112,12 +112,8 @@ export class AdvancedSettings extends Component {
     }, {});
   }
 
-  saveConfig = (name, value) => {
-    return this.props.config.set(name, value);
-  };
-
-  clearConfig = name => {
-    return this.props.config.remove(name);
+  saveConfig = config => {
+    return this.props.config.batchSet(config);
   };
 
   onQueryChange = ({ query }) => {
@@ -171,7 +167,6 @@ export class AdvancedSettings extends Component {
           categoryCounts={this.categoryCounts}
           clearQuery={this.clearQuery}
           save={this.saveConfig}
-          clear={this.clearConfig}
           showNoResultsMessage={!footerQueryMatched}
           enableSaving={this.props.enableSaving}
         />

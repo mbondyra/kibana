@@ -34,6 +34,7 @@ import { OptInExampleFlyout } from './opt_in_details_component';
 import { Field } from '../../../kibana/public/management/sections/settings/components/field/field';
 import { FormattedMessage } from '@kbn/i18n/react';
 import { i18n } from '@kbn/i18n';
+import { toastNotifications } from 'ui/notify';
 
 const SEARCH_TERMS = ['telemetry', 'usage', 'data', 'usage data'];
 
@@ -50,7 +51,14 @@ export class TelemetryForm extends Component {
     processing: false,
     showExample: false,
     queryMatches: null,
+    enabled: this.props.telemetryOptInProvider.getOptIn() || false,
   };
+
+  componentDidMount() {
+    this.setState({
+      enabled: this.props.telemetryOptInProvider.getOptIn() || false,
+    });
+  }
 
   UNSAFE_componentWillReceiveProps(nextProps) {
     const { query } = nextProps;
@@ -73,7 +81,7 @@ export class TelemetryForm extends Component {
   render() {
     const { telemetryOptInProvider } = this.props;
 
-    const { showExample, queryMatches } = this.state;
+    const { showExample, queryMatches, enabled } = this.state;
 
     if (!telemetryOptInProvider.canChangeOptInStatus()) {
       return null;
@@ -106,17 +114,17 @@ export class TelemetryForm extends Component {
             {this.maybeGetAppliesSettingMessage()}
             <EuiSpacer size="s" />
             <Field
+              loading={this.state.processing}
               setting={{
                 type: 'boolean',
-                value: telemetryOptInProvider.getOptIn() || false,
+                value: enabled,
                 description: this.renderDescription(),
                 defVal: true,
                 ariaName: i18n.translate('telemetry.provideUsageStatisticsLabel', {
                   defaultMessage: 'Provide usage statistics',
                 }),
               }}
-              save={this.toggleOptIn}
-              clear={this.toggleOptIn}
+              handleChange={this.toggleOptIn}
               enableSaving={this.props.enableSaving}
             />
           </EuiForm>
@@ -137,13 +145,14 @@ export class TelemetryForm extends Component {
           <p>
             <FormattedMessage
               id="telemetry.callout.appliesSettingTitle"
-              defaultMessage="This setting applies to {allOfKibanaText}"
+              // TODO: COPY NEEDED
+              defaultMessage="This setting applies to {allOfKibanaText} and will be saved immediately."
               values={{
                 allOfKibanaText: (
                   <strong>
                     <FormattedMessage
                       id="telemetry.callout.appliesSettingTitle.allOfKibanaText"
-                      defaultMessage="all of Kibana."
+                      defaultMessage="all of Kibana"
                     />
                   </strong>
                 ),
@@ -186,7 +195,8 @@ export class TelemetryForm extends Component {
   );
 
   toggleOptIn = async () => {
-    const newOptInValue = !this.props.telemetryOptInProvider.getOptIn();
+    const { telemetryOptInProvider } = this.props;
+    const newOptInValue = !telemetryOptInProvider.getOptIn();
 
     return new Promise((resolve, reject) => {
       this.setState(
@@ -195,14 +205,29 @@ export class TelemetryForm extends Component {
           processing: true,
         },
         () => {
-          this.props.telemetryOptInProvider.setOptIn(newOptInValue).then(
+          telemetryOptInProvider.setOptIn(newOptInValue).then(
             () => {
               this.setState({ processing: false });
+              // TODO: COPY NEEDED
+              toastNotifications.addSuccess(
+                i18n.translate('telemetry.optInSuccess', {
+                  defaultMessage: 'Data usage collection setting saved.',
+                })
+              );
               resolve();
             },
             e => {
               // something went wrong
-              this.setState({ processing: false });
+              this.setState({
+                enabled: telemetryOptInProvider.getOptIn(),
+                processing: false,
+              });
+              // TODO: COPY NEEDED
+              toastNotifications.addSuccess(
+                i18n.translate('telemetry.optInSuccess', {
+                  defaultMessage: 'Data usage collection saving failed.',
+                })
+              );
               reject(e);
             }
           );

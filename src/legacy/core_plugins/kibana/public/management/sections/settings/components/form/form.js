@@ -19,6 +19,9 @@
 
 import React, { PureComponent, Fragment } from 'react';
 import PropTypes from 'prop-types';
+import { isEmpty } from 'lodash';
+import intersectionBy from 'lodash.intersectionby';
+import { i18n } from '@kbn/i18n';
 
 import {
   EuiFlexGroup,
@@ -28,11 +31,16 @@ import {
   EuiPanel,
   EuiSpacer,
   EuiText,
+  EuiTextColor,
+  EuiBottomBar,
+  EuiButton,
+  EuiButtonEmpty,
 } from '@elastic/eui';
 import { FormattedMessage } from '@kbn/i18n/react';
-
+import { showPageReloadToast, showUnableToSave } from '../error_notifications';
 import { getCategoryName } from '../../lib';
 import { Field } from '../field';
+import { getEditableValueFromSetting } from '../utils';
 
 export class Form extends PureComponent {
   static propTypes = {
@@ -41,9 +49,13 @@ export class Form extends PureComponent {
     categoryCounts: PropTypes.object.isRequired,
     clearQuery: PropTypes.func.isRequired,
     save: PropTypes.func.isRequired,
-    clear: PropTypes.func.isRequired,
     showNoResultsMessage: PropTypes.bool.isRequired,
     enableSaving: PropTypes.bool.isRequired,
+  };
+
+  state = {
+    unsavedChanges: {},
+    loading: false,
   };
 
   renderClearQueryLink(totalSettings, currentSettings) {
@@ -78,6 +90,107 @@ export class Form extends PureComponent {
     return null;
   }
 
+  getSettingByKey = key => {
+    return Object.values(this.props.settings)
+      .flat()
+      .find(el => el.name === key);
+  };
+
+  getCountOfUnsavedSettings = () => {
+    return Object.keys(this.state.unsavedChanges).length;
+  };
+
+  getCountOfHiddenUnsavedSettings = () => {
+    const unsavedSettings = Object.keys(this.state.unsavedChanges).map(key => ({ name: key }));
+    const displayedUnsavedCount = intersectionBy(
+      unsavedSettings,
+      Object.values(this.props.settings).flat(),
+      'name'
+    ).length;
+    return unsavedSettings.length - displayedUnsavedCount;
+  };
+
+  handleChange = (key, changes) => {
+    const { type, defVal, value } = this.getSettingByKey(key);
+    const savedValue = getEditableValueFromSetting(type, value, defVal);
+    if (changes.value === savedValue) {
+      return this.clearChange(key);
+    }
+    this.setState({
+      unsavedChanges: {
+        ...this.state.unsavedChanges,
+        [key]: changes,
+      },
+    });
+  };
+
+  setLoading(loading) {
+    this.setState({
+      loading,
+    });
+  }
+
+  clearChange = key => {
+    if (!this.state.unsavedChanges[key]) {
+      return;
+    }
+    const unsavedChanges = { ...this.state.unsavedChanges };
+    delete unsavedChanges[key];
+
+    this.setState({
+      unsavedChanges: unsavedChanges,
+    });
+  };
+
+  clearUnsaved = () => {
+    this.setState({ unsavedChanges: {} });
+  };
+
+  saveAll = async () => {
+    this.setLoading(true);
+    const { unsavedChanges } = this.state;
+
+    if (isEmpty(unsavedChanges)) {
+      return;
+    }
+    const configToSave = {};
+    const requiresReloadArr = [];
+
+    Object.entries(unsavedChanges).forEach(([name, { value }]) => {
+      // TODO: move to utils
+      const { defVal, type, requiresPageReload } = this.getSettingByKey(name);
+      let valueToSave = value;
+      let equalsToDefault = false;
+      switch (type) {
+        case 'array':
+          valueToSave = valueToSave.split(',').map(val => val.trim());
+          equalsToDefault = valueToSave.join(',') === defVal.join(',');
+          break;
+        case 'json':
+          const isArray = Array.isArray(JSON.parse(defVal || '{}'));
+          valueToSave = valueToSave.trim();
+          valueToSave = valueToSave || (isArray(defVal) ? '[]' : '{}');
+        default:
+          equalsToDefault = valueToSave === defVal;
+      }
+      if (requiresPageReload) {
+        requiresReloadArr.push(name);
+      }
+      configToSave[name] = equalsToDefault ? null : valueToSave;
+    });
+
+    try {
+      await this.props.save(configToSave);
+      this.clearUnsaved();
+      if (requiresReloadArr.length > 0) {
+        showPageReloadToast(requiresReloadArr);
+      }
+    } catch (e) {
+      showUnableToSave();
+    }
+    this.setLoading(false);
+  };
+
   renderCategory(category, settings, totalSettings) {
     return (
       <Fragment key={category}>
@@ -97,9 +210,10 @@ export class Form extends PureComponent {
                 <Field
                   key={setting.name}
                   setting={setting}
-                  save={this.props.save}
-                  clear={this.props.clear}
                   enableSaving={this.props.enableSaving}
+                  handleChange={this.handleChange}
+                  unsavedChanges={this.state.unsavedChanges[setting.name]}
+                  clearChange={this.clearChange}
                 />
               );
             })}
@@ -134,8 +248,85 @@ export class Form extends PureComponent {
     return null;
   }
 
+  areChangesValid = () => {
+    const { unsavedChanges } = this.state;
+    return Object.values(unsavedChanges).some(({ isDisabled, isInvalid }) => {
+      return isDisabled || isInvalid;
+    });
+  };
+
+  renderBottomBar = () => {
+    const unsavedCount = this.getCountOfUnsavedSettings();
+    const hiddenUnsavedCount = this.getCountOfHiddenUnsavedSettings();
+    return (
+      <EuiBottomBar>
+        <EuiFlexGroup justifyContent="spaceBetween" alignItems="center">
+          <EuiFlexItem grow={false}>
+            <EuiFlexGroup gutterSize="s">
+              <EuiFlexItem grow={false}>
+                <EuiButton
+                  disabled={this.areChangesValid()}
+                  color="secondary"
+                  fill
+                  size="s"
+                  iconType="check"
+                  onClick={this.saveAll}
+                  aria-label={i18n.translate('kbn.management.settings.field.saveButtonAriaLabel', {
+                    defaultMessage: 'Save changes',
+                  })}
+                  isLoading={this.state.loading}
+                >
+                  Save changes
+                </EuiButton>
+              </EuiFlexItem>
+              <EuiFlexItem grow={false}>
+                <EuiButtonEmpty
+                  color="ghost"
+                  size="s"
+                  iconType="cross"
+                  onClick={this.clearUnsaved}
+                  aria-label={i18n.translate(
+                    'kbn.management.settings.field.cancelButtonAriaLabel',
+                    {
+                      defaultMessage: 'Cancel all changes',
+                    }
+                  )}
+                >
+                  Cancel all changes
+                </EuiButtonEmpty>
+              </EuiFlexItem>
+            </EuiFlexGroup>
+          </EuiFlexItem>
+          <EuiFlexItem grow={false}>
+            <EuiTextColor color="ghost">
+              <FormattedMessage
+                id="kbn.management.settings.form.countOfSettingsChanged"
+                defaultMessage="Settings unsaved: {settingsCount} {hiddenCountCopy}"
+                values={{
+                  settingsCount: unsavedCount,
+                  hiddenCountCopy: hiddenUnsavedCount ? (
+                    <FormattedMessage
+                      id="kbn.management.settings.form.countOfSettingsHiddenChanged"
+                      defaultMessage="({hiddenCount} hidden) "
+                      values={{
+                        hiddenCount: hiddenUnsavedCount,
+                      }}
+                    />
+                  ) : (
+                    ''
+                  ),
+                }}
+              />
+            </EuiTextColor>
+          </EuiFlexItem>
+        </EuiFlexGroup>
+      </EuiBottomBar>
+    );
+  };
+
   render() {
     const { settings, categories, categoryCounts, clearQuery } = this.props;
+    const { unsavedChanges } = this.state;
     const currentCategories = [];
 
     categories.forEach(category => {
@@ -145,13 +336,16 @@ export class Form extends PureComponent {
     });
 
     return (
-      <Fragment>
-        {currentCategories.length
-          ? currentCategories.map(category => {
-              return this.renderCategory(category, settings[category], categoryCounts[category]); // fix this
-            })
-          : this.maybeRenderNoSettings(clearQuery)}
-      </Fragment>
+      <>
+        <div>
+          {currentCategories.length
+            ? currentCategories.map(category => {
+                return this.renderCategory(category, settings[category], categoryCounts[category]); // fix this
+              })
+            : this.maybeRenderNoSettings(clearQuery)}
+        </div>
+        {!isEmpty(unsavedChanges) && this.renderBottomBar()}
+      </>
     );
   }
 }

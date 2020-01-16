@@ -3,16 +3,17 @@
     margin-top: $euiSize;
   }
 
-  &Wrapper {
-    width: 640px;
+  &--unsaved {
+    background-color: rgba(205, 255, 190, 0.23);
+  }
+  &--invalid {
+    background-color: rgba(255, 151, 237, 0.23);
+  }
 
+  &Wrapper {
     @include internetExplorerOnly() {
       min-height: 1px;
     }
-  }
-
-  &Actions {
-    padding-top: $euiSizeM;
   }
 
   @include internetExplorerOnly {
