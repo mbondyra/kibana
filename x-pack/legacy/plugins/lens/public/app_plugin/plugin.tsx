@@ -33,6 +33,7 @@ import {
   datatableVisualizationSetup,
   datatableVisualizationStop,
 } from '../datatable_visualization_plugin';
+import { pieVisualizationSetup, pieVisualizationStop } from '../pie_visualization';
 import { App } from './app';
 import {
   LensReportManager,
@@ -79,10 +80,12 @@ export class AppPlugin {
     const xyVisualization = xyVisualizationSetup();
     const metricVisualization = metricVisualizationSetup();
     const editorFrameSetupInterface = editorFrameSetup();
+    const pieVisualization = pieVisualizationSetup();
 
     editorFrameSetupInterface.registerVisualization(xyVisualization);
     editorFrameSetupInterface.registerVisualization(datatableVisualization);
     editorFrameSetupInterface.registerVisualization(metricVisualization);
+    editorFrameSetupInterface.registerVisualization(pieVisualization);
     editorFrameSetupInterface.registerDatasource(indexPattern);
 
     kibana_legacy.registerLegacyApp({
@@ -212,6 +215,7 @@ export class AppPlugin {
     xyVisualizationStop();
     metricVisualizationStop();
     datatableVisualizationStop();
+    pieVisualizationStop();
     editorFrameStop();
   }
 }
