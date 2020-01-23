@@ -1880,10 +1880,10 @@
   dependencies:
     "@elastic/apm-rum-core" "^4.7.0"
 
-"@elastic/charts@^16.2.0":
-  version "16.2.0"
-  resolved "https://registry.yarnpkg.com/@elastic/charts/-/charts-16.2.0.tgz#405123c773fa194b13d178904a27558447c6b0e6"
-  integrity sha512-fTdoSdP8RwTt6YCHdVw2WJQjXa+KL8Wg7yaIwcRxzzxmoqvQHr7bBNW/j0A57ITSwVoFnyN5t/7z4JAzCrFB0A==
+"@elastic/charts@^16.2.1":
+  version "16.2.1"
+  resolved "https://registry.yarnpkg.com/@elastic/charts/-/charts-16.2.1.tgz#8cc87321a062526353cb3a41d51e10aac91da447"
+  integrity sha512-fxBsTgraK0Hs5odW9ScRnHxpGMxiXQ4rmU/fcSPJJyGiVlwyj6SXK7IltuFa+cA7XKzI4v8MXdg5Nvlrescr+g==
   dependencies:
     "@types/d3-shape" "^1.3.1"
     classnames "^2.2.6"
