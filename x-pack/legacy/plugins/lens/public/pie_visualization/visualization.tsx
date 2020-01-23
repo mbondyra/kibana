@@ -15,18 +15,11 @@ import {
   Visualization,
   VisualizationLayerConfigProps,
   VisualizationSuggestion,
-  Operation,
+  // Operation,
 } from '../types';
 import { generateId } from '../id_generator';
-
-export interface LayerState {
-  layerId: string;
-  columns: string[];
-}
-
-export interface PieVisualizationState {
-  layers: LayerState[];
-}
+import { toExpression, toPreviewExpression } from './to_expression';
+import { LayerState, PieVisualizationState } from './types';
 
 function newLayerState(layerId: string): LayerState {
   return {
@@ -88,11 +81,24 @@ export const pieVisualization: Visualization<PieVisualizationState, PieVisualiza
 
   visualizationTypes: [
     {
-      id: 'lnsPie',
+      id: 'donut',
+      icon: 'visDonut',
+      label: i18n.translate('xpack.lens.pie.donutLabel', {
+        defaultMessage: 'Donut',
+      }),
+    },
+    {
+      id: 'sunburst',
       icon: 'visPie',
-      // largeIcon: chartTableSVG,
-      label: i18n.translate('xpack.lens.pie.label', {
-        defaultMessage: 'Pie',
+      label: i18n.translate('xpack.lens.pie.sunburstlabel', {
+        defaultMessage: 'Sunburst',
+      }),
+    },
+    {
+      id: 'treemap',
+      icon: 'visPie',
+      label: i18n.translate('xpack.lens.pie.treemaplabel', {
+        defaultMessage: 'Treemap',
       }),
     },
   ],
@@ -103,24 +109,43 @@ export const pieVisualization: Visualization<PieVisualizationState, PieVisualiza
 
   clearLayer(state) {
     return {
+      shape: state.shape,
       layers: state.layers.map(l => newLayerState(l.layerId)),
     };
   },
 
-  getDescription() {
+  getDescription(state) {
+    if (state.shape === 'donut') {
+      return {
+        icon: 'visPie',
+        label: i18n.translate('xpack.lens.pie.donutLabel', {
+          defaultMessage: 'Donut',
+        }),
+      };
+    } else if (state.shape === 'sunburst') {
+      return {
+        icon: 'visPie',
+        label: i18n.translate('xpack.lens.pie.sunburstLabel', {
+          defaultMessage: 'Sunburst',
+        }),
+      };
+    }
     return {
-      // icon: chartTableSVG,
-      label: i18n.translate('xpack.lens.pie.label', {
-        defaultMessage: 'Pie',
+      label: i18n.translate('xpack.lens.pie.treemapLabel', {
+        defaultMessage: 'Treemap',
       }),
     };
   },
 
-  switchVisualizationType: (_, state) => state,
+  switchVisualizationType: (visualizationTypeId, state) => ({
+    ...state,
+    shape: visualizationTypeId as PieVisualizationState['shape'],
+  }),
 
   initialize(frame, state) {
     return (
       state || {
+        shape: 'donut',
         layers: [newLayerState(frame.addNewLayer())],
       }
     );
@@ -144,11 +169,11 @@ export const pieVisualization: Visualization<PieVisualizationState, PieVisualiza
     }
     const title =
       table.changeType === 'unchanged'
-        ? i18n.translate('xpack.lens.datatable.suggestionLabel', {
-            defaultMessage: 'As table',
+        ? i18n.translate('xpack.lens.pie.suggestionLabel', {
+            defaultMessage: 'As pie',
           })
-        : i18n.translate('xpack.lens.datatable.visualizationOf', {
-            defaultMessage: 'Table {operations}',
+        : i18n.translate('xpack.lens.pie.visualizationOf', {
+            defaultMessage: 'Pie {operations}',
             values: {
               operations:
                 table.label ||
@@ -170,6 +195,7 @@ export const pieVisualization: Visualization<PieVisualizationState, PieVisualiza
         // table with >= 10 columns will have a score of 0.6, fewer columns reduce score
         score: (Math.min(table.columns.length, 10) / 10) * 0.6,
         state: {
+          shape: 'donut',
           layers: [
             {
               layerId: table.layerId,
@@ -198,37 +224,39 @@ export const pieVisualization: Visualization<PieVisualizationState, PieVisualiza
     }
   },
 
-  toExpression(state, frame) {
-    const layer = state.layers[0];
-    const datasource = frame.datasourceLayers[layer.layerId];
-    const operations = layer.columns
-      .map(columnId => ({ columnId, operation: datasource.getOperationForColumnId(columnId) }))
-      .filter((o): o is { columnId: string; operation: Operation } => !!o.operation);
+  // toExpression(state, frame) {
+  //   const layer = state.layers[0];
+  //   const datasource = frame.datasourceLayers[layer.layerId];
+  //   const operations = layer.columns
+  //     .map(columnId => ({ columnId, operation: datasource.getOperationForColumnId(columnId) }))
+  //     .filter((o): o is { columnId: string; operation: Operation } => !!o.operation);
 
-    return {
-      type: 'expression',
-      chain: [
-        {
-          type: 'function',
-          function: 'lens_pie',
-          arguments: {
-            columns: [
-              {
-                type: 'expression',
-                chain: [
-                  {
-                    type: 'function',
-                    function: 'lens_pie_columns',
-                    arguments: {
-                      columnIds: operations.map(o => o.columnId),
-                    },
-                  },
-                ],
-              },
-            ],
-          },
-        },
-      ],
-    };
-  },
+  //   return {
+  //     type: 'expression',
+  //     chain: [
+  //       {
+  //         type: 'function',
+  //         function: 'lens_pie',
+  //         arguments: {
+  //           columns: [
+  //             {
+  //               type: 'expression',
+  //               chain: [
+  //                 {
+  //                   type: 'function',
+  //                   function: 'lens_pie_columns',
+  //                   arguments: {
+  //                     columnIds: operations.map(o => o.columnId),
+  //                   },
+  //                 },
+  //               ],
+  //             },
+  //           ],
+  //         },
+  //       },
+  //     ],
+  //   };
+  // },
+  toExpression,
+  toPreviewExpression,
 };

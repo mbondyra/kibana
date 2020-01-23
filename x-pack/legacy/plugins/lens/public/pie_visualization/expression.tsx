@@ -7,7 +7,14 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import { i18n } from '@kbn/i18n';
-import { Chart, Datum, Partition, getSpecId } from '@elastic/charts';
+import {
+  Chart,
+  Datum,
+  Partition,
+  PartitionLayer,
+  PartitionLayout,
+  getSpecId,
+} from '@elastic/charts';
 import {
   ExpressionFunction,
   KibanaDatatable,
@@ -26,6 +33,7 @@ export interface PieColumns {
 
 interface Args {
   columns: PieColumns;
+  shape: 'pie' | 'donut' | 'treemap';
 }
 
 export interface PieProps {
@@ -46,14 +54,13 @@ export const pie: ExpressionFunction<'lens_pie', KibanaDatatable, Args, PieRende
     defaultMessage: 'Pie renderer',
   }),
   args: {
-    title: {
-      types: ['string'],
-      help: i18n.translate('xpack.lens.datatable.titleLabel', {
-        defaultMessage: 'Title',
-      }),
-    },
     columns: {
       types: ['lens_pie_columns'],
+      help: '',
+    },
+    shape: {
+      types: ['string'],
+      options: ['pie', 'donut', 'treemap'],
       help: '',
     },
   },
@@ -125,30 +132,47 @@ function PieComponent(props: PieProps & { formatFactory: FormatFactory }) {
   const [firstTable] = Object.values(props.data.tables);
   const formatters: Record<string, ReturnType<FormatFactory>> = {};
 
+  const shape = props.args.shape;
+
   firstTable.columns.forEach(column => {
     formatters[column.id] = props.formatFactory(column.formatHint);
   });
+
+  const layers: PartitionLayer[] = firstTable.columns
+    .slice(0, firstTable.columns.length - 1)
+    .map(col => ({
+      groupByRollup: (d: Datum) => d[col.id],
+      nodeLabel: (d: Datum) => {
+        if (col.formatHint) {
+          return formatters[col.id].convert(d);
+        }
+        return d;
+      },
+      fillLabel: { textInvertible: true },
+      shape: {
+        fillColor: () => 'blue',
+      },
+    }));
+
+  const config: Record<string, unknown> = {
+    partitionLayout: shape === 'treemap' ? PartitionLayout.treemap : PartitionLayout.sunburst,
+  };
+  if (shape !== 'treemap') {
+    config.emptySizeRatio = shape === 'donut' ? 0.4 : 0;
+  }
 
   return (
     <VisualizationContainer className="lnsSunburstExpression__container">
       <Chart>
         <Partition
-          id={getSpecId('pie')}
+          id={getSpecId(shape)}
           data={firstTable.rows}
           valueAccessor={(d: Datum) => d[firstTable.columns[firstTable.columns.length - 1].id]}
           valueFormatter={(d: number) =>
             formatters[firstTable.columns[firstTable.columns.length - 1].id].convert(d)
           }
-          layers={[
-            {
-              groupByRollup: (d: Datum) => d[firstTable.columns[0].id],
-              nodeLabel: (d: Datum) => d[firstTable.columns[0].name],
-              fillLabel: { textInvertible: true },
-              shape: {
-                fillColor: 'blue',
-              },
-            },
-          ]}
+          layers={layers}
+          config={config}
         />
       </Chart>
     </VisualizationContainer>
