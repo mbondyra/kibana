@@ -7,6 +7,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import { i18n } from '@kbn/i18n';
+import chrome from 'ui/chrome';
 import {
   Chart,
   Datum,
@@ -15,6 +16,7 @@ import {
   PartitionLayout,
   getSpecId,
 } from '@elastic/charts';
+import { EUI_CHARTS_THEME_DARK, EUI_CHARTS_THEME_LIGHT } from '@elastic/eui/dist/eui_charts_theme';
 import {
   ExpressionFunction,
   KibanaDatatable,
@@ -27,6 +29,9 @@ import {
 import { FormatFactory } from '../../../../../../src/legacy/ui/public/visualize/loader/pipeline_helpers/utilities';
 import { VisualizationContainer } from '../visualization_container';
 
+const IS_DARK_THEME = chrome.getUiSettingsClient().get('theme:darkMode');
+const chartTheme = IS_DARK_THEME ? EUI_CHARTS_THEME_DARK.theme : EUI_CHARTS_THEME_LIGHT.theme;
+
 export interface PieColumns {
   columnIds: string[];
 }
@@ -34,6 +39,7 @@ export interface PieColumns {
 interface Args {
   columns: PieColumns;
   shape: 'pie' | 'donut' | 'treemap';
+  hideLabels: boolean;
 }
 
 export interface PieProps {
@@ -61,6 +67,10 @@ export const pie: ExpressionFunction<'lens_pie', KibanaDatatable, Args, PieRende
     shape: {
       types: ['string'],
       options: ['pie', 'donut', 'treemap'],
+      help: '',
+    },
+    hideLabels: {
+      types: ['boolean'],
       help: '',
     },
   },
@@ -132,33 +142,55 @@ function PieComponent(props: PieProps & { formatFactory: FormatFactory }) {
   const [firstTable] = Object.values(props.data.tables);
   const formatters: Record<string, ReturnType<FormatFactory>> = {};
 
-  const shape = props.args.shape;
+  const { shape, hideLabels } = props.args;
 
-  firstTable.columns.forEach(column => {
-    formatters[column.id] = props.formatFactory(column.formatHint);
-  });
+  if (!hideLabels) {
+    firstTable.columns.forEach(column => {
+      formatters[column.id] = props.formatFactory(column.formatHint);
+    });
+  }
 
   const layers: PartitionLayer[] = firstTable.columns
     .slice(0, firstTable.columns.length - 1)
-    .map(col => ({
+    .map((col, layerIndex) => ({
       groupByRollup: (d: Datum) => d[col.id],
       nodeLabel: (d: Datum) => {
+        if (hideLabels) {
+          return '';
+        }
         if (col.formatHint) {
           return formatters[col.id].convert(d);
         }
         return d;
       },
-      fillLabel: { textInvertible: true },
+      fillLabel: {
+        textInvertible: true,
+      },
       shape: {
-        fillColor: () => 'blue',
+        fillColor: d => {
+          let parentIndex;
+          let tempParent = d;
+          while (tempParent.parent && tempParent.depth !== 0) {
+            parentIndex = tempParent.sortIndex;
+            tempParent = tempParent.parent;
+          }
+          return (
+            chartTheme.colors.vizColors[parentIndex % chartTheme.colors.vizColors.length] ||
+            chartTheme.colors.defaultVizColor
+          );
+        },
       },
     }));
 
   const config: Record<string, unknown> = {
     partitionLayout: shape === 'treemap' ? PartitionLayout.treemap : PartitionLayout.sunburst,
+    fontFamily: chartTheme.barSeriesStyle?.displayValue?.fontFamily,
   };
   if (shape !== 'treemap') {
     config.emptySizeRatio = shape === 'donut' ? 0.4 : 0;
+  }
+  if (hideLabels) {
+    config.linkLabel = { maxCount: 0 };
   }
 
   return (
@@ -169,7 +201,9 @@ function PieComponent(props: PieProps & { formatFactory: FormatFactory }) {
           data={firstTable.rows}
           valueAccessor={(d: Datum) => d[firstTable.columns[firstTable.columns.length - 1].id]}
           valueFormatter={(d: number) =>
-            formatters[firstTable.columns[firstTable.columns.length - 1].id].convert(d)
+            hideLabels
+              ? ''
+              : formatters[firstTable.columns[firstTable.columns.length - 1].id].convert(d)
           }
           layers={layers}
           config={config}

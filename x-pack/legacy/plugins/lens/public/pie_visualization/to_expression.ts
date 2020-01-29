@@ -8,6 +8,10 @@ import { FramePublicAPI, Operation } from '../types';
 import { PieVisualizationState } from './types';
 
 export function toExpression(state: PieVisualizationState, frame: FramePublicAPI) {
+  return expressionHelper(state, frame, false);
+}
+
+function expressionHelper(state: PieVisualizationState, frame: FramePublicAPI, isPreview: boolean) {
   const layer = state.layers[0];
   const datasource = frame.datasourceLayers[layer.layerId];
   const operations = layer.columns
@@ -22,6 +26,7 @@ export function toExpression(state: PieVisualizationState, frame: FramePublicAPI
         function: 'lens_pie',
         arguments: {
           shape: [state.shape],
+          hideLabels: [isPreview],
           columns: [
             {
               type: 'expression',
@@ -43,16 +48,5 @@ export function toExpression(state: PieVisualizationState, frame: FramePublicAPI
 }
 
 export function toPreviewExpression(state: PieVisualizationState, frame: FramePublicAPI) {
-  return toExpression(
-    {
-      ...state,
-      layers: state.layers.map(layer => ({ ...layer, hide: true })),
-      // hide legend for preview
-      // legend: {
-      //   ...state.legend,
-      //   isVisible: false,
-      // },
-    },
-    frame
-  );
+  return expressionHelper(state, frame, true);
 }

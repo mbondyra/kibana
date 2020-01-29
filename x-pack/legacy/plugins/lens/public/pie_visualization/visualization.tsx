@@ -82,7 +82,7 @@ export const pieVisualization: Visualization<PieVisualizationState, PieVisualiza
   visualizationTypes: [
     {
       id: 'donut',
-      icon: 'visDonut',
+      icon: 'bullseye',
       label: i18n.translate('xpack.lens.pie.donutLabel', {
         defaultMessage: 'Donut',
       }),
@@ -96,7 +96,7 @@ export const pieVisualization: Visualization<PieVisualizationState, PieVisualiza
     },
     {
       id: 'treemap',
-      icon: 'visPie',
+      icon: 'grid',
       label: i18n.translate('xpack.lens.pie.treemaplabel', {
         defaultMessage: 'Treemap',
       }),
@@ -117,7 +117,7 @@ export const pieVisualization: Visualization<PieVisualizationState, PieVisualiza
   getDescription(state) {
     if (state.shape === 'donut') {
       return {
-        icon: 'visPie',
+        icon: 'bullseye',
         label: i18n.translate('xpack.lens.pie.donutLabel', {
           defaultMessage: 'Donut',
         }),
@@ -131,6 +131,7 @@ export const pieVisualization: Visualization<PieVisualizationState, PieVisualiza
       };
     }
     return {
+      icon: 'grid',
       label: i18n.translate('xpack.lens.pie.treemapLabel', {
         defaultMessage: 'Treemap',
       }),
