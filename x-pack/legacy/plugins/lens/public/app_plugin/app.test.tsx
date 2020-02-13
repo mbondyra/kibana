@@ -38,10 +38,11 @@ jest
 
 const { TopNavMenu } = npStart.plugins.navigation.ui;
 
-const waitForPromises = async () =>
-  act(async () => {
+async function waitForPromises() {
+  await act(async () => {
     await new Promise(resolve => setTimeout(resolve));
   });
+}
 
 function createMockFrame(): jest.Mocked<EditorFrameInstance> {
   return {

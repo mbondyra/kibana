@@ -25,9 +25,9 @@ import { FrameLayout } from './frame_layout';
 // calling this function will wait for all pending Promises from mock
 // datasources to be processed by its callers.
 async function waitForPromises(n = 3) {
-  for (let i = 0; i < n; ++i) {
-    await Promise.resolve();
-  }
+  await act(async () => {
+    await new Promise(resolve => setTimeout(resolve, n));
+  });
 }
 
 function generateSuggestion(state = {}): DatasourceSuggestion {
