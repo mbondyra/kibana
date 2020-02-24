@@ -122,7 +122,7 @@ function CellPopover({
   );
 }
 
-export function DiscoverGrid({
+export const DiscoverGrid = React.memo(function DiscoverGridInner({
   rows,
   columns,
   sort,
@@ -464,7 +464,7 @@ export function DiscoverGrid({
       )}
     </>
   );
-};
+});
 
 DiscoverGrid.whyDidYouRender = {
   logOnDifferentValues: true,
