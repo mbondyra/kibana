@@ -42,6 +42,7 @@ import { DocViewer } from '../doc_viewer/doc_viewer';
 import { IndexPattern } from '../../../kibana_services';
 import { ElasticSearchHit, DocViewFilterFn } from '../../doc_views/doc_views_types';
 import { shortenDottedString } from '../../../../../../../../plugins/data/common/utils/shorten_dotted_string';
+import { logRerender, logPropChanges } from './perf_loggers';
 
 type Direction = 'asc' | 'desc';
 type SortArr = [string, Direction];
@@ -137,6 +138,25 @@ export function DiscoverGrid({
   onRemoveColumn,
   onAddColumn,
 }: Props) {
+  const props = {
+    rows,
+    columns,
+    sort,
+    indexPattern,
+    ariaLabelledBy,
+    searchTitle,
+    searchDescription,
+    useShortDots,
+    onSort,
+    sampleSize,
+    onFilter,
+    getContextAppHref,
+    onRemoveColumn,
+    onAddColumn,
+  }
+  logRerender('DiscoverGrid');
+
+  logPropChanges('DiscoverGrid', props);
   const actionColumnId = 'uniqueString'; // TODO should be guaranteed unique...
   const lowestPageSize = 50;
   const timeNode = useMemo(
@@ -444,4 +464,9 @@ export function DiscoverGrid({
       )}
     </>
   );
-}
+};
+
+DiscoverGrid.whyDidYouRender = {
+  logOnDifferentValues: true,
+  collapseGroups: true
+};

@@ -1,3 +1,9 @@
+import React from 'react'
+
+const whyDidYouRender = require('@welldone-software/why-did-you-render')
+whyDidYouRender(React, {
+  // trackAllPureComponents: true
+})
 /*
  * Licensed to Elasticsearch B.V. under one or more contributor
  * license agreements. See the NOTICE file distributed with
