@@ -159,17 +159,10 @@ export const DiscoverGrid = React.memo(function DiscoverGridInner({
   logPropChanges('DiscoverGrid', props);
   const actionColumnId = 'uniqueString'; // TODO should be guaranteed unique...
   const lowestPageSize = 50;
-  const timeNode = useMemo(
-    () => (
-      <span>
-        {i18n.translate('kbn.discover.timeLabel', {
-          defaultMessage: 'Time',
-        })}
-      </span>
-    ),
-    []
-  );
-  const timeString = useRenderToText(timeNode, 'Time');
+  const timeString = i18n
+    .translate('kbn.discover.timeLabel', { defaultMessage: 'Time' })
+    .toString();
+
   const [flyoutRow, setFlyoutRow] = useState<ElasticSearchHit | undefined>(undefined);
 
   const dataGridColumns = columns.map(
