@@ -231,9 +231,16 @@ export const DiscoverGrid = React.memo(function DiscoverGridInner({
    * Visibility and order
    */
   const [visibleColumns, setVisibleColumns] = useState(dataGridColumns.map(obj => obj.id));
+
+  const mounted = React.useRef()
+
   useEffect(() => {
     // every time a column is added, make it visible
+  if (!mounted.current) {
+    mounted.current = true;
+  } else {
     setVisibleColumns(dataGridColumns.map(obj => obj.id));
+  }
   }, [dataGridColumns.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
