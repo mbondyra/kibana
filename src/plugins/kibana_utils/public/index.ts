@@ -18,14 +18,19 @@
  */
 
 export {
+  calculateObjectHash,
+  createGetterSetter,
   defer,
   Defer,
-  of,
-  createGetterSetter,
   Get,
+  JsonArray,
+  JsonObject,
+  JsonValue,
+  of,
   Set,
   UiComponent,
   UiComponentInstance,
+  url,
 } from '../common';
 export * from './core';
 export * from './errors';

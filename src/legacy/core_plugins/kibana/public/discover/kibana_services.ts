@@ -50,26 +50,21 @@ export function setServices(newServices: any) {
 // EXPORT legacy static dependencies, should be migrated when available in a new version;
 export { angular };
 export { wrapInI18nContext } from 'ui/i18n';
-export { buildVislibDimensions } from '../../../visualizations/public';
+import { search } from '../../../../../plugins/data/public';
+export const { getRequestInspectorStats, getResponseInspectorStats, tabifyAggResponse } = search;
 // @ts-ignore
-export { callAfterBindingsWorkaround } from 'ui/compat';
-export { getRequestInspectorStats, getResponseInspectorStats } from '../../../data/public';
+export { shortenDottedString } from '../../common/utils/shorten_dotted_string';
 // @ts-ignore
 export { intervalOptions } from 'ui/agg_types';
-// @ts-ignore
-export { migrateLegacyQuery } from 'ui/utils/migrate_legacy_query';
-export { SavedObjectSaveModal } from 'ui/saved_objects/components/saved_object_save_modal';
-export { showSaveModal } from 'ui/saved_objects/show_saved_object_save_modal';
-export { stateMonitorFactory } from 'ui/state_management/state_monitor_factory';
-export { subscribeWithScope } from 'ui/utils/subscribe_with_scope';
+export { subscribeWithScope } from '../../../../../plugins/kibana_legacy/public';
 // @ts-ignore
 export { timezoneProvider } from 'ui/vis/lib/timezone';
-// @ts-ignore
-export { tabifyAggResponse } from 'ui/agg_response/tabify';
-export { ensureDefaultIndexPattern } from 'ui/legacy_compat';
 export { unhashUrl } from '../../../../../plugins/kibana_utils/public';
-// @ts-ignore
-export { formatMsg, formatStack } from 'ui/notify/lib/index';
+export {
+  ensureDefaultIndexPattern,
+  formatMsg,
+  formatStack,
+} from '../../../../../plugins/kibana_legacy/public';
 
 // EXPORT types
 export {
@@ -77,7 +72,6 @@ export {
   IIndexPattern,
   IndexPattern,
   indexPatterns,
-  hasSearchStategyForIndexPattern,
   IFieldType,
   SearchSource,
   ISearchSource,
@@ -85,7 +79,6 @@ export {
   SortDirection,
 } from '../../../../../plugins/data/public';
 export { ElasticSearchHit } from './np_ready/doc_views/doc_views_types';
-export { registerTimefilterWithGlobalStateFactory } from 'ui/timefilter/setup_router';
 export { getFormat } from 'ui/visualize/loader/pipeline_helpers/utilities';
 // @ts-ignore
 export { buildPointSeriesData } from 'ui/agg_response/point_series/point_series';

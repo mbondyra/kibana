@@ -15,9 +15,9 @@ import {
 } from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
 import { FormattedMessage } from '@kbn/i18n/react';
-import { useAppDependencies } from '../../app_context';
 import { ReducerAction } from './connector_reducer';
-import { ActionConnector, IErrorObject } from '../../../types';
+import { ActionConnector, IErrorObject, ActionTypeModel } from '../../../types';
+import { TypeRegistry } from '../../type_registry';
 
 export function validateBaseProperties(actionObject: ActionConnector) {
   const validationResult = { errors: {} };
@@ -42,10 +42,11 @@ interface ActionConnectorProps {
   connector: ActionConnector;
   dispatch: React.Dispatch<ReducerAction>;
   actionTypeName: string;
-  serverError: {
+  serverError?: {
     body: { message: string; error: string };
-  } | null;
+  };
   errors: IErrorObject;
+  actionTypeRegistry: TypeRegistry<ActionTypeModel>;
 }
 
 export const ActionConnectorForm = ({
@@ -54,9 +55,8 @@ export const ActionConnectorForm = ({
   actionTypeName,
   serverError,
   errors,
+  actionTypeRegistry,
 }: ActionConnectorProps) => {
-  const { actionTypeRegistry } = useAppDependencies();
-
   const setActionProperty = (key: string, value: any) => {
     dispatch({ command: { type: 'setProperty' }, payload: { key, value } });
   };
@@ -110,7 +110,7 @@ export const ActionConnectorForm = ({
   const FieldsComponent = actionTypeRegistered.actionConnectorFields;
 
   return (
-    <EuiForm isInvalid={serverError !== null} error={serverError?.body.message}>
+    <EuiForm isInvalid={!!serverError} error={serverError?.body.message}>
       <EuiFormRow
         id="actionName"
         fullWidth
@@ -125,6 +125,7 @@ export const ActionConnectorForm = ({
       >
         <EuiFieldText
           fullWidth
+          autoFocus={true}
           isInvalid={errors.name.length > 0 && connector.name !== undefined}
           name="name"
           placeholder="Untitled"

@@ -16,23 +16,32 @@ import { DataPublicPluginStart } from '../../../../../src/plugins/data/public';
 import { IEmbeddableStart } from '../../../../../src/plugins/embeddable/public';
 import { Start as NewsfeedStart } from '../../../../../src/plugins/newsfeed/public';
 import { Start as InspectorStart } from '../../../../../src/plugins/inspector/public';
-import { IUiActionsStart } from '../../../../../src/plugins/ui_actions/public';
+import { UiActionsStart } from '../../../../../src/plugins/ui_actions/public';
 import { UsageCollectionSetup } from '../../../../../src/plugins/usage_collection/public';
 import { initTelemetry } from './lib/telemetry';
 import { KibanaServices } from './lib/kibana';
+
+import { serviceNowActionType } from './lib/connectors';
+
+import {
+  TriggersAndActionsUIPublicPluginSetup,
+  TriggersAndActionsUIPublicPluginStart,
+} from '../../../../plugins/triggers_actions_ui/public';
 
 export { AppMountParameters, CoreSetup, CoreStart, PluginInitializerContext };
 
 export interface SetupPlugins {
   home: HomePublicPluginSetup;
   usageCollection: UsageCollectionSetup;
+  triggers_actions_ui: TriggersAndActionsUIPublicPluginSetup;
 }
 export interface StartPlugins {
   data: DataPublicPluginStart;
   embeddable: IEmbeddableStart;
   inspector: InspectorStart;
   newsfeed?: NewsfeedStart;
-  uiActions: IUiActionsStart;
+  uiActions: UiActionsStart;
+  triggers_actions_ui: TriggersAndActionsUIPublicPluginStart;
 }
 export type StartServices = CoreStart & StartPlugins;
 
@@ -58,6 +67,8 @@ export class Plugin implements IPlugin<Setup, Start> {
       async mount(context, params) {
         const [coreStart, startPlugins] = await core.getStartServices();
         const { renderApp } = await import('./app');
+
+        plugins.triggers_actions_ui.actionTypeRegistry.register(serviceNowActionType());
 
         return renderApp(coreStart, startPlugins as StartPlugins, params);
       },

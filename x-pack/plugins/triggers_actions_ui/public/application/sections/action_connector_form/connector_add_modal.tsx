@@ -5,7 +5,7 @@
  */
 import React, { useCallback, useReducer, useState } from 'react';
 import { FormattedMessage } from '@kbn/i18n/react';
-import { EuiTitle, EuiFlexItem, EuiIcon, EuiFlexGroup } from '@elastic/eui';
+import { EuiTitle, EuiFlexItem, EuiIcon, EuiFlexGroup, EuiBetaBadge } from '@elastic/eui';
 import {
   EuiModal,
   EuiButton,
@@ -17,25 +17,37 @@ import {
 import { EuiButtonEmpty } from '@elastic/eui';
 import { EuiOverlayMask } from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
+import { HttpSetup, ToastsApi } from 'kibana/public';
 import { ActionConnectorForm, validateBaseProperties } from './action_connector_form';
-import { ActionType, ActionConnector, IErrorObject } from '../../../types';
+import { ActionType, ActionConnector, IErrorObject, ActionTypeModel } from '../../../types';
 import { connectorReducer } from './connector_reducer';
 import { createActionConnector } from '../../lib/action_connector_api';
-import { useAppDependencies } from '../../app_context';
+import { TypeRegistry } from '../../type_registry';
+import './connector_add_modal.scss';
+
+interface ConnectorAddModalProps {
+  actionType: ActionType;
+  addModalVisible: boolean;
+  setAddModalVisibility: React.Dispatch<React.SetStateAction<boolean>>;
+  postSaveEventHandler?: (savedAction: ActionConnector) => void;
+  http: HttpSetup;
+  actionTypeRegistry: TypeRegistry<ActionTypeModel>;
+  toastNotifications?: Pick<
+    ToastsApi,
+    'get$' | 'add' | 'remove' | 'addSuccess' | 'addWarning' | 'addDanger' | 'addError'
+  >;
+}
 
 export const ConnectorAddModal = ({
   actionType,
   addModalVisible,
   setAddModalVisibility,
   postSaveEventHandler,
-}: {
-  actionType: ActionType;
-  addModalVisible: boolean;
-  setAddModalVisibility: React.Dispatch<React.SetStateAction<boolean>>;
-  postSaveEventHandler?: (savedAction: ActionConnector) => void;
-}) => {
+  http,
+  toastNotifications,
+  actionTypeRegistry,
+}: ConnectorAddModalProps) => {
   let hasErrors = false;
-  const { http, toastNotifications, actionTypeRegistry } = useAppDependencies();
   const initialConnector = {
     actionTypeId: actionType.id,
     config: {},
@@ -47,14 +59,17 @@ export const ConnectorAddModal = ({
   const setConnector = (value: any) => {
     dispatch({ command: { type: 'setConnector' }, payload: { key: 'connector', value } });
   };
-  const [serverError, setServerError] = useState<{
-    body: { message: string; error: string };
-  } | null>(null);
+  const [serverError, setServerError] = useState<
+    | {
+        body: { message: string; error: string };
+      }
+    | undefined
+  >(undefined);
 
   const closeModal = useCallback(() => {
     setAddModalVisibility(false);
     setConnector(initialConnector);
-    setServerError(null);
+    setServerError(undefined);
   }, [initialConnector, setAddModalVisibility]);
 
   if (!addModalVisible) {
@@ -70,17 +85,19 @@ export const ConnectorAddModal = ({
   const onActionConnectorSave = async (): Promise<ActionConnector | undefined> =>
     await createActionConnector({ http, connector })
       .then(savedConnector => {
-        toastNotifications.addSuccess(
-          i18n.translate(
-            'xpack.triggersActionsUI.sections.addModalConnectorForm.updateSuccessNotificationText',
-            {
-              defaultMessage: "Created '{connectorName}'",
-              values: {
-                connectorName: savedConnector.name,
-              },
-            }
-          )
-        );
+        if (toastNotifications) {
+          toastNotifications.addSuccess(
+            i18n.translate(
+              'xpack.triggersActionsUI.sections.addModalConnectorForm.updateSuccessNotificationText',
+              {
+                defaultMessage: "Created '{connectorName}'",
+                values: {
+                  connectorName: savedConnector.name,
+                },
+              }
+            )
+          );
+        }
         return savedConnector;
       })
       .catch(errorRes => {
@@ -109,6 +126,17 @@ export const ConnectorAddModal = ({
                         actionTypeName: actionType.name,
                       }}
                     />
+                    &emsp;
+                    <EuiBetaBadge
+                      label="Beta"
+                      tooltipContent={i18n.translate(
+                        'xpack.triggersActionsUI.sections.addModalConnectorForm.betaBadgeTooltipContent',
+                        {
+                          defaultMessage:
+                            'This module is not GA. Please help us by reporting any bugs.',
+                        }
+                      )}
+                    />
                   </h3>
                 </EuiTitle>
               </EuiFlexItem>
@@ -123,6 +151,7 @@ export const ConnectorAddModal = ({
             dispatch={dispatch}
             serverError={serverError}
             errors={errors}
+            actionTypeRegistry={actionTypeRegistry}
           />
         </EuiModalBody>
 

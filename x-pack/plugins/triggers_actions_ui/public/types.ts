@@ -3,10 +3,16 @@
  * or more contributor license agreements. Licensed under the Elastic License;
  * you may not use this file except in compliance with the Elastic License.
  */
+import { ActionGroup } from '../../alerting/common';
 import { ActionType } from '../../actions/common';
 import { TypeRegistry } from './application/type_registry';
-import { SanitizedAlert as Alert, AlertAction } from '../../../legacy/plugins/alerting/common';
-export { Alert, AlertAction };
+import {
+  SanitizedAlert as Alert,
+  AlertAction,
+  AlertTaskState,
+  RawAlertInstance,
+} from '../../../plugins/alerting/common';
+export { Alert, AlertAction, AlertTaskState, RawAlertInstance };
 export { ActionType };
 
 export type ActionTypeIndex = Record<string, ActionType>;
@@ -65,12 +71,25 @@ export interface ActionConnectorTableItem extends ActionConnector {
   actionType: ActionType['name'];
 }
 
+export interface ActionVariable {
+  name: string;
+  description: string;
+}
+
+export interface ActionVariables {
+  context: ActionVariable[];
+  state: ActionVariable[];
+}
+
 export interface AlertType {
   id: string;
   name: string;
-  actionGroups: string[];
-  actionVariables: string[];
+  actionGroups: ActionGroup[];
+  actionVariables: ActionVariables;
+  defaultActionGroupId: ActionGroup['id'];
 }
+
+export type SanitizedAlertType = Omit<AlertType, 'apiKey'>;
 
 export type AlertWithoutId = Omit<Alert, 'id'>;
 
@@ -83,7 +102,7 @@ export interface AlertTypeModel {
   id: string;
   name: string;
   iconClass: string;
-  validate: (alert: Alert) => ValidationResult;
+  validate: (alertParams: any) => ValidationResult;
   alertParamsExpression: React.FunctionComponent<any>;
   defaultActionMessage?: string;
 }

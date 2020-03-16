@@ -13,9 +13,9 @@ import {
   EuiSpacer,
   EuiButtonEmpty,
 } from '@elastic/eui';
-import { isEqual } from 'lodash/fp';
 import React, { FC, memo, useCallback, useEffect, useState } from 'react';
 import styled from 'styled-components';
+import deepEqual from 'fast-deep-equal';
 
 import { setFieldValue } from '../../helpers';
 import { RuleStepProps, RuleStep, AboutStepRule } from '../../types';
@@ -23,7 +23,14 @@ import * as RuleI18n from '../../translations';
 import { AddItem } from '../add_item_form';
 import { StepRuleDescription } from '../description_step';
 import { AddMitreThreat } from '../mitre';
-import { Field, Form, FormDataProvider, getUseField, UseField, useForm } from '../shared_imports';
+import {
+  Field,
+  Form,
+  FormDataProvider,
+  getUseField,
+  UseField,
+  useForm,
+} from '../../../../../shared_imports';
 
 import { defaultRiskScoreBySeverity, severityOptions, SeverityValue } from './data';
 import { stepAboutDefaultValue } from './default_value';
@@ -96,7 +103,7 @@ const StepAboutRuleComponent: FC<StepAboutRuleProps> = ({
 
   useEffect(() => {
     const { isNew, ...initDefaultValue } = myStepData;
-    if (defaultValues != null && !isEqual(initDefaultValue, defaultValues)) {
+    if (defaultValues != null && !deepEqual(initDefaultValue, defaultValues)) {
       const myDefaultValues = {
         ...defaultValues,
         isNew: false,
@@ -119,7 +126,7 @@ const StepAboutRuleComponent: FC<StepAboutRuleProps> = ({
   ) : (
     <>
       <StepContentWrapper addPadding={!isUpdateView}>
-        <Form form={form} data-test-subj="stepAboutRule">
+        <Form form={form}>
           <CommonUseField
             path="name"
             componentProps={{
@@ -191,6 +198,7 @@ const StepAboutRuleComponent: FC<StepAboutRuleProps> = ({
           </TagContainer>
           <EuiSpacer size="m" />
           <AdvancedSettingsAccordion
+            data-test-subj="advancedSettings"
             id="advancedSettingsAccordion"
             buttonContent={AdvancedSettingsAccordionButton}
           >
@@ -262,7 +270,12 @@ const StepAboutRuleComponent: FC<StepAboutRuleProps> = ({
             responsive={false}
           >
             <EuiFlexItem grow={false}>
-              <EuiButton fill onClick={onSubmit} isDisabled={isLoading}>
+              <EuiButton
+                data-test-subj="about-continue"
+                fill
+                onClick={onSubmit}
+                isDisabled={isLoading}
+              >
                 {RuleI18n.CONTINUE}
               </EuiButton>
             </EuiFlexItem>

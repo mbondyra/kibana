@@ -37,13 +37,15 @@ require('ui/autoload/all');
 import 'ui/directives/input_focus';
 import './directives/saved_object_finder';
 import 'ui/directives/listen';
-import 'ui/kbn_top_nav';
 import './directives/saved_object_save_as_checkbox';
 import '../../data/public/legacy';
 import './services/saved_sheet_register';
 
 import rootTemplate from 'plugins/timelion/index.html';
-import { createSavedVisLoader, TypesService } from '../../visualizations/public';
+import { start as visualizations } from '../../visualizations/public/np_ready/public/legacy';
+
+import { loadKbnTopNavDirectives } from '../../../../plugins/kibana_legacy/public';
+loadKbnTopNavDirectives(npStart.plugins.navigation.ui);
 
 require('plugins/timelion/directives/cells/cells');
 require('plugins/timelion/directives/fixed_element');
@@ -114,7 +116,6 @@ app.controller('timelion', function(
   $timeout,
   AppState,
   config,
-  confirmModal,
   kbnUrl,
   Private
 ) {
@@ -126,13 +127,7 @@ app.controller('timelion', function(
   timefilter.enableAutoRefreshSelector();
   timefilter.enableTimeRangeSelector();
 
-  const savedVisualizations = createSavedVisLoader({
-    savedObjectsClient: npStart.core.savedObjects.client,
-    indexPatterns: npStart.plugins.data.indexPatterns,
-    chrome: npStart.core.chrome,
-    overlays: npStart.core.overlays,
-    visualizationTypes: new TypesService().start(),
-  });
+  const savedVisualizations = visualizations.savedVisualizationsLoader;
   const timezone = Private(timezoneProvider)();
 
   const defaultExpression = '.es(*)';
@@ -230,7 +225,6 @@ app.controller('timelion', function(
         }
 
         const confirmModalOptions = {
-          onConfirm: doDelete,
           confirmButtonText: i18n.translate('timelion.topNavMenu.delete.modal.confirmButtonLabel', {
             defaultMessage: 'Delete',
           }),
@@ -241,12 +235,18 @@ app.controller('timelion', function(
         };
 
         $scope.$evalAsync(() => {
-          confirmModal(
-            i18n.translate('timelion.topNavMenu.delete.modal.warningText', {
-              defaultMessage: `You can't recover deleted sheets.`,
-            }),
-            confirmModalOptions
-          );
+          npStart.core.overlays
+            .openConfirm(
+              i18n.translate('timelion.topNavMenu.delete.modal.warningText', {
+                defaultMessage: `You can't recover deleted sheets.`,
+              }),
+              confirmModalOptions
+            )
+            .then(isConfirmed => {
+              if (isConfirmed) {
+                doDelete();
+              }
+            });
         });
       },
       testId: 'timelionDeleteButton',

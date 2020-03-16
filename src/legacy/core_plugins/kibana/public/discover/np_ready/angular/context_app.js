@@ -18,7 +18,7 @@
  */
 
 import _ from 'lodash';
-import { callAfterBindingsWorkaround, getAngularModule } from '../../kibana_services';
+import { getAngularModule, getServices } from '../../kibana_services';
 import contextAppTemplate from './context_app.html';
 import './context/components/action_bar';
 import { getFirstSortableField } from './context/api/utils/sorting';
@@ -33,6 +33,7 @@ import {
   LOADING_STATUS,
   QueryActionsProvider,
 } from './context/query';
+import { callAfterBindingsWorkaround } from './context/helpers/call_after_bindings_workaround';
 
 const module = getAngularModule();
 
@@ -57,7 +58,8 @@ module.directive('contextApp', function ContextApp() {
 });
 
 function ContextAppController($scope, config, Private) {
-  const queryParameterActions = getQueryParameterActions();
+  const { filterManager, indexpatterns } = getServices();
+  const queryParameterActions = getQueryParameterActions(filterManager, indexpatterns);
   const queryActions = Private(QueryActionsProvider);
   this.state = createInitialState(
     parseInt(config.get('context:step'), 10),

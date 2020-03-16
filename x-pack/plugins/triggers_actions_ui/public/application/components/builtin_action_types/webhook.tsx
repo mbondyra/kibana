@@ -73,7 +73,7 @@ export function getActionType(): ActionTypeModel {
           )
         );
       }
-      if (!action.secrets.user) {
+      if (!action.secrets.user && action.secrets.password) {
         errors.user.push(
           i18n.translate(
             'xpack.triggersActionsUI.sections.addAction.webhookAction.error.requiredHostText',
@@ -83,7 +83,7 @@ export function getActionType(): ActionTypeModel {
           )
         );
       }
-      if (!action.secrets.password) {
+      if (!action.secrets.password && action.secrets.user) {
         errors.password.push(
           i18n.translate(
             'xpack.triggersActionsUI.sections.addAction.webhookAction.error.requiredPasswordText',
@@ -473,8 +473,6 @@ const WebhookParamsFields: React.FunctionComponent<ActionParamsProps<WebhookActi
         error={errors.body}
       >
         <EuiCodeEditor
-          fullWidth
-          isInvalid={errors.body.length > 0 && body !== undefined}
           mode="json"
           width="100%"
           height="200px"

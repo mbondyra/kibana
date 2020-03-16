@@ -17,11 +17,14 @@
  * under the License.
  */
 
+import React from 'react';
 import { CoreStart } from 'src/core/public';
 import { IStorageWrapper } from 'src/plugins/kibana_utils/public';
-import { IUiActionsSetup, IUiActionsStart } from 'src/plugins/ui_actions/public';
+import { ExpressionsSetup } from 'src/plugins/expressions/public';
+import { UiActionsSetup, UiActionsStart } from 'src/plugins/ui_actions/public';
 import { AutocompleteSetup, AutocompleteStart } from './autocomplete';
 import { FieldFormatsSetup, FieldFormatsStart } from './field_formats';
+import { createFiltersFromEvent } from './actions';
 import { ISearchSetup, ISearchStart } from './search';
 import { QuerySetup, QueryStart } from './query';
 import { IndexPatternSelectProps } from './ui/index_pattern_select';
@@ -29,11 +32,12 @@ import { IndexPatternsContract } from './index_patterns';
 import { StatefulSearchBarProps } from './ui/search_bar/create_search_bar';
 
 export interface DataSetupDependencies {
-  uiActions: IUiActionsSetup;
+  expressions: ExpressionsSetup;
+  uiActions: UiActionsSetup;
 }
 
 export interface DataStartDependencies {
-  uiActions: IUiActionsStart;
+  uiActions: UiActionsStart;
 }
 
 export interface DataPublicPluginSetup {
@@ -44,6 +48,9 @@ export interface DataPublicPluginSetup {
 }
 
 export interface DataPublicPluginStart {
+  actions: {
+    createFiltersFromEvent: typeof createFiltersFromEvent;
+  };
   autocomplete: AutocompleteStart;
   indexPatterns: IndexPatternsContract;
   search: ISearchStart;

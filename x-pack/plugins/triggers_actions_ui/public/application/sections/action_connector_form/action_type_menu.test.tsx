@@ -6,37 +6,28 @@
 import * as React from 'react';
 import { mountWithIntl } from 'test_utils/enzyme_helpers';
 import { coreMock } from '../../../../../../../src/core/public/mocks';
-import { ActionsConnectorsContextProvider } from '../../context/actions_connectors_context';
+import {
+  ActionsConnectorsContextProvider,
+  ActionsConnectorsContextValue,
+} from '../../context/actions_connectors_context';
 import { actionTypeRegistryMock } from '../../action_type_registry.mock';
 import { ActionTypeMenu } from './action_type_menu';
 import { ValidationResult } from '../../../types';
-import { AppContextProvider } from '../../app_context';
-import { chartPluginMock } from '../../../../../../../src/plugins/charts/public/mocks';
-import { dataPluginMock } from '../../../../../../../src/plugins/data/public/mocks';
-
 const actionTypeRegistry = actionTypeRegistryMock.create();
 
 describe('connector_add_flyout', () => {
-  let deps: any;
+  let deps: ActionsConnectorsContextValue;
 
   beforeAll(async () => {
     const mockes = coreMock.createSetup();
     const [
       {
-        chrome,
-        docLinks,
         application: { capabilities },
       },
     ] = await mockes.getStartServices();
     deps = {
-      chrome,
-      docLinks,
-      dataPlugin: dataPluginMock.createStartContract(),
-      charts: chartPluginMock.createStartContract(),
-      toastNotifications: mockes.notifications.toasts,
-      injectedMetadata: mockes.injectedMetadata,
       http: mockes.http,
-      uiSettings: mockes.uiSettings,
+      toastNotifications: mockes.notifications.toasts,
       capabilities: {
         ...capabilities,
         actions: {
@@ -45,9 +36,7 @@ describe('connector_add_flyout', () => {
           show: true,
         },
       },
-      setBreadcrumbs: jest.fn(),
       actionTypeRegistry: actionTypeRegistry as any,
-      alertTypeRegistry: {} as any,
     };
   });
 
@@ -70,28 +59,30 @@ describe('connector_add_flyout', () => {
     actionTypeRegistry.get.mockReturnValueOnce(actionType);
 
     const wrapper = mountWithIntl(
-      <AppContextProvider appDeps={deps}>
-        <ActionsConnectorsContextProvider
-          value={{
-            addFlyoutVisible: true,
-            setAddFlyoutVisibility: state => {},
-            editFlyoutVisible: false,
-            setEditFlyoutVisibility: state => {},
-            actionTypesIndex: {
-              'first-action-type': { id: 'first-action-type', name: 'first', enabled: true },
-              'second-action-type': { id: 'second-action-type', name: 'second', enabled: true },
+      <ActionsConnectorsContextProvider
+        value={{
+          http: deps!.http,
+          actionTypeRegistry: deps!.actionTypeRegistry,
+          capabilities: deps!.capabilities,
+          toastNotifications: deps!.toastNotifications,
+          reloadConnectors: () => {
+            return new Promise<void>(() => {});
+          },
+        }}
+      >
+        <ActionTypeMenu
+          onActionTypeChange={onActionTypeChange}
+          actionTypes={[
+            {
+              id: actionType.id,
+              enabled: true,
+              name: 'Test',
             },
-            reloadConnectors: () => {
-              return new Promise<void>(() => {});
-            },
-          }}
-        >
-          <ActionTypeMenu onActionTypeChange={onActionTypeChange} />
-        </ActionsConnectorsContextProvider>
-      </AppContextProvider>
+          ]}
+        />
+      </ActionsConnectorsContextProvider>
     );
 
-    expect(wrapper.find('[data-test-subj="first-action-type-card"]').exists()).toBeTruthy();
-    expect(wrapper.find('[data-test-subj="second-action-type-card"]').exists()).toBeTruthy();
+    expect(wrapper.find('[data-test-subj="my-action-type-card"]').exists()).toBeTruthy();
   });
 });

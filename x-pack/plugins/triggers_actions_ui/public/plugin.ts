@@ -17,8 +17,15 @@ import { boot } from './application/boot';
 import { ChartsPluginStart } from '../../../../src/plugins/charts/public';
 import { DataPublicPluginStart } from '../../../../src/plugins/data/public';
 
-export type Setup = void;
-export type Start = void;
+export interface TriggersAndActionsUIPublicPluginSetup {
+  actionTypeRegistry: TypeRegistry<ActionTypeModel>;
+  alertTypeRegistry: TypeRegistry<AlertTypeModel>;
+}
+
+export interface TriggersAndActionsUIPublicPluginStart {
+  actionTypeRegistry: TypeRegistry<ActionTypeModel>;
+  alertTypeRegistry: TypeRegistry<AlertTypeModel>;
+}
 
 interface PluginsStart {
   data: DataPublicPluginStart;
@@ -26,7 +33,9 @@ interface PluginsStart {
   management: ManagementStart;
 }
 
-export class Plugin implements CorePlugin<Setup, Start> {
+export class Plugin
+  implements
+    CorePlugin<TriggersAndActionsUIPublicPluginSetup, TriggersAndActionsUIPublicPluginStart> {
   private actionTypeRegistry: TypeRegistry<ActionTypeModel>;
   private alertTypeRegistry: TypeRegistry<AlertTypeModel>;
 
@@ -38,7 +47,7 @@ export class Plugin implements CorePlugin<Setup, Start> {
     this.alertTypeRegistry = alertTypeRegistry;
   }
 
-  public setup(): Setup {
+  public setup(): TriggersAndActionsUIPublicPluginSetup {
     registerBuiltInActionTypes({
       actionTypeRegistry: this.actionTypeRegistry,
     });
@@ -46,46 +55,53 @@ export class Plugin implements CorePlugin<Setup, Start> {
     registerBuiltInAlertTypes({
       alertTypeRegistry: this.alertTypeRegistry,
     });
+
+    return {
+      actionTypeRegistry: this.actionTypeRegistry,
+      alertTypeRegistry: this.alertTypeRegistry,
+    };
   }
 
-  public start(core: CoreStart, plugins: PluginsStart) {
+  public start(core: CoreStart, plugins: PluginsStart): TriggersAndActionsUIPublicPluginStart {
     const { capabilities } = core.application;
 
     const canShowActions = hasShowActionsCapability(capabilities);
     const canShowAlerts = hasShowAlertsCapability(capabilities);
 
     // Don't register routes when user doesn't have access to the application
-    if (!canShowActions && !canShowAlerts) {
-      return;
+    if (canShowActions || canShowAlerts) {
+      plugins.management.sections.getSection('kibana')!.registerApp({
+        id: 'triggersActions',
+        title: i18n.translate('xpack.triggersActionsUI.managementSection.displayName', {
+          defaultMessage: 'Alerts and Actions',
+        }),
+        order: 7,
+        mount: params => {
+          boot({
+            dataPlugin: plugins.data,
+            charts: plugins.charts,
+            element: params.element,
+            toastNotifications: core.notifications.toasts,
+            injectedMetadata: core.injectedMetadata,
+            http: core.http,
+            uiSettings: core.uiSettings,
+            docLinks: core.docLinks,
+            chrome: core.chrome,
+            savedObjects: core.savedObjects.client,
+            I18nContext: core.i18n.Context,
+            capabilities: core.application.capabilities,
+            setBreadcrumbs: params.setBreadcrumbs,
+            actionTypeRegistry: this.actionTypeRegistry,
+            alertTypeRegistry: this.alertTypeRegistry,
+          });
+          return () => {};
+        },
+      });
     }
-
-    plugins.management.sections.getSection('kibana')!.registerApp({
-      id: 'triggersActions',
-      title: i18n.translate('xpack.triggersActionsUI.managementSection.displayName', {
-        defaultMessage: 'Alerts and Actions',
-      }),
-      order: 7,
-      mount: params => {
-        boot({
-          dataPlugin: plugins.data,
-          charts: plugins.charts,
-          element: params.element,
-          toastNotifications: core.notifications.toasts,
-          injectedMetadata: core.injectedMetadata,
-          http: core.http,
-          uiSettings: core.uiSettings,
-          docLinks: core.docLinks,
-          chrome: core.chrome,
-          savedObjects: core.savedObjects.client,
-          I18nContext: core.i18n.Context,
-          capabilities: core.application.capabilities,
-          setBreadcrumbs: params.setBreadcrumbs,
-          actionTypeRegistry: this.actionTypeRegistry,
-          alertTypeRegistry: this.alertTypeRegistry,
-        });
-        return () => {};
-      },
-    });
+    return {
+      actionTypeRegistry: this.actionTypeRegistry,
+      alertTypeRegistry: this.alertTypeRegistry,
+    };
   }
 
   public stop() {}

@@ -4,6 +4,12 @@
  * you may not use this file except in compliance with the Elastic License.
  */
 
+export {
+  TimeSeriesResult,
+  TimeSeriesResultRow,
+  MetricResult,
+} from '../../../../../../alerting_builtins/common/alert_types/index_threshold';
+
 export interface Comparator {
   text: string;
   value: string;
@@ -22,4 +28,18 @@ export interface GroupByType {
   sizeRequired: boolean;
   value: string;
   validNormalizedTypes: string[];
+}
+
+export interface IndexThresholdAlertParams {
+  index: string[];
+  timeField?: string;
+  aggType: string;
+  aggField?: string;
+  groupBy?: string;
+  termSize?: number;
+  termField?: string;
+  thresholdComparator?: string;
+  threshold: number[];
+  timeWindowSize: number;
+  timeWindowUnit: string;
 }

@@ -29,14 +29,22 @@ export interface ShowNewVisModalParams {
   onClose?: () => void;
 }
 
+/**
+ * shows modal dialog that allows you to create new visualization
+ * @param {string[]} editorParams
+ * @param {function} onClose - function that will be called when dialog is closed
+ */
 export function showNewVisModal({ editorParams = [], onClose }: ShowNewVisModalParams = {}) {
   const container = document.createElement('div');
+  let isClosed = false;
   const handleClose = () => {
+    if (isClosed) return;
     ReactDOM.unmountComponentAtNode(container);
     document.body.removeChild(container);
     if (onClose) {
       onClose();
     }
+    isClosed = true;
   };
 
   document.body.appendChild(container);
@@ -55,4 +63,6 @@ export function showNewVisModal({ editorParams = [], onClose }: ShowNewVisModalP
     </I18nProvider>
   );
   ReactDOM.render(element, container);
+
+  return () => handleClose();
 }
