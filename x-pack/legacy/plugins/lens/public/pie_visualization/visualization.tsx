@@ -4,77 +4,28 @@
  * you may not use this file except in compliance with the Elastic License.
  */
 
-import React from 'react';
-import { render } from 'react-dom';
-import { EuiFormRow } from '@elastic/eui';
+import { partition } from 'lodash';
 import { i18n } from '@kbn/i18n';
-import { I18nProvider } from '@kbn/i18n/react';
-import { MultiColumnEditor } from '../multi_column_editor';
 import {
   SuggestionRequest,
   Visualization,
-  VisualizationLayerConfigProps,
   VisualizationSuggestion,
-  // Operation,
+  OperationMetadata,
 } from '../types';
-import { generateId } from '../id_generator';
 import { toExpression, toPreviewExpression } from './to_expression';
 import { LayerState, PieVisualizationState } from './types';
 
 function newLayerState(layerId: string): LayerState {
   return {
     layerId,
-    columns: [generateId()],
+    slices: [],
+    metric: undefined,
   };
 }
 
-function updateColumns(
-  state: PieVisualizationState,
-  layer: LayerState,
-  fn: (columns: string[]) => string[]
-) {
-  const columns = fn(layer.columns);
-  const updatedLayer = { ...layer, columns };
-  const layers = state.layers.map(l => (l.layerId === layer.layerId ? updatedLayer : l));
-  return { ...state, layers };
-}
-
 const allOperations = () => true;
-
-export function PieLayer({
-  layer,
-  frame,
-  state,
-  setState,
-  dragDropContext,
-}: { layer: LayerState } & VisualizationLayerConfigProps<PieVisualizationState>) {
-  const datasource = frame.datasourceLayers[layer.layerId];
-
-  const originalOrder = datasource.getTableSpec().map(({ columnId }) => columnId);
-  // When we add a column it could be empty, and therefore have no order
-  const sortedColumns = Array.from(new Set(originalOrder.concat(layer.columns)));
-
-  return (
-    <EuiFormRow
-      className="lnsConfigPanel__axis"
-      label={i18n.translate('xpack.lens.pie.columns', { defaultMessage: 'Columns' })}
-    >
-      <MultiColumnEditor
-        accessors={sortedColumns}
-        datasource={datasource}
-        dragDropContext={dragDropContext}
-        filterOperations={allOperations}
-        layerId={layer.layerId}
-        onAdd={() => setState(updateColumns(state, layer, columns => [...columns, generateId()]))}
-        onRemove={column =>
-          setState(updateColumns(state, layer, columns => columns.filter(c => c !== column)))
-        }
-        testSubj="pie_columns"
-        data-test-subj="pie_multicolumnEditor"
-      />
-    </EuiFormRow>
-  );
-}
+const numberMetricOperations = (op: OperationMetadata) =>
+  !op.isBucketed && op.dataType === 'number';
 
 export const pieVisualization: Visualization<PieVisualizationState, PieVisualizationState> = {
   id: 'lnsPie',
@@ -88,10 +39,10 @@ export const pieVisualization: Visualization<PieVisualizationState, PieVisualiza
       }),
     },
     {
-      id: 'sunburst',
+      id: 'pie',
       icon: 'visPie',
-      label: i18n.translate('xpack.lens.pie.sunburstlabel', {
-        defaultMessage: 'Sunburst',
+      label: i18n.translate('xpack.lens.pie.pielabel', {
+        defaultMessage: 'Pie',
       }),
     },
     {
@@ -122,11 +73,11 @@ export const pieVisualization: Visualization<PieVisualizationState, PieVisualiza
           defaultMessage: 'Donut',
         }),
       };
-    } else if (state.shape === 'sunburst') {
+    } else if (state.shape === 'pie') {
       return {
         icon: 'visPie',
-        label: i18n.translate('xpack.lens.pie.sunburstLabel', {
-          defaultMessage: 'Sunburst',
+        label: i18n.translate('xpack.lens.pie.pieLabel', {
+          defaultMessage: 'Pie',
         }),
       };
     }
@@ -164,17 +115,25 @@ export const pieVisualization: Visualization<PieVisualizationState, PieVisualiza
     if (
       keptLayerIds.length > 1 ||
       (keptLayerIds.length && table.layerId !== keptLayerIds[0]) ||
-      (state && table.changeType === 'unchanged')
+      (state && table.changeType === 'unchanged') ||
+      table.columns.some(col => col.operation.dataType === 'date')
     ) {
       return [];
     }
+
+    const [slices, metrics] = partition(table.columns, col => col.operation.isBucketed);
+
+    if (slices.length === 0 || metrics.length > 1) {
+      return [];
+    }
+
     const title =
       table.changeType === 'unchanged'
-        ? i18n.translate('xpack.lens.pie.suggestionLabel', {
-            defaultMessage: 'As pie',
+        ? i18n.translate('xpack.lens.pie.donutSuggestionLabel', {
+            defaultMessage: 'As donut',
           })
-        : i18n.translate('xpack.lens.pie.visualizationOf', {
-            defaultMessage: 'Pie {operations}',
+        : i18n.translate('xpack.len.pie.donutSuggestionOf', {
+            defaultMessage: 'Donut {operations}',
             values: {
               operations:
                 table.label ||
@@ -196,68 +155,103 @@ export const pieVisualization: Visualization<PieVisualizationState, PieVisualiza
         // table with >= 10 columns will have a score of 0.6, fewer columns reduce score
         score: (Math.min(table.columns.length, 10) / 10) * 0.6,
         state: {
-          shape: 'donut',
+          shape: state ? state.shape : 'donut',
           layers: [
             {
               layerId: table.layerId,
-              columns: table.columns.map(col => col.columnId),
+              slices: slices.map(col => col.columnId),
+              metric: metrics[0].columnId,
             },
           ],
         },
-        previewIcon: 'visPie',
-        // previewIcon: chartTableSVG,
+        previewIcon: 'bullseye',
         // dont show suggestions for reduced versions or single-line tables
-        hide: table.changeType === 'reduced' || !table.isMultiRow,
+        hide: false,
       },
     ];
   },
 
-  renderLayerConfigPanel(domElement, props) {
-    const layer = props.state.layers.find(l => l.layerId === props.layerId);
-
-    if (layer) {
-      render(
-        <I18nProvider>
-          <PieLayer {...props} layer={layer} />
-        </I18nProvider>,
-        domElement
-      );
+  getConfiguration({ state, frame, layerId }) {
+    const layer = state.layers.find(l => l.layerId === layerId);
+    if (!layer) {
+      return { groups: [] };
     }
+
+    const datasource = frame.datasourceLayers[layer.layerId];
+    const originalOrder = datasource
+      .getTableSpec()
+      .map(({ columnId }) => columnId)
+      .filter(columnId => columnId !== layer.metric);
+    // When we add a column it could be empty, and therefore have no order
+    const sortedColumns = Array.from(new Set(originalOrder.concat(layer.slices)));
+
+    return {
+      groups: [
+        {
+          groupId: 'slices',
+          groupLabel: i18n.translate('xpack.lens.pie.slices', {
+            defaultMessage: 'Slices',
+          }),
+          layerId,
+          accessors: sortedColumns,
+          supportsMoreColumns: true,
+          filterOperations: allOperations,
+          required: true,
+        },
+        {
+          groupId: 'metric',
+          groupLabel: i18n.translate('xpack.lens.pie.metric', {
+            defaultMessage: 'Metric',
+          }),
+          layerId,
+          accessors: layer.metric ? [layer.metric] : [],
+          supportsMoreColumns: !layer.metric,
+          filterOperations: numberMetricOperations,
+          required: true,
+        },
+      ],
+    };
   },
 
-  // toExpression(state, frame) {
-  //   const layer = state.layers[0];
-  //   const datasource = frame.datasourceLayers[layer.layerId];
-  //   const operations = layer.columns
-  //     .map(columnId => ({ columnId, operation: datasource.getOperationForColumnId(columnId) }))
-  //     .filter((o): o is { columnId: string; operation: Operation } => !!o.operation);
+  setDimension({ prevState, layerId, columnId, groupId }) {
+    return {
+      ...prevState,
+      layers: prevState.layers.map(l => {
+        if (l.layerId !== layerId) {
+          return l;
+        }
+        if (groupId === 'slices') {
+          return {
+            ...l,
+            slices: [...l.slices, columnId],
+          };
+        }
+        return { ...l, metric: columnId };
+      }),
+    };
+  },
+  removeDimension({ prevState, layerId, columnId }) {
+    return {
+      ...prevState,
+      layers: prevState.layers.map(l => {
+        if (l.layerId !== layerId) {
+          return l;
+        }
 
-  //   return {
-  //     type: 'expression',
-  //     chain: [
-  //       {
-  //         type: 'function',
-  //         function: 'lens_pie',
-  //         arguments: {
-  //           columns: [
-  //             {
-  //               type: 'expression',
-  //               chain: [
-  //                 {
-  //                   type: 'function',
-  //                   function: 'lens_pie_columns',
-  //                   arguments: {
-  //                     columnIds: operations.map(o => o.columnId),
-  //                   },
-  //                 },
-  //               ],
-  //             },
-  //           ],
-  //         },
-  //       },
-  //     ],
-  //   };
-  // },
+        if (l.metric === columnId) {
+          return {
+            ...l,
+            metric: undefined,
+          };
+        }
+        return {
+          ...l,
+          slices: l.slices.filter(c => c !== columnId),
+        };
+      }),
+    };
+  },
+
   toExpression,
   toPreviewExpression,
 };

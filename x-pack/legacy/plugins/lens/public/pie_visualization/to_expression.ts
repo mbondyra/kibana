@@ -14,9 +14,12 @@ export function toExpression(state: PieVisualizationState, frame: FramePublicAPI
 function expressionHelper(state: PieVisualizationState, frame: FramePublicAPI, isPreview: boolean) {
   const layer = state.layers[0];
   const datasource = frame.datasourceLayers[layer.layerId];
-  const operations = layer.columns
+  const operations = layer.slices
     .map(columnId => ({ columnId, operation: datasource.getOperationForColumnId(columnId) }))
     .filter((o): o is { columnId: string; operation: Operation } => !!o.operation);
+  if (!layer.metric || !operations.length) {
+    return null;
+  }
 
   return {
     type: 'expression',
@@ -27,20 +30,8 @@ function expressionHelper(state: PieVisualizationState, frame: FramePublicAPI, i
         arguments: {
           shape: [state.shape],
           hideLabels: [isPreview],
-          columns: [
-            {
-              type: 'expression',
-              chain: [
-                {
-                  type: 'function',
-                  function: 'lens_pie_columns',
-                  arguments: {
-                    columnIds: operations.map(o => o.columnId),
-                  },
-                },
-              ],
-            },
-          ],
+          slices: operations.map(o => o.columnId),
+          metric: [layer.metric],
         },
       },
     ],

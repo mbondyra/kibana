@@ -6,10 +6,11 @@
 
 export interface LayerState {
   layerId: string;
-  columns: string[];
+  slices: string[];
+  metric?: string;
 }
 
 export interface PieVisualizationState {
-  shape: 'donut' | 'sunburst' | 'treemap';
+  shape: 'donut' | 'pie' | 'treemap';
   layers: LayerState[];
 }

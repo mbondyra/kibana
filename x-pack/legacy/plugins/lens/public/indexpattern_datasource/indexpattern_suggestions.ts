@@ -233,7 +233,8 @@ function addFieldAsBucketOperation(
   };
   let updatedColumnOrder: string[] = [];
   if (applicableBucketOperation === 'terms') {
-    updatedColumnOrder = [newColumnId, ...buckets, ...metrics];
+    // updatedColumnOrder = [newColumnId, ...buckets, ...metrics];
+    updatedColumnOrder = [...buckets, newColumnId, ...metrics];
   } else {
     const oldDateHistogramColumn = layer.columnOrder.find(
       columnId => layer.columns[columnId].operationType === 'date_histogram'

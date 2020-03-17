@@ -7,37 +7,30 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import { i18n } from '@kbn/i18n';
-import chrome from 'ui/chrome';
 import {
   Chart,
   Datum,
   Partition,
   PartitionLayer,
   PartitionLayout,
-  getSpecId,
+  PartialTheme,
+  PartitionFillLabel,
 } from '@elastic/charts';
-import { EUI_CHARTS_THEME_DARK, EUI_CHARTS_THEME_LIGHT } from '@elastic/eui/dist/eui_charts_theme';
 import {
-  ExpressionFunction,
-  KibanaDatatable,
-} from '../../../../../../src/plugins/expressions/common';
-import { LensMultiTable } from '../types';
-import {
-  IInterpreterRenderFunction,
+  KibanaDatatableColumn,
   IInterpreterRenderHandlers,
-} from '../../../../../../src/plugins/expressions/public';
-import { FormatFactory } from '../../../../../../src/legacy/ui/public/visualize/loader/pipeline_helpers/utilities';
+  ExpressionRenderDefinition,
+  ExpressionFunctionDefinition,
+} from 'src/plugins/expressions/public';
+import { FormatFactory } from '../legacy_imports';
+import { LensMultiTable } from '../types';
 import { VisualizationContainer } from '../visualization_container';
 
-const IS_DARK_THEME = chrome.getUiSettingsClient().get('theme:darkMode');
-const chartTheme = IS_DARK_THEME ? EUI_CHARTS_THEME_DARK.theme : EUI_CHARTS_THEME_LIGHT.theme;
-
-export interface PieColumns {
-  columnIds: string[];
-}
+const EMPTY_SLICE = Symbol('empty_slice');
 
 interface Args {
-  columns: PieColumns;
+  slices: string[];
+  metric?: string;
   shape: 'pie' | 'donut' | 'treemap';
   hideLabels: boolean;
 }
@@ -53,15 +46,20 @@ export interface PieRender {
   value: PieProps;
 }
 
-export const pie: ExpressionFunction<'lens_pie', KibanaDatatable, Args, PieRender> = ({
+export const pie: ExpressionFunctionDefinition<'lens_pie', LensMultiTable, Args, PieRender> = {
   name: 'lens_pie',
   type: 'render',
   help: i18n.translate('xpack.lens.pie.expressionHelpLabel', {
     defaultMessage: 'Pie renderer',
   }),
   args: {
-    columns: {
-      types: ['lens_pie_columns'],
+    slices: {
+      types: ['string'],
+      multi: true,
+      help: '',
+    },
+    metric: {
+      types: ['string'],
       help: '',
     },
     shape: {
@@ -74,10 +72,8 @@ export const pie: ExpressionFunction<'lens_pie', KibanaDatatable, Args, PieRende
       help: '',
     },
   },
-  context: {
-    types: ['lens_multitable'],
-  },
-  fn(data: KibanaDatatable, args: Args) {
+  inputTypes: ['lens_multitable'],
+  fn(data: LensMultiTable, args: Args) {
     return {
       type: 'render',
       as: 'lens_pie_renderer',
@@ -87,62 +83,38 @@ export const pie: ExpressionFunction<'lens_pie', KibanaDatatable, Args, PieRende
       },
     };
   },
-  // TODO the typings currently don't support custom type args. As soon as they do, this can be removed
-} as unknown) as ExpressionFunction<'lens_pie', KibanaDatatable, Args, PieRender>;
-
-type PieColumnsResult = PieColumns & { type: 'lens_pie_columns' };
-
-export const pieColumns: ExpressionFunction<
-  'lens_pie_columns',
-  null,
-  PieColumns,
-  PieColumnsResult
-> = {
-  name: 'lens_pie_columns',
-  aliases: [],
-  type: 'lens_pie_columns',
-  help: '',
-  context: {
-    types: ['null'],
-  },
-  args: {
-    columnIds: {
-      types: ['string'],
-      multi: true,
-      help: '',
-    },
-  },
-  fn: function fn(_context: unknown, args: PieColumns) {
-    return {
-      type: 'lens_pie_columns',
-      ...args,
-    };
-  },
 };
 
-export const getPieRenderer = (
-  formatFactory: FormatFactory
-): IInterpreterRenderFunction<PieProps> => ({
+export const getPieRenderer = (dependencies: {
+  formatFactory: FormatFactory;
+  chartTheme: PartialTheme;
+}): ExpressionRenderDefinition<PieProps> => ({
   name: 'lens_pie_renderer',
   displayName: i18n.translate('xpack.lens.pie.visualizationName', {
     defaultMessage: 'Pie',
   }),
   help: '',
-  validate: () => {},
+  validate: () => undefined,
   reuseDomNode: true,
   render: async (domNode: Element, config: PieProps, handlers: IInterpreterRenderHandlers) => {
-    ReactDOM.render(<PieComponent {...config} formatFactory={formatFactory} />, domNode, () => {
+    ReactDOM.render(<PieComponent {...config} {...dependencies} />, domNode, () => {
       handlers.done();
     });
     handlers.onDestroy(() => ReactDOM.unmountComponentAtNode(domNode));
   },
 });
 
-function PieComponent(props: PieProps & { formatFactory: FormatFactory }) {
+function PieComponent(
+  props: PieProps & {
+    formatFactory: FormatFactory;
+    chartTheme: Exclude<PartialTheme, undefined>;
+  }
+) {
   const [firstTable] = Object.values(props.data.tables);
   const formatters: Record<string, ReturnType<FormatFactory>> = {};
 
-  const { shape, hideLabels } = props.args;
+  const { chartTheme } = props;
+  const { shape, hideLabels, slices, metric } = props.args;
 
   if (!hideLabels) {
     firstTable.columns.forEach(column => {
@@ -150,37 +122,65 @@ function PieComponent(props: PieProps & { formatFactory: FormatFactory }) {
     });
   }
 
-  const layers: PartitionLayer[] = firstTable.columns
-    .slice(0, firstTable.columns.length - 1)
-    .map((col, layerIndex) => ({
-      groupByRollup: (d: Datum) => d[col.id],
-      nodeLabel: (d: Datum) => {
+  const fillLabel: Partial<PartitionFillLabel> = {
+    textInvertible: true,
+    valueFont: {
+      fontWeight: 800,
+    },
+  };
+
+  const columnGroups: Array<{
+    col: KibanaDatatableColumn;
+    metrics: KibanaDatatableColumn[];
+  }> = [];
+  firstTable.columns.forEach((col, index) => {
+    if (slices.includes(col.id)) {
+      columnGroups.push({
+        col,
+        metrics: [],
+      });
+    } else if (columnGroups.length > 0) {
+      columnGroups[columnGroups.length - 1].metrics.push(col);
+    }
+  });
+
+  const layers: PartitionLayer[] = columnGroups.map(({ col }, layerIndex) => {
+    return {
+      groupByRollup: (d: Datum) => d[col.id] ?? EMPTY_SLICE,
+      showAccessor: (d: Datum) => d !== EMPTY_SLICE,
+      nodeLabel: (d: unknown) => {
         if (hideLabels) {
           return '';
         }
         if (col.formatHint) {
-          return formatters[col.id].convert(d);
+          return formatters[col.id].convert(d) ?? '';
         }
-        return d;
+        return d + '';
       },
-      fillLabel: {
-        textInvertible: true,
-      },
+      fillLabel:
+        shape === 'treemap' && layerIndex > 0
+          ? {
+              ...fillLabel,
+              valueFormatter: () => '',
+              textColor: 'rgba(0,0,0,0)',
+            }
+          : fillLabel,
       shape: {
         fillColor: d => {
-          let parentIndex;
-          let tempParent = d;
-          while (tempParent.parent && tempParent.depth !== 0) {
+          let parentIndex = 0;
+          let tempParent: typeof d | typeof d['parent'] = d;
+          while (tempParent.parent && tempParent.depth > 0) {
             parentIndex = tempParent.sortIndex;
             tempParent = tempParent.parent;
           }
           return (
-            chartTheme.colors.vizColors[parentIndex % chartTheme.colors.vizColors.length] ||
-            chartTheme.colors.defaultVizColor
+            chartTheme.colors!.vizColors?.[parentIndex % chartTheme.colors!.vizColors.length] ||
+            chartTheme.colors!.defaultVizColor
           );
         },
       },
-    }));
+    };
+  });
 
   const config: Record<string, unknown> = {
     partitionLayout: shape === 'treemap' ? PartitionLayout.treemap : PartitionLayout.sunburst,
@@ -192,19 +192,37 @@ function PieComponent(props: PieProps & { formatFactory: FormatFactory }) {
   if (hideLabels) {
     config.linkLabel = { maxCount: 0 };
   }
+  const metricColumn = firstTable.columns.find(c => c.id === metric)!;
+  const percentFormatter =
+    metricColumn.formatHint && metricColumn.formatHint?.id === 'percent'
+      ? formatters[metricColumn.id]
+      : props.formatFactory({ id: 'percent' });
+
+  const reverseGroups = columnGroups.reverse();
 
   return (
     <VisualizationContainer className="lnsSunburstExpression__container">
       <Chart>
         <Partition
-          id={getSpecId(shape)}
+          id={shape + Math.random()}
           data={firstTable.rows}
-          valueAccessor={(d: Datum) => d[firstTable.columns[firstTable.columns.length - 1].id]}
-          valueFormatter={(d: number) =>
-            hideLabels
-              ? ''
-              : formatters[firstTable.columns[firstTable.columns.length - 1].id].convert(d)
-          }
+          valueAccessor={(d: Datum) => {
+            if (typeof d[metricColumn.id] === 'number') {
+              return d[metricColumn.id];
+            }
+            // Sometimes there is missing data for outer slices
+            // When there is missing data, we fall back to the next slices
+            // This creates a sunburst effect
+            const hasMetric = reverseGroups.find(
+              group => group.metrics.length && d[group.metrics[0].id]
+            );
+            return hasMetric ? d[hasMetric.metrics[0].id] : Number.EPSILON;
+          }}
+          percentFormatter={(d: number) => percentFormatter.convert(d / 100)}
+          valueGetter="percent"
+          // valueFormatter={(d: number) => (hideLabels ? '' : formatters[metricColumn.id].convert(d))}
+          valueFormatter={(d: number) => ''}
+          // valueFormatter={(d: number) => formatters[metricColumn.id].convert(d)}
           layers={layers}
           config={config}
         />
