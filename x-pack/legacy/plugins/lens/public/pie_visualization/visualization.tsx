@@ -152,8 +152,7 @@ export const pieVisualization: Visualization<PieVisualizationState, PieVisualiza
     return [
       {
         title,
-        // table with >= 10 columns will have a score of 0.6, fewer columns reduce score
-        score: (Math.min(table.columns.length, 10) / 10) * 0.6,
+        score: 0.6,
         state: {
           shape: state ? state.shape : 'donut',
           layers: [
@@ -166,7 +165,7 @@ export const pieVisualization: Visualization<PieVisualizationState, PieVisualiza
         },
         previewIcon: 'bullseye',
         // dont show suggestions for reduced versions or single-line tables
-        hide: false,
+        hide: table.changeType === 'reduced',
       },
     ];
   },

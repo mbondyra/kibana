@@ -4,7 +4,7 @@
  * you may not use this file except in compliance with the Elastic License.
  */
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { i18n } from '@kbn/i18n';
 import {
@@ -97,12 +97,14 @@ export const getPieRenderer = (dependencies: {
   validate: () => undefined,
   reuseDomNode: true,
   render: async (domNode: Element, config: PieProps, handlers: IInterpreterRenderHandlers) => {
-    ReactDOM.render(<PieComponent {...config} {...dependencies} />, domNode, () => {
+    ReactDOM.render(<MemoizedChart {...config} {...dependencies} />, domNode, () => {
       handlers.done();
     });
     handlers.onDestroy(() => ReactDOM.unmountComponentAtNode(domNode));
   },
 });
+
+const MemoizedChart = React.memo(PieComponent);
 
 function PieComponent(
   props: PieProps & {
@@ -200,11 +202,18 @@ function PieComponent(
 
   const reverseGroups = columnGroups.reverse();
 
+  const [state, setState] = useState({ isReady: false });
+  // It takes a cycle for the chart to render. This prevents
+  // reporting from printing a blank chart placeholder.
+  useEffect(() => {
+    setState({ isReady: true });
+  }, []);
+
   return (
-    <VisualizationContainer className="lnsSunburstExpression__container">
+    <VisualizationContainer className="lnsSunburstExpression__container" isReady={state.isReady}>
       <Chart>
         <Partition
-          id={shape + Math.random()}
+          id={shape}
           data={firstTable.rows}
           valueAccessor={(d: Datum) => {
             if (typeof d[metricColumn.id] === 'number') {
@@ -219,9 +228,9 @@ function PieComponent(
             return hasMetric ? d[hasMetric.metrics[0].id] : Number.EPSILON;
           }}
           percentFormatter={(d: number) => percentFormatter.convert(d / 100)}
-          valueGetter="percent"
-          // valueFormatter={(d: number) => (hideLabels ? '' : formatters[metricColumn.id].convert(d))}
-          valueFormatter={(d: number) => ''}
+          valueGetter={hideLabels ? undefined : 'percent'}
+          valueFormatter={(d: number) => (hideLabels ? '' : formatters[metricColumn.id].convert(d))}
+          // valueFormatter={(d: number) => ''}
           // valueFormatter={(d: number) => formatters[metricColumn.id].convert(d)}
           layers={layers}
           config={config}
