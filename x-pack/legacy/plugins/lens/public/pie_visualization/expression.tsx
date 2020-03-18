@@ -6,15 +6,20 @@
 
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
+import color from 'color';
 import { i18n } from '@kbn/i18n';
+import { FormattedMessage } from '@kbn/i18n/react';
+import { EuiText } from '@elastic/eui';
 import {
   Chart,
   Datum,
   Partition,
+  PartitionConfig,
   PartitionLayer,
   PartitionLayout,
   PartialTheme,
   PartitionFillLabel,
+  RecursivePartial,
 } from '@elastic/charts';
 import {
   KibanaDatatableColumn,
@@ -25,6 +30,7 @@ import {
 import { FormatFactory } from '../legacy_imports';
 import { LensMultiTable } from '../types';
 import { VisualizationContainer } from '../visualization_container';
+import { CHART_NAMES } from './constants';
 
 const EMPTY_SLICE = Symbol('empty_slice');
 
@@ -106,7 +112,7 @@ export const getPieRenderer = (dependencies: {
 
 const MemoizedChart = React.memo(PieComponent);
 
-function PieComponent(
+export function PieComponent(
   props: PieProps & {
     formatFactory: FormatFactory;
     chartTheme: Exclude<PartialTheme, undefined>;
@@ -131,11 +137,14 @@ function PieComponent(
     },
   };
 
+  // The datatable for pie charts should include subtotals, like this:
+  // [bucket, subtotal, bucket, count]
+  // But the user only configured [bucket, bucket, count]
   const columnGroups: Array<{
     col: KibanaDatatableColumn;
     metrics: KibanaDatatableColumn[];
   }> = [];
-  firstTable.columns.forEach((col, index) => {
+  firstTable.columns.forEach(col => {
     if (slices.includes(col.id)) {
       columnGroups.push({
         col,
@@ -160,7 +169,7 @@ function PieComponent(
         return d + '';
       },
       fillLabel:
-        shape === 'treemap' && layerIndex > 0
+        shape === 'treemap' && layerIndex < columnGroups.length - 1
           ? {
               ...fillLabel,
               valueFormatter: () => '',
@@ -175,21 +184,30 @@ function PieComponent(
             parentIndex = tempParent.sortIndex;
             tempParent = tempParent.parent;
           }
-          return (
+          const outputColor =
             chartTheme.colors!.vizColors?.[parentIndex % chartTheme.colors!.vizColors.length] ||
-            chartTheme.colors!.defaultVizColor
-          );
+            chartTheme.colors!.defaultVizColor!;
+
+          if (shape === 'treemap') {
+            return outputColor;
+          }
+
+          const lighten = (d.depth - 1) / (columnGroups.length * 2);
+          return color(outputColor, 'hsl')
+            .lighten(lighten)
+            .hex();
         },
       },
     };
   });
 
-  const config: Record<string, unknown> = {
+  const config: RecursivePartial<PartitionConfig> = {
     partitionLayout: shape === 'treemap' ? PartitionLayout.treemap : PartitionLayout.sunburst,
     fontFamily: chartTheme.barSeriesStyle?.displayValue?.fontFamily,
+    outerSizeRatio: 1,
   };
   if (shape !== 'treemap') {
-    config.emptySizeRatio = shape === 'donut' ? 0.4 : 0;
+    config.emptySizeRatio = shape === 'donut' ? 0.3 : 0;
   }
   if (hideLabels) {
     config.linkLabel = { maxCount: 0 };
@@ -208,6 +226,31 @@ function PieComponent(
   useEffect(() => {
     setState({ isReady: true });
   }, []);
+
+  const hasNegative = firstTable.rows.some(row => {
+    const value = row[metricColumn.id];
+    return typeof value === 'number' && value < 0;
+  });
+  if (firstTable.rows.length === 0 || hasNegative) {
+    return (
+      <EuiText className="lnsChart__empty" textAlign="center" color="subdued" size="xs">
+        {hasNegative ? (
+          <FormattedMessage
+            id="xpack.lens.pie.pieWithNegativeWarningLabel"
+            defaultMessage="{chartType} charts can't render with negative values. Try a different chart type."
+            values={{
+              chartType: CHART_NAMES[shape].label,
+            }}
+          />
+        ) : (
+          <FormattedMessage
+            id="xpack.lens.xyVisualization.noDataLabel"
+            defaultMessage="No results found"
+          />
+        )}
+      </EuiText>
+    );
+  }
 
   return (
     <VisualizationContainer className="lnsSunburstExpression__container" isReady={state.isReady}>
@@ -230,8 +273,6 @@ function PieComponent(
           percentFormatter={(d: number) => percentFormatter.convert(d / 100)}
           valueGetter={hideLabels ? undefined : 'percent'}
           valueFormatter={(d: number) => (hideLabels ? '' : formatters[metricColumn.id].convert(d))}
-          // valueFormatter={(d: number) => ''}
-          // valueFormatter={(d: number) => formatters[metricColumn.id].convert(d)}
           layers={layers}
           config={config}
         />

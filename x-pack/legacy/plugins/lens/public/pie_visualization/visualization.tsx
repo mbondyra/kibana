@@ -14,6 +14,7 @@ import {
 } from '../types';
 import { toExpression, toPreviewExpression } from './to_expression';
 import { LayerState, PieVisualizationState } from './types';
+import { CHART_NAMES } from './constants';
 
 function newLayerState(layerId: string): LayerState {
   return {
@@ -33,24 +34,18 @@ export const pieVisualization: Visualization<PieVisualizationState, PieVisualiza
   visualizationTypes: [
     {
       id: 'donut',
-      icon: 'bullseye',
-      label: i18n.translate('xpack.lens.pie.donutLabel', {
-        defaultMessage: 'Donut',
-      }),
+      largeIcon: CHART_NAMES.donut.icon,
+      label: CHART_NAMES.donut.label,
     },
     {
       id: 'pie',
-      icon: 'visPie',
-      label: i18n.translate('xpack.lens.pie.pielabel', {
-        defaultMessage: 'Pie',
-      }),
+      largeIcon: CHART_NAMES.pie.icon,
+      label: CHART_NAMES.pie.label,
     },
     {
       id: 'treemap',
-      icon: 'grid',
-      label: i18n.translate('xpack.lens.pie.treemaplabel', {
-        defaultMessage: 'Treemap',
-      }),
+      largeIcon: CHART_NAMES.treemap.icon,
+      label: CHART_NAMES.treemap.label,
     },
   ],
 
@@ -67,26 +62,11 @@ export const pieVisualization: Visualization<PieVisualizationState, PieVisualiza
 
   getDescription(state) {
     if (state.shape === 'donut') {
-      return {
-        icon: 'bullseye',
-        label: i18n.translate('xpack.lens.pie.donutLabel', {
-          defaultMessage: 'Donut',
-        }),
-      };
+      return CHART_NAMES.donut;
     } else if (state.shape === 'pie') {
-      return {
-        icon: 'visPie',
-        label: i18n.translate('xpack.lens.pie.pieLabel', {
-          defaultMessage: 'Pie',
-        }),
-      };
+      return CHART_NAMES.pie;
     }
-    return {
-      icon: 'grid',
-      label: i18n.translate('xpack.lens.pie.treemapLabel', {
-        defaultMessage: 'Treemap',
-      }),
-    };
+    return CHART_NAMES.treemap;
   },
 
   switchVisualizationType: (visualizationTypeId, state) => ({
@@ -129,12 +109,14 @@ export const pieVisualization: Visualization<PieVisualizationState, PieVisualiza
 
     const title =
       table.changeType === 'unchanged'
-        ? i18n.translate('xpack.lens.pie.donutSuggestionLabel', {
-            defaultMessage: 'As donut',
+        ? i18n.translate('xpack.lens.pie.suggestionLabel', {
+            defaultMessage: 'As {chartName}',
+            values: { chartName: state ? CHART_NAMES[state.shape].label : CHART_NAMES.donut.label },
           })
         : i18n.translate('xpack.len.pie.donutSuggestionOf', {
-            defaultMessage: 'Donut {operations}',
+            defaultMessage: '{chartName} {operations}',
             values: {
+              chartName: state ? CHART_NAMES[state.shape].label : CHART_NAMES.donut.label,
               operations:
                 table.label ||
                 table.columns
