@@ -1880,11 +1880,11 @@
   dependencies:
     "@elastic/apm-rum-core" "^4.7.0"
 
-"@elastic/charts@../elastic-charts/elastic-charts-18.0.0.tgz":
-  version "18.0.0"
-  resolved "../elastic-charts/elastic-charts-18.0.0.tgz#70fb25357b4c1126d87b93944d1d20e995a2f61e"
+"@elastic/charts@^18.1.0":
+  version "18.1.0"
+  resolved "https://registry.yarnpkg.com/@elastic/charts/-/charts-18.1.0.tgz#ee98b3e7680239d79807c09f0ee6efa6c1afa84b"
+  integrity sha512-cUobkGiKHPKHNytxsO7sSJyH6fOcAsZvcxAfnJPBn143P2d5oEsjSJmJTqu0z/obCs2v476Xlg6POVGainUj1Q==
   dependencies:
-    "@types/d3-shape" "^1.3.1"
     classnames "^2.2.6"
     d3-array "^1.2.4"
     d3-collection "^1.0.7"
