@@ -4,6 +4,7 @@
  * you may not use this file except in compliance with the Elastic License.
  */
 
+import { Ast } from '@kbn/interpreter/common';
 import { FramePublicAPI, Operation } from '../types';
 import { PieVisualizationState } from './types';
 
@@ -11,7 +12,11 @@ export function toExpression(state: PieVisualizationState, frame: FramePublicAPI
   return expressionHelper(state, frame, false);
 }
 
-function expressionHelper(state: PieVisualizationState, frame: FramePublicAPI, isPreview: boolean) {
+function expressionHelper(
+  state: PieVisualizationState,
+  frame: FramePublicAPI,
+  isPreview: boolean
+): Ast | null {
   const layer = state.layers[0];
   const datasource = frame.datasourceLayers[layer.layerId];
   const operations = layer.slices
