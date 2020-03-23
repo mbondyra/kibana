@@ -113,7 +113,7 @@ export const pieVisualization: Visualization<PieVisualizationState, PieVisualiza
             defaultMessage: 'As {chartName}',
             values: { chartName: state ? CHART_NAMES[state.shape].label : CHART_NAMES.donut.label },
           })
-        : i18n.translate('xpack.len.pie.donutSuggestionOf', {
+        : i18n.translate('xpack.lens.pie.suggestionOf', {
             defaultMessage: '{chartName} {operations}',
             values: {
               chartName: state ? CHART_NAMES[state.shape].label : CHART_NAMES.donut.label,
