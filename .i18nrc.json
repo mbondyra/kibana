@@ -3,6 +3,7 @@
     "common.ui": "src/legacy/ui",
     "console": "src/plugins/console",
     "core": "src/core",
+    "discover": "src/plugins/discover",
     "dashboard": "src/plugins/dashboard",
     "data": "src/plugins/data",
     "embeddableApi": "src/plugins/embeddable",
@@ -32,6 +33,7 @@
     "newsfeed": "src/plugins/newsfeed",
     "regionMap": "src/legacy/core_plugins/region_map",
     "savedObjects": "src/plugins/saved_objects",
+    "savedObjectsManagement": "src/plugins/saved_objects_management",
     "server": "src/legacy/server",
     "statusPage": "src/legacy/core_plugins/status_page",
     "telemetry": [
