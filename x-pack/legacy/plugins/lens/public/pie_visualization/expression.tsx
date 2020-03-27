@@ -27,8 +27,7 @@ import {
   ExpressionRenderDefinition,
   ExpressionFunctionDefinition,
 } from 'src/plugins/expressions/public';
-import { FormatFactory } from '../legacy_imports';
-import { LensMultiTable } from '../types';
+import { LensMultiTable, FormatFactory } from '../types';
 import { VisualizationContainer } from '../visualization_container';
 import { CHART_NAMES } from './constants';
 
@@ -92,7 +91,7 @@ export const pie: ExpressionFunctionDefinition<'lens_pie', LensMultiTable, Args,
 };
 
 export const getPieRenderer = (dependencies: {
-  formatFactory: FormatFactory;
+  formatFactory: Promise<FormatFactory>;
   chartTheme: PartialTheme;
 }): ExpressionRenderDefinition<PieProps> => ({
   name: 'lens_pie_renderer',
@@ -103,9 +102,14 @@ export const getPieRenderer = (dependencies: {
   validate: () => undefined,
   reuseDomNode: true,
   render: async (domNode: Element, config: PieProps, handlers: IInterpreterRenderHandlers) => {
-    ReactDOM.render(<MemoizedChart {...config} {...dependencies} />, domNode, () => {
-      handlers.done();
-    });
+    const formatFactory = await dependencies.formatFactory;
+    ReactDOM.render(
+      <MemoizedChart {...config} {...dependencies} formatFactory={formatFactory} />,
+      domNode,
+      () => {
+        handlers.done();
+      }
+    );
     handlers.onDestroy(() => ReactDOM.unmountComponentAtNode(domNode));
   },
 });
