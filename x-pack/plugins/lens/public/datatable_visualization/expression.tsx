@@ -186,14 +186,21 @@ function DatatableComponent(
         className="lnsDataTable"
         data-test-subj="lnsDataTable"
         columns={props.args.columns.columnIds
-          .map((field, index) => {
+          .map(field => {
             const col = firstTable.columns.find(c => c.id === field);
+            const colIndex = firstTable.columns.findIndex(c => c.id === field);
+
+            // todo: get the list of unsupported operations from operations
+            const nonFilterable =
+              !col?.meta?.type ||
+              ['sum', 'cardinality', 'max', 'min', 'avg', 'count'].includes(col.meta.type);
+
             return {
               field,
               name: (col && col.name) || '',
               render: (value: unknown) => {
                 const formattedValue = formatters[field].convert(value);
-                if (props.args.columns.filterable[index]) {
+                if (!nonFilterable && value) {
                   return (
                     <EuiFlexGroup justifyContent="spaceBetween" className="lnsDataTable__cell">
                       <EuiFlexItem grow={false}>{formattedValue}</EuiFlexItem>
@@ -201,7 +208,7 @@ function DatatableComponent(
                         <EuiFlexGroup className="lnsDataTable__filterGroup">
                           <EuiFlexItem
                             className="lnsDataTable__filter"
-                            onClick={() => handleFilterClick(field, value, index)}
+                            onClick={() => handleFilterClick(field, value, colIndex)}
                             data-test-subj="lensFilterForCellValue"
                           >
                             <EuiIconTip
@@ -219,7 +226,7 @@ function DatatableComponent(
                           </EuiFlexItem>
                           <EuiFlexItem
                             className="lnsDataTable__filter"
-                            onClick={() => handleFilterClick(field, value, index, true)}
+                            onClick={() => handleFilterClick(field, value, colIndex, true)}
                             data-test-subj="lensFilterOutCellValue"
                           >
                             <EuiIconTip
