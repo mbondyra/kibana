@@ -214,7 +214,7 @@ function DatatableComponent(
                             <EuiIconTip
                               type="magnifyWithPlus"
                               content={i18n.translate(
-                                'visTypeTable.directives.tableCellFilter.filterForValueTooltip',
+                                'xpack.lens.tableCellFilter.filterForValueTooltip',
                                 {
                                   defaultMessage: 'Filter for value',
                                 }
@@ -232,7 +232,7 @@ function DatatableComponent(
                             <EuiIconTip
                               type="magnifyWithMinus"
                               content={i18n.translate(
-                                'visTypeTable.directives.tableCellFilter.filterOutValueTooltip',
+                                'xpack.lens.tableCellFilter.filterOutValueTooltip',
                                 {
                                   defaultMessage: 'Filter out value',
                                 }
