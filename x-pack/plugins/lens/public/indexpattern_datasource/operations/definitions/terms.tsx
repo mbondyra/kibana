@@ -53,6 +53,7 @@ export const termsOperation: OperationDefinition<TermsIndexPatternColumn> = {
   displayName: i18n.translate('xpack.lens.indexPattern.terms', {
     defaultMessage: 'Top values',
   }),
+  isBucketed: true,
   priority: 3, // Higher than any metric
   getPossibleOperationForField: ({ aggregationRestrictions, aggregatable, type }) => {
     if (

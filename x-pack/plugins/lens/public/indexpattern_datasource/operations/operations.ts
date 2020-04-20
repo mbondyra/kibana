@@ -32,6 +32,12 @@ export function isColumnTransferable(column: IndexPatternColumn, newIndexPattern
   return operationDefinitionMap[column.operationType].isTransferable(column, newIndexPattern);
 }
 
+export function getOperationByType(operationType: OperationType) {
+  if (operationType && operationDefinitionMap[operationType]) {
+    return operationDefinitionMap[operationType];
+  }
+}
+
 /**
  * Returns a list of the display names of all operations with any guaranteed order.
  */

@@ -97,6 +97,8 @@ interface BaseOperationDefinitionProps<C extends BaseIndexPatternColumn> {
    * present on the new index pattern.
    */
   transfer?: (column: C, newIndexPattern: IndexPattern) => C;
+
+  isBucketed: boolean;
 }
 
 interface BaseBuildColumnArgs {

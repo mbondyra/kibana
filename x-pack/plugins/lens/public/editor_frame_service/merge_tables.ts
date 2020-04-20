@@ -14,6 +14,7 @@ import { search } from '../../../../../src/plugins/data/public';
 const { toAbsoluteDates } = search.aggs;
 
 import { LensMultiTable } from '../types';
+import { getOperationByType, OperationType } from '../indexpattern_datasource/operations';
 
 interface MergeTables {
   layerIds: string[];
@@ -47,7 +48,14 @@ export const mergeTables: ExpressionFunctionDefinition<
   fn(input, { layerIds, tables }) {
     const resultTables: Record<string, KibanaDatatable> = {};
     tables.forEach((table, index) => {
-      resultTables[layerIds[index]] = table;
+      const enhancedTable = {
+        ...table,
+        columns: table.columns.map(col => ({
+          ...col,
+          isBucketed: getOperationByType(col.meta?.type as OperationType)?.isBucketed,
+        })),
+      };
+      resultTables[layerIds[index]] = enhancedTable;
     });
     return {
       type: 'lens_multitable',

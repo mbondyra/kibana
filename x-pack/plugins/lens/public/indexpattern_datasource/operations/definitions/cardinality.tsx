@@ -27,6 +27,7 @@ export interface CardinalityIndexPatternColumn extends FormattedIndexPatternColu
 
 export const cardinalityOperation: OperationDefinition<CardinalityIndexPatternColumn> = {
   type: OPERATION_TYPE,
+  isBucketed: IS_BUCKETED,
   displayName: i18n.translate('xpack.lens.indexPattern.cardinality', {
     defaultMessage: 'Unique count',
   }),
