@@ -55,8 +55,10 @@ export default function ({ getService, getPageObjects }) {
       await security.testUser.restoreDefaults();
     });
 
-    describe('adding a filter that excludes all data', () => {
+    describe.only('adding a filter that excludes all data', () => {
       before(async () => {
+        //todo
+        await PageObjects.dashboard.gotoDashboardLandingPage();
         await PageObjects.dashboard.clickNewDashboard();
         await PageObjects.timePicker.setDefaultDataRange();
         await dashboardAddPanel.addEveryVisualization('"Filter Bytes Test"');
