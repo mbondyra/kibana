@@ -29,7 +29,7 @@ export default function ({ getService, getPageObjects }) {
 
   const FIELD_NAME = 'machine.os.raw';
 
-  describe('input control options', () => {
+  describe.only('input control options', () => {
     before(async () => {
       await PageObjects.visualize.navigateToNewVisualization();
       await PageObjects.visualize.clickInputControlVis();
@@ -90,7 +90,7 @@ export default function ({ getService, getPageObjects }) {
         expect(hasFilter).to.equal(true);
       });
 
-      it('should replace existing filter pill(s) when new item is selected', async () => {
+      it.only('should replace existing filter pill(s) when new item is selected', async () => {
         await comboBox.clear('listControlSelect0');
         await comboBox.set('listControlSelect0', 'osx');
         await PageObjects.visEditor.inputControlSubmit();
