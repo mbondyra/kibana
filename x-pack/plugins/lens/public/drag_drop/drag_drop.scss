@@ -20,11 +20,6 @@
   }
 }
 
-// Draggable item when it is moving
-.lnsDragDrop-isHidden {
-  opacity: 0;
-}
-
 // Drop area
 .lnsDragDrop-isDroppable {
   @include lnsDroppable;
@@ -51,4 +46,37 @@
   .lnsLayerPanel__triggerLink {
     text-decoration: line-through;
   }
+}
+
+.lnsDragDrop-isActiveReorderHiddenDrop {
+  border: none;
+  opacity: 0;
+  position: absolute;
+  width: 100%;
+  top: 0;
+  height: calc(100% + 4px);
+  pointer-events: auto;
+  z-index: 3;
+}
+
+.lnsDragDrop-isReorderHiddenDrop {
+  border: none;
+}
+
+.lnsDragDrop-isReordable {
+  transition: transform $euiAnimSpeedFast ease-in-out;
+  opacity: 1;
+}
+
+.lnsDragDrop-isReordable--up {
+  transform: translateY(-100%);
+}
+
+.lnsDragDrop-isReordable--down {
+  transform: translateY(100%);
+}
+
+// Draggable item when it is moving
+.lnsDragDrop-isHidden {
+  opacity: 0;
 }

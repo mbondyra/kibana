@@ -19,6 +19,15 @@ type DroppableEvent = React.DragEvent<HTMLElement>;
 export type DropHandler = (item: unknown) => void;
 
 /**
+ * A function that handles a dragOver event event.
+ */
+export type DragOverHandler = (e: unknown) => void;
+
+/**
+ * A function that handles a dragLeave event.
+ */
+export type DragLeaveHandler = () => void;
+/**
  * The base props to the DragDrop component.
  */
 interface BaseProps {
@@ -32,6 +41,18 @@ interface BaseProps {
    * is dropped onto this DragDrop component.
    */
   onDrop?: DropHandler;
+
+  /**
+   * The event handler that fires when an item
+   * is dragged
+   */
+  onDragOver?: DragOverHandler;
+
+  /**
+   * The event handler that fires when an item
+   * is dragged
+   */
+  onDragLeave?: DragLeaveHandler;
 
   /**
    * The value associated with this item, if it is draggable.
@@ -76,7 +97,7 @@ interface BaseProps {
    * Indicates to the user whether the drop action will
    * replace something that is existing or add a new one
    */
-  dropType?: 'add' | 'replace';
+  dropType?: 'add' | 'replace' | 'reorder';
 }
 
 /**
@@ -116,6 +137,7 @@ type Props = DraggableProps | NonDraggableProps;
 export const DragDrop = (props: Props) => {
   const { dragging, setDragging } = useContext(DragContext);
   const { value, draggable, droppable, isValueEqual } = props;
+
   return (
     <DragDropInner
       {...props}
@@ -149,6 +171,8 @@ const DragDropInner = React.memo(function DragDropInner(
   const {
     className,
     onDrop,
+    onDragOver,
+    onDragLeave,
     value,
     children,
     droppable,
@@ -162,6 +186,9 @@ const DragDropInner = React.memo(function DragDropInner(
   } = props;
 
   const isMoveDragging = isDragging && dragType === 'move';
+  // const isReorderDragging = isDragging && dragType === 'reorder';   //todo
+  // const isDropSameGroup 
+  // 
 
   const classes = classNames(
     'lnsDragDrop',
@@ -174,6 +201,8 @@ const DragDropInner = React.memo(function DragDropInner(
       'lnsDragDrop-isActiveDropTarget': droppable && state.isActive,
       'lnsDragDrop-isNotDroppable': !isMoveDragging && isNotDroppable,
       'lnsDragDrop-isReplacing': droppable && state.isActive && dropType === 'replace',
+      'lnsDragDrop-isReorderHiddenDrop': !state.isActive && dropType === 'reorder',
+      'lnsDragDrop-isActiveReorderHiddenDrop': droppable && dropType === 'reorder',
     },
     className,
     state.dragEnterClassNames
@@ -217,10 +246,16 @@ const DragDropInner = React.memo(function DragDropInner(
           ? props.getAdditionalClassesOnEnter()
           : '',
       });
+      if (onDragOver) {
+        onDragOver(e);
+      }
     }
   };
 
   const dragLeave = () => {
+    if (onDragLeave) {
+      onDragLeave();
+    }
     setState({ ...state, isActive: false, dragEnterClassNames: '' });
   };
 
