@@ -58,6 +58,7 @@ import { ChartsPluginSetup } from '../../../../../src/plugins/charts/public';
 export { OperationType, IndexPatternColumn } from './operations';
 
 export interface DraggedField {
+  id: string;
   field: IndexPatternField;
   indexPatternId: string;
 }

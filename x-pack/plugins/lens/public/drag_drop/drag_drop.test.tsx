@@ -12,9 +12,10 @@ import { ChildDragDropProvider } from './providers';
 jest.useFakeTimers();
 
 describe('DragDrop', () => {
+  const value = { id: '1', label: 'hello' };
   test('renders if nothing is being dragged', () => {
     const component = render(
-      <DragDrop value="hello" draggable label="dragging" id="id">
+      <DragDrop value={value} draggable label="dragging" id="id">
         <button>Hello!</button>
       </DragDrop>
     );
@@ -54,7 +55,6 @@ describe('DragDrop', () => {
       setData: jest.fn(),
       getData: jest.fn(),
     };
-    const value = {};
 
     const component = mount(
       <ChildDragDropProvider dragging={value} setDragging={setDragging}>
@@ -77,10 +77,9 @@ describe('DragDrop', () => {
     const stopPropagation = jest.fn();
     const setDragging = jest.fn();
     const onDrop = jest.fn();
-    const value = {};
 
     const component = mount(
-      <ChildDragDropProvider dragging="hola" setDragging={setDragging}>
+      <ChildDragDropProvider dragging={{ id: '2', label: 'hi' }} setDragging={setDragging}>
         <DragDrop onDrop={onDrop} droppable={true} value={value} id="id">
           <button>Hello!</button>
         </DragDrop>
@@ -94,7 +93,7 @@ describe('DragDrop', () => {
     expect(preventDefault).toBeCalled();
     expect(stopPropagation).toBeCalled();
     expect(setDragging).toBeCalledWith(undefined);
-    expect(onDrop).toBeCalledWith('hola');
+    expect(onDrop).toBeCalledWith({ id: '2', label: 'hi' });
   });
 
   test('drop function is not called on droppable=false', async () => {
@@ -104,8 +103,8 @@ describe('DragDrop', () => {
     const onDrop = jest.fn();
 
     const component = mount(
-      <ChildDragDropProvider dragging="hola" setDragging={setDragging}>
-        <DragDrop onDrop={onDrop} droppable={false} value={{}} id="id">
+      <ChildDragDropProvider dragging={{ id: 'hi' }} setDragging={setDragging}>
+        <DragDrop onDrop={onDrop} droppable={false} value={value} id="id">
           <button>Hello!</button>
         </DragDrop>
       </ChildDragDropProvider>
@@ -139,8 +138,8 @@ describe('DragDrop', () => {
 
   test('items that have droppable=false get special styling when another item is dragged', () => {
     const component = mount(
-      <ChildDragDropProvider dragging={'ignored'} setDragging={() => {}}>
-        <DragDrop value="ignored" draggable={true} label="a" id="id">
+      <ChildDragDropProvider dragging={value} setDragging={() => {}}>
+        <DragDrop value={value} draggable={true} label="a" id="id">
           <button>Hello!</button>
         </DragDrop>
         <DragDrop onDrop={(x: unknown) => {}} droppable={false} id="id">
@@ -153,16 +152,16 @@ describe('DragDrop', () => {
   });
 
   test('additional styles are reflected in the className until drop', () => {
-    let dragging: { id: 1 } | undefined;
+    let dragging: { id: '1' } | undefined;
     const getAdditionalClasses = jest.fn().mockReturnValue('additional');
     const component = mount(
       <ChildDragDropProvider
         dragging={dragging}
         setDragging={() => {
-          dragging = 'hello';
+          dragging = { id: '1' };
         }}
       >
-        <DragDrop value="ignored" draggable={true} label="a" id="id">
+        <DragDrop value={{ label: 'ignored', id: '3' }} draggable={true} label="a" id="id">
           <button>Hello!</button>
         </DragDrop>
         <DragDrop

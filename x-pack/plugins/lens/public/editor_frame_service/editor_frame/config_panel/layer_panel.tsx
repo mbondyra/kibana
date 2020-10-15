@@ -245,49 +245,11 @@ export function LayerPanel(
                             isFromTheSameGroup)
                         }
                         onDrop={(droppedItem) => {
-                          const isReorder =
-                            isDraggedOperation(droppedItem) &&
-                            droppedItem.groupId === group.groupId &&
-                            droppedItem.columnId !== accessor;
-                          if (isReorder) {
-                            // todo: leaking abstraction, move to datasource
-                            if (droppedItem?.groupId === group.groupId) {
-                              function nestColumn(
-                                columnOrder: string[],
-                                outer: string,
-                                inner: string
-                              ) {
-                                const outerIndex = columnOrder.findIndex((c) => c === inner);
-                                const innerIndex = columnOrder.findIndex((c) => c === outer);
-                                const result = columnOrder.filter((c) => c !== inner);
-                                const outerPosition = result.indexOf(outer);
-                                result.splice(
-                                  outerIndex < innerIndex ? outerPosition + 1 : outerPosition,
-                                  0,
-                                  inner
-                                );
-                                return result;
-                              }
-                              const source = droppedItem.columnId;
-                              const destination = accessor;
-                              const { state, setState } = layerDatasourceDropProps;
-
-                              const layer = state.layers[props.layerId];
-
-                              return setState({
-                                ...state,
-                                layers: {
-                                  ...state.layers,
-                                  [props.layerId]: {
-                                    ...state.layers[props.layerId],
-                                    columnOrder: nestColumn(layer.columnOrder, destination, source),
-                                  },
-                                },
-                              });
-                            }
-                          }
-
                           const dropResult = layerDatasource.onDrop({
+                            isReorder:
+                              isDraggedOperation(droppedItem) &&
+                              droppedItem.groupId === group.groupId &&
+                              droppedItem.columnId !== accessor,
                             ...layerDatasourceDropProps,
                             droppedItem,
                             columnId: accessor,

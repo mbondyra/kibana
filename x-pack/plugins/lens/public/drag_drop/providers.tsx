@@ -91,31 +91,42 @@ export function ChildDragDropProvider({ dragging, setDragging, children }: Provi
   return <DragContext.Provider value={value}>{children}</DragContext.Provider>;
 }
 
-export interface ReorderContextState {
-  reorderState: {
-    /**
-     * Ids of the elements that are translated up or down
-     */
-    movedElements: string[];
+interface ReorderState {
+  /**
+   * Ids of the elements that are translated up or down
+   */
+  reorderedItems: string[];
 
-    /**
-     * The direction of translation
-     */
-    className: 'lnsDragDrop-isReorderable--down' | 'lnsDragDrop-isReorderable--up';
-  };
-  setReorderState: () => void;
+  /**
+   * Class responsible for transform (translation)
+   */
+  className: 'lnsDragDrop-isReorderable--down' | 'lnsDragDrop-isReorderable--up';
 }
 
-export const ReorderContext = React.createContext();
+export interface ReorderContextState {
+  reorderState: ReorderState;
+  setReorderState: (reorderState: ReorderState) => void;
+}
+
+export const ReorderContext = React.createContext<ReorderContextState>({
+  reorderState: {
+    reorderedItems: [],
+    className: 'lnsDragDrop-isReorderable--down',
+  },
+  setReorderState: () => {},
+});
 
 export function ReorderProvider({ children }: { children: React.ReactNode }) {
-  const [reorderState, setReorderState] = useState({
-    movedElements: [],
+  const [state, setState] = useState<ReorderContextState['reorderState']>({
+    reorderedItems: [],
     className: 'lnsDragDrop-isReorderable--down',
   });
+  const setReorderState = useMemo(() => (reorderState: ReorderState) => setState(reorderState), [
+    setState,
+  ]);
 
   return (
-    <ReorderContext.Provider value={{ reorderState, setReorderState }}>
+    <ReorderContext.Provider value={{ reorderState: state, setReorderState }}>
       {children}
     </ReorderContext.Provider>
   );
