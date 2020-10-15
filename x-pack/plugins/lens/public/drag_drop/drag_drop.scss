@@ -48,31 +48,36 @@
   }
 }
 
-.lnsDragDrop-isActiveReorderHiddenDrop {
+.lnsDragDrop-isActiveSortHiddenDrop {
   border: none;
-  opacity: 0;
   position: absolute;
   width: 100%;
   top: 0;
   height: calc(100% + 4px);
-  pointer-events: auto;
-  z-index: 3;
 }
 
-.lnsDragDrop-isReorderHiddenDrop {
+.lnsDragDrop-isSortHiddenDrop {
   border: none;
 }
 
-.lnsDragDrop-isReordable {
+.lnsDragDrop-isSortDraggingDrop {
+  border: none;
+  position: absolute;
+  width: 100%;
+  top: 0;
+  height: calc(100% + 4px); // this is very stiff, depends on the padding
+}
+
+.lnsDragDrop-isReorderable {
   transition: transform $euiAnimSpeedFast ease-in-out;
   opacity: 1;
 }
 
-.lnsDragDrop-isReordable--up {
+.lnsDragDrop-isReorderable--up {
   transform: translateY(-100%);
 }
 
-.lnsDragDrop-isReordable--down {
+.lnsDragDrop-isReorderable--down {
   transform: translateY(100%);
 }
 

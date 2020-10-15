@@ -268,6 +268,7 @@ export function WorkspacePanel({
       visualizationMap={visualizationMap}
     >
       <DragDrop
+        id="lnsWorkspace"
         className="lnsWorkspacePanel__dragDrop"
         data-test-subj="lnsWorkspace"
         draggable={false}

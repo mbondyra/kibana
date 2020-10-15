@@ -6,8 +6,6 @@
 import './layer_panel.scss';
 
 import React, { useContext, useState, useEffect } from 'react';
-
-import classNames from 'classnames';
 import {
   EuiPanel,
   EuiSpacer,
@@ -21,7 +19,7 @@ import { i18n } from '@kbn/i18n';
 import { FormattedMessage } from '@kbn/i18n/react';
 import { NativeRenderer } from '../../../native_renderer';
 import { StateSetter, isDraggedOperation } from '../../../types';
-import { DragContext, DragDrop, ChildDragDropProvider } from '../../../drag_drop';
+import { DragContext, DragDrop, ChildDragDropProvider, ReorderProvider } from '../../../drag_drop';
 import { LayerSettings } from './layer_settings';
 import { trackUiEvent } from '../../../lens_ui_telemetry';
 import { generateId } from '../../../id_generator';
@@ -73,11 +71,6 @@ export function LayerPanel(
   const [activeDimension, setActiveDimension] = useState<ActiveDimensionState>(
     initialActiveDimensionState
   );
-
-  const [dragDropReorderState, setDragDropReorderState] = useState({
-    direction: 'down',
-    activeAccessors: [],
-  });
 
   const { framePublicAPI, layerId, isOnlyLayer, onRemoveLayer, dataTestSubj } = props;
   const datasourcePublicAPI = framePublicAPI.datasourceLayers[layerId];
@@ -200,40 +193,100 @@ export function LayerPanel(
               }
             >
               <>
-                {group.accessors.map((accessor) => {
-                  return (
-                    <div key={accessor} style={{ position: 'relative' }}>
+                <ReorderProvider>
+                  {group.accessors.map((accessor) => {
+                    const { dragging } = dragDropContext;
+                    const dragType =
+                      isDraggedOperation(dragging) && accessor === dragging.columnId
+                        ? 'move'
+                        : isDraggedOperation(dragging) && group.groupId === dragging.groupId
+                        ? 'reorder'
+                        : 'copy';
+
+                    const dropType = isDraggedOperation(dragging)
+                      ? group.groupId !== dragging.groupId
+                        ? 'replace'
+                        : 'reorder'
+                      : 'add';
+
+                    const isFromCompatibleGroup =
+                      dragging?.groupId !== group.groupId &&
+                      layerDatasource.canHandleDrop({
+                        ...layerDatasourceDropProps,
+                        columnId: accessor,
+                        filterOperations: group.filterOperations,
+                      });
+
+                    const isFromTheSameGroup =
+                      isDraggedOperation(dragging) &&
+                      dragging.groupId === group.groupId &&
+                      dragging.columnId !== accessor;
+                    return (
                       <DragDrop
+                        key={accessor}
                         draggable={!activeId}
-                        dragType={
-                          isDraggedOperation(dragDropContext.dragging) &&
-                          accessor === dragDropContext.dragging.columnId
-                            ? 'move'
-                            : 'copy'
-                        }
-                        dropType={
-                          isDraggedOperation(dragDropContext.dragging) &&
-                          group.groupId !== dragDropContext.dragging.groupId
-                            ? 'replace'
-                            : 'add'
-                        }
+                        dragType={dragType}
+                        dropType={dropType}
                         data-test-subj={group.dataTestSubj}
-                        value={{ columnId: accessor, groupId: group.groupId, layerId }}
+                        itemsInGroup={group.accessors}
+                        id={accessor}
+                        value={{
+                          columnId: accessor,
+                          groupId: group.groupId,
+                          layerId,
+                          id: accessor,
+                        }}
                         isValueEqual={isSameConfiguration}
                         label={group.groupLabel}
                         droppable={
-                          Boolean(dragDropContext.dragging) &&
-                          // Verify that the dragged item is not coming from the same group
-                          // since this would be a reorder
-                          (!isDraggedOperation(dragDropContext.dragging) ||
-                            dragDropContext.dragging.groupId !== group.groupId) &&
-                          layerDatasource.canHandleDrop({
-                            ...layerDatasourceDropProps,
-                            columnId: accessor,
-                            filterOperations: group.filterOperations,
-                          })
+                          dragging &&
+                          (!isDraggedOperation(dragging) ||
+                            isFromCompatibleGroup ||
+                            isFromTheSameGroup)
                         }
                         onDrop={(droppedItem) => {
+                          const isReorder =
+                            isDraggedOperation(droppedItem) &&
+                            droppedItem.groupId === group.groupId &&
+                            droppedItem.columnId !== accessor;
+                          if (isReorder) {
+                            // todo: leaking abstraction, move to datasource
+                            if (droppedItem?.groupId === group.groupId) {
+                              function nestColumn(
+                                columnOrder: string[],
+                                outer: string,
+                                inner: string
+                              ) {
+                                const outerIndex = columnOrder.findIndex((c) => c === inner);
+                                const innerIndex = columnOrder.findIndex((c) => c === outer);
+                                const result = columnOrder.filter((c) => c !== inner);
+                                const outerPosition = result.indexOf(outer);
+                                result.splice(
+                                  outerIndex < innerIndex ? outerPosition + 1 : outerPosition,
+                                  0,
+                                  inner
+                                );
+                                return result;
+                              }
+                              const source = droppedItem.columnId;
+                              const destination = accessor;
+                              const { state, setState } = layerDatasourceDropProps;
+
+                              const layer = state.layers[props.layerId];
+
+                              return setState({
+                                ...state,
+                                layers: {
+                                  ...state.layers,
+                                  [props.layerId]: {
+                                    ...state.layers[props.layerId],
+                                    columnOrder: nestColumn(layer.columnOrder, destination, source),
+                                  },
+                                },
+                              });
+                            }
+                          }
+
                           const dropResult = layerDatasource.onDrop({
                             ...layerDatasourceDropProps,
                             droppedItem,
@@ -252,16 +305,7 @@ export function LayerPanel(
                           }
                         }}
                       >
-                        <div
-                          className={classNames('lnsLayerPanel__dimension', {
-                            'lnsDragDrop-isReordable':
-                              !!dragDropContext.dragging &&
-                              group.groupId === dragDropContext.dragging.groupId,
-                            [`lnsDragDrop-isReordable--${dragDropReorderState.direction}`]: dragDropReorderState.activeAccessors.includes(
-                              accessor
-                            ),
-                          })}
-                        >
+                        <div className="lnsLayerPanel__dimension">
                           <NativeRenderer
                             render={props.datasourceMap[datasourceId].renderDimensionTrigger}
                             nativeProps={{
@@ -316,103 +360,12 @@ export function LayerPanel(
                           />
                         </div>
                       </DragDrop>
-                      <div>
-                        <DragDrop
-                          onDragLeave={() =>
-                            setDragDropReorderState({
-                              ...dragDropReorderState,
-                              activeAccessors: [],
-                            })
-                          }
-                          onDragOver={(e) => {
-                            const columnOrder =
-                              layerDatasourceDropProps.state.layers[props.layerId].columnOrder;
-                            const draggingId = dragDropContext.dragging.columnId;
-                            const draggingIndex = columnOrder.indexOf(draggingId);
-                            const droppingIndex = columnOrder.indexOf(accessor);
-                            let result = columnOrder.slice(draggingIndex + 1, droppingIndex + 1);
-                            if (draggingIndex > droppingIndex) {
-                              result = columnOrder.slice(droppingIndex, draggingIndex); // +1 down
-                            }
-                            setDragDropReorderState({
-                              direction:
-                                columnOrder.indexOf(accessor) < columnOrder.indexOf(draggingId)
-                                  ? 'down'
-                                  : 'up',
-                              activeAccessors: result ? result : [],
-                            });
-                          }}
-                          dropType="reorder"
-                          data-test-subj={group.dataTestSubj}
-                          value={{ columnId: accessor, groupId: group.groupId, layerId }}
-                          isValueEqual={isSameConfiguration}
-                          label={group.groupLabel}
-                          droppable={
-                            Boolean(dragDropContext.dragging) &&
-                            dragDropContext.dragging.groupId === group.groupId &&
-                            dragDropContext.dragging.columnId !== accessor
-                          }
-                          onDrop={(droppedItem) => {
-                            setDragDropReorderState({
-                              ...dragDropReorderState,
-                              activeAccessors: [],
-                            });
-                            const dropResult = layerDatasource.onDrop({
-                              ...layerDatasourceDropProps,
-                              droppedItem,
-                              columnId: accessor,
-                              filterOperations: group.filterOperations,
-                            });
-                            if (typeof dropResult === 'object') {
-                              if (droppedItem?.groupId === group.groupId) {
-                                function nestColumn(
-                                  columnOrder: string[],
-                                  outer: string,
-                                  inner: string
-                                ) {
-                                  const outerIndex = columnOrder.findIndex((c) => c === inner);
-                                  const innerIndex = columnOrder.findIndex((c) => c === outer);
-                                  const result = columnOrder.filter((c) => c !== inner);
-                                  const outerPosition = result.indexOf(outer);
-                                  result.splice(
-                                    outerIndex < innerIndex ? outerPosition + 1 : outerPosition,
-                                    0,
-                                    inner
-                                  );
-                                  return result;
-                                }
-                                const source = droppedItem.columnId;
-                                const destination = accessor;
-                                const { state, setState } = layerDatasourceDropProps;
-
-                                const layer = state.layers[props.layerId];
-
-                                setState({
-                                  ...state,
-                                  layers: {
-                                    ...state.layers,
-                                    [props.layerId]: {
-                                      ...state.layers[props.layerId],
-                                      columnOrder: nestColumn(
-                                        layer.columnOrder,
-                                        destination,
-                                        source
-                                      ),
-                                    },
-                                  },
-                                });
-                              }
-                            }
-                          }}
-                        >
-                          <div />
-                        </DragDrop>
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </ReorderProvider>
                 {group.supportsMoreColumns ? (
                   <DragDrop
+                    id={newId}
                     data-test-subj={group.dataTestSubj}
                     droppable={
                       Boolean(dragDropContext.dragging) &&
