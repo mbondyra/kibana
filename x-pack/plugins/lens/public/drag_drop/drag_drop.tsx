@@ -240,7 +240,13 @@ const DragDropInner = React.memo(function DragDropInner(
     }
   };
 
-  if (droppable && dropType === 'reorder' && itemsInGroup?.length && itemsInGroup.length > 1) {
+  if (
+    droppable &&
+    dropType === 'reorder' &&
+    itemsInGroup?.length &&
+    itemsInGroup.length > 1 &&
+    value?.id
+  ) {
     return (
       <SortableDragDrop
         draggingProps={{
@@ -256,7 +262,7 @@ const DragDropInner = React.memo(function DragDropInner(
           dragging,
           droppable,
           itemsInGroup,
-          id: value?.id,
+          id: value.id,
         }}
         {...{ 'data-test-subj': props['data-test-subj'] || 'lnsDragDrop' }}
       >
@@ -294,8 +300,8 @@ const SortableDragDrop = ({
     onDragLeave: () => void;
     dragging: DragContextState['dragging'];
     droppable: DraggableProps['droppable'];
-    itemsInGroup: DraggableProps['itemsInGroup'];
-    id: DraggableProps['id'];
+    itemsInGroup: string[];
+    id: string;
   };
   children: React.ReactElement;
   'data-test-subj'?: string;
@@ -329,7 +335,7 @@ const SortableDragDrop = ({
           });
         }}
         onDragOver={(e: DroppableEvent) => {
-          if (!droppable || !itemsInGroup || itemsInGroup.length < 2) {
+          if (!droppable) {
             return;
           }
           dropProps.onDragOver(e);
