@@ -48,11 +48,15 @@
   }
 }
 
+.lnsDragDrop-reorderableContainer {
+  position: relative;
+}
+
 .lnsDragDrop-reorderableDrop {
   position: absolute;
   width: 100%;
   top: 0;
-  height: calc(100% + 4px); // this is very stiff, depends on the padding
+  height: calc(100% + 4px); // this is very stiff, depends on the padding between elements
 }
 
 .lnsDragDrop-isReorderable {
@@ -72,6 +76,3 @@
   opacity: 0;
 }
 
-.lnsDragDrop-reorderableContainer {
-  position: relative;
-}

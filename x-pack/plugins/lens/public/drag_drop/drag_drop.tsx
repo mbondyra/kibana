@@ -172,19 +172,17 @@ const DragDropInner = React.memo(function DragDropInner(
     itemsInGroup,
   } = props;
 
-  const isActive = state.isActive;
-
   const classes = classNames(
     'lnsDragDrop',
     {
       'lnsDragDrop-isDraggable': draggable,
       'lnsDragDrop-isDragging': isDragging,
-      'lnsDragDrop-isDroppable': !draggable,
       'lnsDragDrop-isHidden': isDragging && dragType === 'move',
-      'lnsDragDrop-isNotDroppable': isNotDroppable,
-      'lnsDragDrop-isReplacing': droppable && isActive && dropType === 'replace',
+      'lnsDragDrop-isDroppable': !draggable,
       'lnsDragDrop-isDropTarget': droppable && dragType !== 'reorder',
-      'lnsDragDrop-isActiveDropTarget': droppable && isActive && dragType !== 'reorder',
+      'lnsDragDrop-isActiveDropTarget': droppable && state.isActive && dragType !== 'reorder',
+      'lnsDragDrop-isNotDroppable': isNotDroppable,
+      'lnsDragDrop-isReplacing': droppable && state.isActive && dropType === 'replace',
     },
     className,
     state.dragEnterClassNames
@@ -220,7 +218,7 @@ const DragDropInner = React.memo(function DragDropInner(
     e.preventDefault();
 
     // An optimization to prevent a bunch of React churn.
-    if (!isActive) {
+    if (!state.isActive) {
       setState({
         ...state,
         isActive: true,
@@ -301,7 +299,6 @@ const SortableDragDrop = ({
     onDragOver: (e: DroppableEvent) => void;
     onDragLeave: () => void;
     dragging: DragContextState['dragging'];
-    isActive: boolean;
     droppable: DraggableProps['droppable'];
     itemsInGroup: DraggableProps['itemsInGroup'];
     id: DraggableProps['id'];
