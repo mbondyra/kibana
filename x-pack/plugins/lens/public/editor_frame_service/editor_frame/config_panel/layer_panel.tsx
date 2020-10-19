@@ -240,17 +240,18 @@ export function LayerPanel(
                         isValueEqual={isSameConfiguration}
                         label={group.groupLabel}
                         droppable={
-                          dragging &&
-                          (!isDraggedOperation(dragging) ||
-                            isFromCompatibleGroup ||
-                            isFromTheSameGroup)
+                          (dragging && !isDraggedOperation(dragging)) ||
+                          isFromCompatibleGroup ||
+                          isFromTheSameGroup
                         }
                         onDrop={(droppedItem) => {
+                          const isReorder =
+                            isDraggedOperation(droppedItem) &&
+                            droppedItem.groupId === group.groupId &&
+                            droppedItem.columnId !== accessor;
+
                           const dropResult = layerDatasource.onDrop({
-                            isReorder:
-                              isDraggedOperation(droppedItem) &&
-                              droppedItem.groupId === group.groupId &&
-                              droppedItem.columnId !== accessor,
+                            isReorder,
                             ...layerDatasourceDropProps,
                             droppedItem,
                             columnId: accessor,

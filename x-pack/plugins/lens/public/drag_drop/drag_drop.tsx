@@ -181,7 +181,7 @@ const DragDropInner = React.memo(function DragDropInner(
       'lnsDragDrop-isDragging': isDragging,
       'lnsDragDrop-isDroppable': !draggable,
       'lnsDragDrop-isHidden': isDragging && dragType === 'move',
-      'lnsDragDrop-isNotDroppable': !isDragging && dragType === 'move' && isNotDroppable,
+      'lnsDragDrop-isNotDroppable': isNotDroppable,
       'lnsDragDrop-isReplacing': droppable && isActive && dropType === 'replace',
       'lnsDragDrop-isDropTarget': droppable && dragType !== 'reorder',
       'lnsDragDrop-isActiveDropTarget': droppable && isActive && dragType !== 'reorder',
@@ -262,7 +262,6 @@ const DragDropInner = React.memo(function DragDropInner(
           onDragOver: dragOver,
           onDragLeave: dragLeave,
           dragging,
-          isActive,
           droppable,
           itemsInGroup,
           id,
@@ -310,7 +309,7 @@ const SortableDragDrop = ({
   children: React.ReactElement;
   'data-test-subj'?: string;
 }) => {
-  const { itemsInGroup, dragging, id, droppable, isActive } = dropProps;
+  const { itemsInGroup, dragging, id, droppable } = dropProps;
   const { reorderState, setReorderState } = useContext(ReorderContext);
 
   return (
@@ -329,8 +328,7 @@ const SortableDragDrop = ({
       })}
       <div
         className={classNames('lnsDragDrop', {
-          'lnsDragDrop-isSortDraggingDrop': dragging && !isActive,
-          'lnsDragDrop-isActiveSortHiddenDrop': dragging && droppable && isActive,
+          'lnsDragDrop-reorderableDrop': dragging && droppable,
         })}
         onDrop={(e) => {
           dropProps.onDrop(e);

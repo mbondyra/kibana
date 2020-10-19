@@ -57,11 +57,11 @@ import { ChartsPluginSetup } from '../../../../../src/plugins/charts/public';
 
 export { OperationType, IndexPatternColumn } from './operations';
 
-export interface DraggedField {
+export type DraggedField = {
   id: string;
   field: IndexPatternField;
   indexPatternId: string;
-}
+};
 
 export function columnToOperation(column: IndexPatternColumn, uniqueLabel?: string): Operation {
   const { dataType, label, isBucketed, scale } = column;
