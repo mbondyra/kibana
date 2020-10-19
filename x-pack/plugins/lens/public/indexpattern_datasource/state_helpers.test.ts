@@ -9,6 +9,7 @@ import {
   changeColumn,
   getColumnOrder,
   deleteColumn,
+  changeColumnOrder,
   updateLayerIndexPattern,
 } from './state_helpers';
 import { operationDefinitionMap } from './operations';
@@ -581,6 +582,67 @@ describe('state_helpers', () => {
           },
         })
       ).toEqual(['col3', 'col1', 'col2']);
+    });
+  });
+
+  describe('changeColumnOrder', () => {
+    const state: IndexPatternPrivateState = {
+      indexPatternRefs: [],
+      existingFields: {},
+      indexPatterns: {},
+      currentIndexPatternId: '1',
+      isFirstExistenceFetch: false,
+      layers: {
+        first: {
+          indexPatternId: '1',
+          columnOrder: ['col1', 'col2'],
+          columns: {
+            col1: {
+              label: 'Average of bytes',
+              dataType: 'number',
+              isBucketed: false,
+
+              // Private
+              operationType: 'avg',
+              sourceField: 'bytes',
+            },
+            col2: {
+              label: 'Max of bytes',
+              dataType: 'number',
+              isBucketed: false,
+
+              // Private
+              operationType: 'max',
+              sourceField: 'bytes',
+            },
+            col3: {
+              label: 'Max of memory',
+              dataType: 'number',
+              isBucketed: false,
+
+              // Private
+              operationType: 'max',
+              sourceField: 'bytes',
+            },
+          },
+        },
+      },
+    };
+    it('should update order correctly', () => {
+      expect(
+        changeColumnOrder({
+          state,
+          layerId: 'first',
+          columnOrder: ['col2', 'col1', 'col3'],
+        })
+      ).toEqual({
+        ...state,
+        layers: {
+          first: expect.objectContaining({
+            columnOrder: ['col2', 'col1', 'col3'],
+          }),
+        },
+      });
     });
   });
 
