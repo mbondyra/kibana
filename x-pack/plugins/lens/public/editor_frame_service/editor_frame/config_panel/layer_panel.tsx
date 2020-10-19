@@ -221,7 +221,7 @@ export function LayerPanel(
                       isDraggedOperation(dragging) &&
                       dragging.groupId === group.groupId &&
                       dragging.columnId !== accessor &&
-                      dragging.groupId !== 'y';      // TODO: remove this line when https://github.com/elastic/elastic-charts/issues/868 is fixed
+                      dragging.groupId !== 'y'; // TODO: remove this line when https://github.com/elastic/elastic-charts/issues/868 is fixed
                     return (
                       <DragDrop
                         key={accessor}
@@ -230,7 +230,6 @@ export function LayerPanel(
                         dropType={dropType}
                         data-test-subj={group.dataTestSubj}
                         itemsInGroup={group.accessors}
-                        id={accessor}
                         value={{
                           columnId: accessor,
                           groupId: group.groupId,
@@ -329,7 +328,6 @@ export function LayerPanel(
                 </ReorderProvider>
                 {group.supportsMoreColumns ? (
                   <DragDrop
-                    id={newId}
                     data-test-subj={group.dataTestSubj}
                     droppable={
                       Boolean(dragDropContext.dragging) &&

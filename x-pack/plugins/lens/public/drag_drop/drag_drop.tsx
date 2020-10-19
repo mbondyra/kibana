@@ -66,11 +66,6 @@ interface BaseProps {
   'data-test-subj'?: string;
 
   /**
-   * identifier
-   */
-  id: string;
-
-  /**
    * items belonging to the same group that can be reordered
    */
   itemsInGroup?: string[];
@@ -168,7 +163,6 @@ const DragDropInner = React.memo(function DragDropInner(
     isNotDroppable,
     dragType = 'copy',
     dropType = 'add',
-    id,
     itemsInGroup,
   } = props;
 
@@ -262,7 +256,7 @@ const DragDropInner = React.memo(function DragDropInner(
           dragging,
           droppable,
           itemsInGroup,
-          id,
+          id: value?.id,
         }}
         {...{ 'data-test-subj': props['data-test-subj'] || 'lnsDragDrop' }}
       >

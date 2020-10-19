@@ -189,7 +189,6 @@ export const InnerFieldItem = function InnerFieldItem(props: FieldItemProps) {
       container={document.querySelector<HTMLElement>('.application') || undefined}
       button={
         <DragDrop
-          id={field.name}
           label={field.displayName}
           value={value}
           data-test-subj={`lnsFieldListPanelField-${field.name}`}
