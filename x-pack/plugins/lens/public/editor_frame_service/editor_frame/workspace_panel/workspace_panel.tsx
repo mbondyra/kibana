@@ -18,6 +18,7 @@ import {
   ReactExpressionRendererType,
 } from '../../../../../../../src/plugins/expressions/public';
 import { Action } from '../state_management';
+import { EuiDraggable, EuiDroppable } from '@elastic/eui';
 import {
   Datasource,
   Visualization,
@@ -267,18 +268,21 @@ export function WorkspacePanel({
       datasourceMap={datasourceMap}
       visualizationMap={visualizationMap}
     >
-      <DragDrop
+      <EuiDroppable droppableId="workspace">
+        <div>
+          {renderVisualization()}
+          {Boolean(suggestionForDraggedField) && expression !== null && renderEmptyWorkspace()}
+        </div>
+      </EuiDroppable>
+      {/* <DragDrop
         className="lnsWorkspacePanel__dragDrop"
         data-test-subj="lnsWorkspace"
         draggable={false}
         droppable={Boolean(suggestionForDraggedField)}
         onDrop={onDrop}
-      >
-        <div>
-          {renderVisualization()}
-          {Boolean(suggestionForDraggedField) && expression !== null && renderEmptyWorkspace()}
-        </div>
-      </DragDrop>
+      > */}
+
+      {/* </DragDrop> */}
     </WorkspacePanelWrapper>
   );
 }

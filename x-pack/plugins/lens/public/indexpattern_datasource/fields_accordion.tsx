@@ -66,9 +66,10 @@ export const InnerFieldsAccordion = function InnerFieldsAccordion({
   showExistenceFetchError,
 }: FieldsAccordionProps) {
   const renderField = useCallback(
-    (field: IndexPatternField) => (
+    (field: IndexPatternField, index: number) => (
       <FieldItem
         {...fieldProps}
+        index={index}
         key={field.name}
         field={field}
         exists={exists(field)}

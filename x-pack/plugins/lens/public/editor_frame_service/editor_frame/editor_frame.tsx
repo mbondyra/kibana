@@ -5,6 +5,7 @@
  */
 
 import React, { useEffect, useReducer, useState } from 'react';
+import { EuiDragDropContext, EuiDraggable, EuiDroppable } from '@elastic/eui';
 import { CoreSetup, CoreStart } from 'kibana/public';
 import { ReactExpressionRendererType } from '../../../../../../src/plugins/expressions/public';
 import { Datasource, FramePublicAPI, Visualization } from '../../types';
@@ -247,83 +248,92 @@ export function EditorFrame(props: EditorFrameProps) {
     ]
   );
 
+  const onDragEnd = ({ source, destination }) => {
+    console.log(source, destination);
+  };
+  const onDragUpdate = (bla, bla2) => {
+    console.log(bla, bla2);
+  };
+
   return (
     <RootDragDropProvider>
-      <FrameLayout
-        dataPanel={
-          <DataPanelWrapper
-            datasourceMap={props.datasourceMap}
-            activeDatasource={state.activeDatasourceId}
-            datasourceState={
-              state.activeDatasourceId
-                ? state.datasourceStates[state.activeDatasourceId].state
-                : null
-            }
-            datasourceIsLoading={
-              state.activeDatasourceId
-                ? state.datasourceStates[state.activeDatasourceId].isLoading
-                : true
-            }
-            dispatch={dispatch}
-            core={props.core}
-            query={props.query}
-            dateRange={props.dateRange}
-            filters={props.filters}
-            showNoDataPopover={props.showNoDataPopover}
-          />
-        }
-        configPanel={
-          allLoaded && (
-            <ConfigPanelWrapper
-              activeDatasourceId={state.activeDatasourceId!}
+      <EuiDragDropContext onDragEnd={onDragEnd} onDragUpdate={onDragUpdate}>
+        <FrameLayout
+          dataPanel={
+            <DataPanelWrapper
               datasourceMap={props.datasourceMap}
-              datasourceStates={state.datasourceStates}
-              visualizationMap={props.visualizationMap}
-              activeVisualizationId={state.visualization.activeId}
+              activeDatasource={state.activeDatasourceId}
+              datasourceState={
+                state.activeDatasourceId
+                  ? state.datasourceStates[state.activeDatasourceId].state
+                  : null
+              }
+              datasourceIsLoading={
+                state.activeDatasourceId
+                  ? state.datasourceStates[state.activeDatasourceId].isLoading
+                  : true
+              }
               dispatch={dispatch}
-              visualizationState={state.visualization.state}
-              framePublicAPI={framePublicAPI}
               core={props.core}
+              query={props.query}
+              dateRange={props.dateRange}
+              filters={props.filters}
+              showNoDataPopover={props.showNoDataPopover}
             />
-          )
-        }
-        workspacePanel={
-          allLoaded && (
-            <WorkspacePanel
-              title={state.title}
-              activeDatasourceId={state.activeDatasourceId}
-              activeVisualizationId={state.visualization.activeId}
-              datasourceMap={props.datasourceMap}
-              datasourceStates={state.datasourceStates}
-              framePublicAPI={framePublicAPI}
-              visualizationState={state.visualization.state}
-              visualizationMap={props.visualizationMap}
-              dispatch={dispatch}
-              ExpressionRenderer={props.ExpressionRenderer}
-              core={props.core}
-              plugins={props.plugins}
-              visualizeTriggerFieldContext={visualizeTriggerFieldContext}
-            />
-          )
-        }
-        suggestionsPanel={
-          allLoaded && (
-            <SuggestionPanel
-              frame={framePublicAPI}
-              activeDatasourceId={state.activeDatasourceId}
-              activeVisualizationId={state.visualization.activeId}
-              datasourceMap={props.datasourceMap}
-              datasourceStates={state.datasourceStates}
-              visualizationState={state.visualization.state}
-              visualizationMap={props.visualizationMap}
-              dispatch={dispatch}
-              ExpressionRenderer={props.ExpressionRenderer}
-              stagedPreview={state.stagedPreview}
-              plugins={props.plugins}
-            />
-          )
-        }
-      />
+          }
+          configPanel={
+            allLoaded && (
+              <ConfigPanelWrapper
+                activeDatasourceId={state.activeDatasourceId!}
+                datasourceMap={props.datasourceMap}
+                datasourceStates={state.datasourceStates}
+                visualizationMap={props.visualizationMap}
+                activeVisualizationId={state.visualization.activeId}
+                dispatch={dispatch}
+                visualizationState={state.visualization.state}
+                framePublicAPI={framePublicAPI}
+                core={props.core}
+              />
+            )
+          }
+          workspacePanel={
+            allLoaded && (
+              <WorkspacePanel
+                title={state.title}
+                activeDatasourceId={state.activeDatasourceId}
+                activeVisualizationId={state.visualization.activeId}
+                datasourceMap={props.datasourceMap}
+                datasourceStates={state.datasourceStates}
+                framePublicAPI={framePublicAPI}
+                visualizationState={state.visualization.state}
+                visualizationMap={props.visualizationMap}
+                dispatch={dispatch}
+                ExpressionRenderer={props.ExpressionRenderer}
+                core={props.core}
+                plugins={props.plugins}
+                visualizeTriggerFieldContext={visualizeTriggerFieldContext}
+              />
+            )
+          }
+          suggestionsPanel={
+            allLoaded && (
+              <SuggestionPanel
+                frame={framePublicAPI}
+                activeDatasourceId={state.activeDatasourceId}
+                activeVisualizationId={state.visualization.activeId}
+                datasourceMap={props.datasourceMap}
+                datasourceStates={state.datasourceStates}
+                visualizationState={state.visualization.state}
+                visualizationMap={props.visualizationMap}
+                dispatch={dispatch}
+                ExpressionRenderer={props.ExpressionRenderer}
+                stagedPreview={state.stagedPreview}
+                plugins={props.plugins}
+              />
+            )
+          }
+        />
+      </EuiDragDropContext>
     </RootDragDropProvider>
   );
 }

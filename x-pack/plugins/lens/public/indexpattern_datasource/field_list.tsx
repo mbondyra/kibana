@@ -135,9 +135,10 @@ export function FieldList({
         {Object.entries(fieldGroups)
           .filter(([, { showInAccordion }]) => !showInAccordion)
           .flatMap(([, { fields }]) =>
-            fields.map((field) => (
+            fields.map((field, index) => (
               <FieldItem
                 {...fieldProps}
+                index={index}
                 exists={exists(field)}
                 field={field}
                 hideDetails={true}

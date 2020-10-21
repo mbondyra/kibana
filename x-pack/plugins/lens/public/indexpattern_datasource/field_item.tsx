@@ -20,6 +20,7 @@ import {
   EuiProgress,
   EuiText,
   EuiToolTip,
+  EuiDraggable,
 } from '@elastic/eui';
 import {
   Axis,
@@ -194,27 +195,29 @@ export const InnerFieldItem = function InnerFieldItem(props: FieldItemProps) {
           data-test-subj={`lnsFieldListPanelField-${field.name}`}
           draggable
         >
-          <FieldButton
-            className={`lnsFieldItem lnsFieldItem--${field.type} lnsFieldItem--${
-              exists ? 'exists' : 'missing'
-            }`}
-            isActive={infoIsOpen}
-            onClick={togglePopover}
-            aria-label={i18n.translate('xpack.lens.indexPattern.fieldStatsButtonAriaLabel', {
-              defaultMessage: '{fieldName}: {fieldType}. Hit enter for a field preview.',
-              values: {
-                fieldName: field.displayName,
-                fieldType: field.type,
-              },
-            })}
-            fieldIcon={lensFieldIcon}
-            fieldName={
-              <EuiHighlight search={wrapOnDot(highlight)}>
-                {wrapOnDot(field.displayName)}
-              </EuiHighlight>
-            }
-            fieldInfoIcon={lensInfoIcon}
-          />
+          <EuiDraggable disableInteractiveElementBlocking index={field.index} cloneDraggables>
+            <FieldButton
+              className={`lnsFieldItem lnsFieldItem--${field.type} lnsFieldItem--${
+                exists ? 'exists' : 'missing'
+              }`}
+              isActive={infoIsOpen}
+              onClick={togglePopover}
+              aria-label={i18n.translate('xpack.lens.indexPattern.fieldStatsButtonAriaLabel', {
+                defaultMessage: '{fieldName}: {fieldType}. Hit enter for a field preview.',
+                values: {
+                  fieldName: field.displayName,
+                  fieldType: field.type,
+                },
+              })}
+              fieldIcon={lensFieldIcon}
+              fieldName={
+                <EuiHighlight search={wrapOnDot(highlight)}>
+                  {wrapOnDot(field.displayName)}
+                </EuiHighlight>
+              }
+              fieldInfoIcon={lensInfoIcon}
+            />
+          </EuiDraggable>
         </DragDrop>
       }
       isOpen={infoIsOpen}
