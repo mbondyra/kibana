@@ -63,6 +63,16 @@
   border: none;
 }
 
+.lnsDragDrop-isReorderDraggingDrop {
+  background: blue; 
+  opacity: 0.3;
+  border: none;
+  position: absolute;
+  width: 100%;
+  top: 0;
+  height: calc(100% + 4px); // this is very stiff, depends on the padding
+}
+
 .lnsDragDrop-isReordable {
   transition: transform $euiAnimSpeedFast ease-in-out;
   opacity: 1;

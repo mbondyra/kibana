@@ -8,7 +8,7 @@ import './drag_drop.scss';
 
 import React, { useState, useContext } from 'react';
 import classNames from 'classnames';
-import { DragContext } from './providers';
+import { DragContext, DragContextState, ReorderContext } from './providers';
 import { trackUiEvent } from '../lens_ui_telemetry';
 
 type DroppableEvent = React.DragEvent<HTMLElement>;
@@ -183,12 +183,17 @@ const DragDropInner = React.memo(function DragDropInner(
     isNotDroppable,
     dragType = 'copy',
     dropType = 'add',
+    id,
+    itemsInGroup,
   } = props;
 
   const isMoveDragging = isDragging && dragType === 'move';
   // const isReorderDragging = isDragging && dragType === 'reorder';   //todo
   // const isDropSameGroup 
   // 
+  const reorderContext = useContext(ReorderContext);
+  const reorderState = reorderContext?.reorderState;
+  const setReorderState = reorderContext?.setReorderState;
 
   const classes = classNames(
     'lnsDragDrop',
@@ -202,11 +207,25 @@ const DragDropInner = React.memo(function DragDropInner(
       'lnsDragDrop-isNotDroppable': !isMoveDragging && isNotDroppable,
       'lnsDragDrop-isReplacing': droppable && state.isActive && dropType === 'replace',
       'lnsDragDrop-isReorderHiddenDrop': !state.isActive && dropType === 'reorder',
-      'lnsDragDrop-isActiveReorderHiddenDrop': droppable && dropType === 'reorder',
+      'lnsDragDrop-isReordable': draggable && dragType === 'reorder',
+    },
+    reorderState && {
+      [reorderState.className]: dragType === 'reorder' && reorderState?.movedElements.includes(id),
     },
     className,
     state.dragEnterClassNames
   );
+
+  if (props.id === '61e88781-1f47-422f-8d05-d8398ab5a60b') {
+    console.log(
+      reorderState,
+      classNames('lnsDragDrop', {
+        'lnsDragDrop-isReorderDraggingDrop': dragging && !state.isActive,
+        'lnsDragDrop-isActiveReorderHiddenDrop': dragging && droppable && state.isActive,
+      }),
+      classNames(children.props.className, classes)
+    );
+  }
 
   const dragStart = (e: DroppableEvent) => {
     // Setting stopPropgagation causes Chrome failures, so
@@ -249,6 +268,25 @@ const DragDropInner = React.memo(function DragDropInner(
       if (onDragOver) {
         onDragOver(e);
       }
+      if (!dragging) {
+        return;
+      }
+      if (dropType === 'reorder') {
+        const order = itemsInGroup;
+        const draggingIndex = order.indexOf(dragging.id);
+        const droppingIndex = order.indexOf(id);
+        let newReorderState = {
+          movedElements: order.slice(draggingIndex + 1, droppingIndex + 1),
+          className: 'lnsDragDrop-isReordable--up',
+        };
+        if (draggingIndex > droppingIndex) {
+          newReorderState = {
+            movedElements: order.slice(droppingIndex, draggingIndex),
+            className: 'lnsDragDrop-isReordable--down',
+          };
+        }
+        setReorderState(newReorderState);
+      }
     }
   };
 
@@ -257,6 +295,12 @@ const DragDropInner = React.memo(function DragDropInner(
       onDragLeave();
     }
     setState({ ...state, isActive: false, dragEnterClassNames: '' });
+    if (dropType === 'reorder') {
+      setReorderState({
+        ...reorderState,
+        movedElements: [],
+      });
+    }
   };
 
   const drop = (e: DroppableEvent) => {
@@ -272,6 +316,30 @@ const DragDropInner = React.memo(function DragDropInner(
     }
   };
 
+  if (droppable && dropType === 'reorder') {
+    return (
+      <div
+        data-test-subj={props['data-test-subj'] || 'lnsDragDrop'}
+        style={{ position: 'relative' }}
+      >
+        {React.cloneElement(children, {
+          className: classNames(children.props.className, classes),
+          draggable,
+          onDragEnd: dragEnd,
+          onDragStart: dragStart,
+        })}
+        <div
+          onDrop={drop}
+          onDragOver={dragOver}
+          onDragLeave={dragLeave}
+          className={classNames('lnsDragDrop', {
+            'lnsDragDrop-isReorderDraggingDrop': dragging && !state.isActive,
+            'lnsDragDrop-isActiveReorderHiddenDrop': dragging && droppable && state.isActive,
+          })}
+        />
+      </div>
+    );
+  }
   return React.cloneElement(children, {
     'data-test-subj': props['data-test-subj'] || 'lnsDragDrop',
     className: classNames(children.props.className, classes),

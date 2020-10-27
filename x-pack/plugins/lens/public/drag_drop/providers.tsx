@@ -84,3 +84,33 @@ export function ChildDragDropProvider({ dragging, setDragging, children }: Provi
   const value = useMemo(() => ({ dragging, setDragging }), [setDragging, dragging]);
   return <DragContext.Provider value={value}>{children}</DragContext.Provider>;
 }
+
+export interface ReorderContextState {
+  reorderState: {
+    /**
+     * Ids of the elements that are translated up or down
+     */
+    movedElements: string[];
+
+    /**
+     * The direction of translation
+     */
+    className: 'lnsDragDrop-isReordable--down' | 'lnsDragDrop-isReordable--up';
+  };
+  setReorderState: () => void;
+}
+
+export const ReorderContext = React.createContext();
+
+export function ReorderProvider({ children }: { children: React.ReactNode }) {
+  const [reorderState, setReorderState] = useState({
+    movedElements: [],
+    className: 'lnsDragDrop-isReordable--down',
+  });
+
+  return (
+    <ReorderContext.Provider value={{ reorderState, setReorderState }}>
+      {children}
+    </ReorderContext.Provider>
+  );
+}
