@@ -88,6 +88,7 @@ export function DraggableDimensionButton({
         groupLabel: group.groupLabel,
         position: accessorIndex + 1,
         nextLabel: nextLabel || '',
+        showBarOnDrag: true,
       },
     }),
     [columnId, group.groupId, accessorIndex, layerId, dropType, label, group.groupLabel, nextLabel]

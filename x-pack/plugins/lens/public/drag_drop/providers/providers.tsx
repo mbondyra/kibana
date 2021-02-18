@@ -8,6 +8,7 @@
 import React, { useState, useMemo } from 'react';
 import { EuiScreenReaderOnly, EuiPortal } from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
+import { BottomBar } from './bottom_bar';
 import {
   DropIdentifier,
   DraggingIdentifier,
@@ -122,6 +123,9 @@ export function RootDragDropProvider({ children }: { children: React.ReactNode }
           </div>
         </EuiScreenReaderOnly>
       </EuiPortal>
+      {draggingState.dragging?.humanData.showBarOnDrag && (
+        <BottomBar dragging={draggingState.dragging} activeDropTarget={activeDropTargetState} />
+      )}
     </div>
   );
 }

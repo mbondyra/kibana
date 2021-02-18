@@ -12,6 +12,7 @@ export interface HumanData {
   groupLabel?: string;
   position?: number;
   nextLabel?: string;
+  showBarOnDrag?: boolean;
 }
 
 export type DragDropIdentifier = Record<string, unknown> & {
