@@ -444,7 +444,7 @@ describe('LayerPanel', () => {
       });
 
       mockDatasource.getDropProps.mockReturnValue({
-        dropType: 'field_add',
+        dropTypes: ['field_add'],
         nextLabel: '',
       });
 
@@ -495,7 +495,7 @@ describe('LayerPanel', () => {
       });
 
       mockDatasource.getDropProps.mockImplementation(({ columnId }) =>
-        columnId !== 'a' ? { dropType: 'field_replace', nextLabel: '' } : undefined
+        columnId !== 'a' ? { dropType: ['field_replace'], nextLabel: '' } : undefined
       );
 
       const draggingField = {
@@ -557,7 +557,7 @@ describe('LayerPanel', () => {
       });
 
       mockDatasource.getDropProps.mockReturnValue({
-        dropType: 'replace_compatible',
+        dropType: ['replace_compatible'],
         nextLabel: '',
       });
 
