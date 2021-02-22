@@ -425,37 +425,41 @@ export const InnerVisualizationWrapper = ({
     }
 
     return (
-      <EuiFlexGroup
-        style={{ maxWidth: '100%' }}
-        direction="column"
-        alignItems="center"
-        data-test-subj="configuration-failure"
-      >
-        <EuiFlexItem>
-          <EuiIcon type="alert" size="xl" color="danger" />
-        </EuiFlexItem>
-        <EuiFlexItem className="eui-textBreakAll" data-test-subj="configuration-failure-error">
-          {localState.configurationValidationError[0].longMessage}
-        </EuiFlexItem>
-        {showExtraErrors}
-      </EuiFlexGroup>
+      <div>
+        <EuiFlexGroup
+          style={{ maxWidth: '100%' }}
+          direction="column"
+          alignItems="center"
+          data-test-subj="configuration-failure"
+        >
+          <EuiFlexItem>
+            <EuiIcon type="alert" size="xl" color="danger" />
+          </EuiFlexItem>
+          <EuiFlexItem className="eui-textBreakAll" data-test-subj="configuration-failure-error">
+            {localState.configurationValidationError[0].longMessage}
+          </EuiFlexItem>
+          {showExtraErrors}
+        </EuiFlexGroup>
+      </div>
     );
   }
 
   if (localState.expressionBuildError?.length) {
     return (
-      <EuiFlexGroup style={{ maxWidth: '100%' }} direction="column" alignItems="center">
-        <EuiFlexItem>
-          <EuiIcon type="alert" size="xl" color="danger" />
-        </EuiFlexItem>
-        <EuiFlexItem data-test-subj="expression-failure">
-          <FormattedMessage
-            id="xpack.lens.editorFrame.expressionFailure"
-            defaultMessage="An error occurred in the expression"
-          />
-        </EuiFlexItem>
-        <EuiFlexItem grow={false}>{localState.expressionBuildError[0].longMessage}</EuiFlexItem>
-      </EuiFlexGroup>
+      <div>
+        <EuiFlexGroup style={{ maxWidth: '100%' }} direction="column" alignItems="center">
+          <EuiFlexItem>
+            <EuiIcon type="alert" size="xl" color="danger" />
+          </EuiFlexItem>
+          <EuiFlexItem data-test-subj="expression-failure">
+            <FormattedMessage
+              id="xpack.lens.editorFrame.expressionFailure"
+              defaultMessage="An error occurred in the expression"
+            />
+          </EuiFlexItem>
+          <EuiFlexItem grow={false}>{localState.expressionBuildError[0].longMessage}</EuiFlexItem>
+        </EuiFlexGroup>
+      </div>
     );
   }
 
