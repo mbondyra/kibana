@@ -396,7 +396,6 @@ export const InnerVisualizationWrapper = ({
           .map(({ longMessage }) => (
             <EuiFlexItem
               key={longMessage}
-              className="eui-textBreakAll"
               data-test-subj="configuration-failure-error"
               grow={false}
             >
@@ -427,16 +426,17 @@ export const InnerVisualizationWrapper = ({
 
     return (
       <EuiFlexGroup
-        style={{ maxWidth: '100%', height: '100%' }}
+        style={{ maxWidth: '100%', height: '100%', textAlign: 'center', padding: 12 }}
         alignItems="center"
         data-test-subj="configuration-failure"
+        gutterSize="none"
       >
         <EuiFlexItem>
           <EuiFlexGroup alignItems="center" direction="column">
             <EuiFlexItem>
               <EuiIcon type="alert" size="xl" color="danger" />
             </EuiFlexItem>
-            <EuiFlexItem className="eui-textBreakAll" data-test-subj="configuration-failure-error">
+            <EuiFlexItem data-test-subj="configuration-failure-error">
               {localState.configurationValidationError[0].longMessage}
             </EuiFlexItem>
             {showExtraErrors}
@@ -495,7 +495,7 @@ export const InnerVisualizationWrapper = ({
                     />
                   </EuiFlexItem>
                   {visibleErrorMessage ? (
-                    <EuiFlexItem className="eui-textBreakAll" grow={false}>
+                    <EuiFlexItem grow={false}>
                       <EuiButtonEmpty
                         onClick={() => {
                           setLocalState((prevState: WorkspaceState) => ({
