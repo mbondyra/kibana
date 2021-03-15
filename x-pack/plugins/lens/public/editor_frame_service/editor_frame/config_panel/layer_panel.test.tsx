@@ -495,7 +495,7 @@ describe('LayerPanel', () => {
       });
 
       mockDatasource.getDropProps.mockImplementation(({ columnId }) =>
-        columnId !== 'a' ? { dropType: ['field_replace'], nextLabel: '' } : undefined
+        columnId !== 'a' ? { dropTypes: ['field_replace'], nextLabel: '' } : undefined
       );
 
       const draggingField = {
@@ -557,7 +557,7 @@ describe('LayerPanel', () => {
       });
 
       mockDatasource.getDropProps.mockReturnValue({
-        dropType: ['replace_compatible'],
+        dropTypes: ['replace_compatible'],
         nextLabel: '',
       });
 
@@ -595,7 +595,7 @@ describe('LayerPanel', () => {
       );
 
       // Simulate drop on the empty dimension
-      component.find('[data-test-subj="lnsGroupB"] DragDrop .lnsDragDrop').at(1).simulate('drop');
+      component.find('[data-test-subj="lnsGroupB"] DragDrop .lnsDragDrop').at(2).simulate('drop');
       expect(mockDatasource.onDrop).toHaveBeenCalledWith(
         expect.objectContaining({
           columnId: 'newid',
@@ -686,12 +686,12 @@ describe('LayerPanel', () => {
         </ChildDragDropProvider>
       );
       act(() => {
-        component.find(DragDrop).at(2).prop('onDrop')!(draggingOperation, 'duplicate_in_group');
+        component.find(DragDrop).at(2).prop('onDrop')!(draggingOperation, 'duplicate_compatible');
       });
       expect(mockDatasource.onDrop).toHaveBeenCalledWith(
         expect.objectContaining({
           columnId: 'newid',
-          dropType: 'duplicate_in_group',
+          dropType: 'duplicate_compatible',
           droppedItem: draggingOperation,
         })
       );
