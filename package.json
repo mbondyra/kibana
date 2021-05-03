@@ -604,6 +604,7 @@
     "@types/recompose": "^0.30.6",
     "@types/reduce-reducers": "^1.0.0",
     "@types/redux-actions": "^2.6.1",
+    "@types/redux-logger": "^3.0.8",
     "@types/request": "^2.48.2",
     "@types/seedrandom": ">=2.0.0 <4.0.0",
     "@types/selenium-webdriver": "^4.0.9",
