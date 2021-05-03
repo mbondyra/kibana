@@ -471,8 +471,9 @@ export function App({
   const lastKnownDocRef = useRef(state.lastKnownDoc);
   lastKnownDocRef.current = state.lastKnownDoc;
 
-  const activeDataRef = useRef(state.activeData);
-  activeDataRef.current = state.activeData;
+
+  const activeDataRef = useRef(appState.activeData);
+  activeDataRef.current = appState.activeData;
 
   const { TopNavMenu } = navigation.ui;
 
@@ -493,7 +494,7 @@ export function App({
         (dashboardFeatureFlag.allowByValueEmbeddables || Boolean(initialInput))
     ),
     enableExportToCSV: Boolean(
-      appState.isSaveable && state.activeData && Object.keys(state.activeData).length
+      appState.isSaveable && appState.activeData && Object.keys(appState.activeData).length
     ),
     isByValueMode: getIsByValueMode(),
     allowByValue: dashboardFeatureFlag.allowByValueEmbeddables,
@@ -502,10 +503,10 @@ export function App({
     savingToDashboardPermitted,
     actions: {
       exportToCSV: () => {
-        if (!state.activeData) {
+        if (!appState.activeData) {
           return;
         }
-        const datatables = Object.values(state.activeData);
+        const datatables = Object.values(appState.activeData);
         const content = datatables.reduce<Record<string, { content: string; type: string }>>(
           (memo, datatable, i) => {
             // skip empty datatables
@@ -744,7 +745,7 @@ const MemoizedEditorFrameWrapper = React.memo(function EditorFrameWrapper({
             setState((s) => ({ ...s, lastKnownDoc: doc }));
           }
           if (!_.isEqual(activeDataRef.current, activeData)) {
-            setState((s) => ({ ...s, activeData }));
+            setStateRedux({ activeData });
           }
 
           // Update the cached index patterns if the user made a change to any of them
