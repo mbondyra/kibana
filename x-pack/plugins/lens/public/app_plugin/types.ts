@@ -64,6 +64,12 @@ export interface LensAppState {
   searchSessionId: string;
 }
 
+export type DispatchSetState = (state: Partial<LensAppState>) => {
+  payload: Partial<LensAppState>;
+  type: string;
+}
+
+
 export interface RedirectToOriginProps {
   input?: LensEmbeddableInput;
   isCopied?: boolean;

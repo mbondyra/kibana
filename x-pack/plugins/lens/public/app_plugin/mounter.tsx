@@ -35,7 +35,7 @@ import { LensAttributeService } from '../lens_attribute_service';
 import { LensAppServices, RedirectToOriginProps, HistoryLocationState } from './types';
 import { KibanaContextProvider } from '../../../../../src/plugins/kibana_react/public';
 import { Provider } from 'react-redux';
-import { lensStore, startSession, setFilters, setState } from './redux-toolkit';
+import { lensStore, setStateM } from './redux-toolkit';
 
 export async function mountApp(
   core: CoreSetup<LensPluginStartDependencies, void>,
@@ -164,6 +164,66 @@ export async function mountApp(
   if (!initialContext) {
     data.query.filterManager.setAppFilters([]);
   }
+   const startSession = () => data.search.session.start();
+
+  const appState = lensStore.getState().app;
+
+  const sessionSubscription = data.search.session
+    .getSession$()
+    // wait for a tick to filter/timerange subscribers the chance to update the session id in the state
+    .pipe(delay(0))
+    // then update if it didn't get updated yet
+    .subscribe((newSessionId) => {
+      if (newSessionId && appState.searchSessionId !== newSessionId) {
+        console.log(
+          `%c sessionSubscription ${newSessionId} ${appState.searchSessionId}`,
+          'background: #222; color: #bada55'
+        );
+        lensStore.dispatch(
+          setStateM({
+            searchSessionId: newSessionId,
+          })
+        );
+      }
+    });
+
+  const filterSubscription = data.query.filterManager.getUpdates$().subscribe({
+    next: () => {
+      lensStore.dispatch(
+        setStateM({
+          searchSessionId: startSession(),
+          filters: data.query.filterManager.getFilters(),
+        })
+      );
+      trackUiEvent('app_filters_updated');
+      console.log('%c filterSubscription ', 'background: #222; color: #bada55');
+    },
+  });
+
+  const timeSubscription = data.query.timefilter.timefilter.getTimeUpdate$().subscribe({
+    next: () => {
+      lensStore.dispatch(setStateM({ searchSessionId: startSession() }));
+
+      console.log('%c timeSubscription ', 'background: #222; color: #bada55');
+    },
+  });
+
+  const autoRefreshSubscription = data.query.timefilter.timefilter
+    .getAutoRefreshFetch$()
+    .pipe(
+      tap(() => {
+        lensStore.dispatch(setStateM({ searchSessionId: startSession() }));
+        console.log(
+          '%c timeautoRefreshSubscriptionSubscription ',
+          'background: #222; color: #bada55'
+        );
+      }),
+      switchMap((done) =>
+        // best way in lens to estimate that all panels are updated is to rely on search session service state
+        waitUntilNextSessionCompletes$(data.search.session).pipe(finalize(done))
+      )
+    )
+    .subscribe();
 
   // const featureFlagConfig = await getByValueFeatureFlag();
   const EditorRenderer = React.memo(
@@ -183,7 +243,7 @@ export async function mountApp(
       );
       // todo move to place where it's not rerendering
       lensStore.dispatch(
-        setState({
+        setStateM({
           isLoading: Boolean(initialInput),
           isLinkedToOriginatingApp: Boolean(embeddableEditorIncomingState?.originatingApp),
           searchSessionId: data.search.session.start(),
@@ -239,49 +299,7 @@ export async function mountApp(
 
   const PresentationUtilContext = await getPresentationUtilContext();
 
-  const startSession = () => data.search.session.start();
-
-  const filterSubscription = data.query.filterManager.getUpdates$().subscribe({
-    next: () => {
-      lensStore.dispatch(
-        setState({
-          searchSessionId: startSession(),
-          filters: data.query.filterManager.getFilters(),
-        })
-      );
-      trackUiEvent('app_filters_updated');
-    },
-  });
-
-  const timeSubscription = data.query.timefilter.timefilter.getTimeUpdate$().subscribe({
-    next: () => lensStore.dispatch(setState({ searchSessionId: startSession() })),
-  });
-
-  const autoRefreshSubscription = data.query.timefilter.timefilter
-    .getAutoRefreshFetch$()
-    .pipe(
-      tap(() => lensStore.dispatch(setState({ searchSessionId: startSession() }))),
-      switchMap((done) =>
-        // best way in lens to estimate that all panels are updated is to rely on search session service state
-        waitUntilNextSessionCompletes$(data.search.session).pipe(finalize(done))
-      )
-    )
-    .subscribe();
-
-  const sessionSubscription = data.search.session
-    .getSession$()
-    // wait for a tick to filter/timerange subscribers the chance to update the session id in the state
-    .pipe(delay(0))
-    // then update if it didn't get updated yet
-    .subscribe((newSessionId) => {
-      if (newSessionId && lensStore.getState().app.searchSessionId !== newSessionId) {
-        lensStore.dispatch(
-          setState({
-            searchSessionId: newSessionId,
-          })
-        );
-      }
-    });
+ 
 
   render(
     <I18nProvider>
