@@ -7,13 +7,14 @@
 
 import React, { FC, useCallback } from 'react';
 
+import { delay, finalize, switchMap, tap } from 'rxjs/operators';
 import { AppMountParameters, CoreSetup } from 'kibana/public';
 import { FormattedMessage, I18nProvider } from '@kbn/i18n/react';
 import { HashRouter, Route, RouteComponentProps, Switch } from 'react-router-dom';
 import { History } from 'history';
 import { render, unmountComponentAtNode } from 'react-dom';
 import { i18n } from '@kbn/i18n';
-
+import { waitUntilNextSessionCompletes$ } from '../../../../../src/plugins/data/public';
 import { DashboardFeatureFlagConfig } from 'src/plugins/dashboard/public';
 import { Storage } from '../../../../../src/plugins/kibana_utils/public';
 
@@ -33,6 +34,8 @@ import { ACTION_VISUALIZE_LENS_FIELD } from '../../../../../src/plugins/ui_actio
 import { LensAttributeService } from '../lens_attribute_service';
 import { LensAppServices, RedirectToOriginProps, HistoryLocationState } from './types';
 import { KibanaContextProvider } from '../../../../../src/plugins/kibana_react/public';
+import { Provider } from 'react-redux';
+import { lensStore, startSession, setFilters, setState } from './redux-toolkit';
 
 export async function mountApp(
   core: CoreSetup<LensPluginStartDependencies, void>,
@@ -150,6 +153,18 @@ export async function mountApp(
     }
   };
 
+  const initialContext =
+    historyLocationState && historyLocationState.type === ACTION_VISUALIZE_LENS_FIELD
+      ? historyLocationState.payload
+      : undefined;
+
+  // Clear app-specific filters when navigating to Lens. Necessary because Lens
+  // can be loaded without a full page refresh. If the user navigates to Lens from Discover
+  // we keep the filters
+  if (!initialContext) {
+    data.query.filterManager.setAppFilters([]);
+  }
+
   // const featureFlagConfig = await getByValueFeatureFlag();
   const EditorRenderer = React.memo(
     (props: { id?: string; history: History<unknown>; editByValue?: boolean }) => {
@@ -160,22 +175,39 @@ export async function mountApp(
         [props.history]
       );
       trackUiEvent('loaded');
+      const initialInput = getInitialInput(props.id, props.editByValue);
+      console.log('initialInput', initialInput);
+      console.log(
+        'isLinkedToOriginatingApp',
+        Boolean(embeddableEditorIncomingState?.originatingApp)
+      );
+      // todo move to place where it's not rerendering
+      lensStore.dispatch(
+        setState({
+          isLoading: Boolean(initialInput),
+          isLinkedToOriginatingApp: Boolean(embeddableEditorIncomingState?.originatingApp),
+          searchSessionId: data.search.session.start(),
+          // Do not use app-specific filters from previous app,
+          // only if Lens was opened with the intention to visualize a field (e.g. coming from Discover)
+          filters: !initialContext
+            ? data.query.filterManager.getGlobalFilters()
+            : data.query.filterManager.getFilters(),
+          query: data.query.queryString.getQuery(),
+        })
+      );
+
       return (
         <App
           incomingState={embeddableEditorIncomingState}
           editorFrame={instance}
-          initialInput={getInitialInput(props.id, props.editByValue)}
+          initialInput={initialInput}
           redirectTo={redirectCallback}
           redirectToOrigin={redirectToOrigin}
           redirectToDashboard={redirectToDashboard}
           onAppLeave={params.onAppLeave}
           setHeaderActionMenu={params.setHeaderActionMenu}
           history={props.history}
-          initialContext={
-            historyLocationState && historyLocationState.type === ACTION_VISUALIZE_LENS_FIELD
-              ? historyLocationState.payload
-              : undefined
-          }
+          initialContext={initialContext}
         />
       );
     }
@@ -207,23 +239,69 @@ export async function mountApp(
 
   const PresentationUtilContext = await getPresentationUtilContext();
 
+  const startSession = () => data.search.session.start();
+
+  const filterSubscription = data.query.filterManager.getUpdates$().subscribe({
+    next: () => {
+      lensStore.dispatch(
+        setState({
+          searchSessionId: startSession(),
+          filters: data.query.filterManager.getFilters(),
+        })
+      );
+      trackUiEvent('app_filters_updated');
+    },
+  });
+
+  const timeSubscription = data.query.timefilter.timefilter.getTimeUpdate$().subscribe({
+    next: () => lensStore.dispatch(setState({ searchSessionId: startSession() })),
+  });
+
+  const autoRefreshSubscription = data.query.timefilter.timefilter
+    .getAutoRefreshFetch$()
+    .pipe(
+      tap(() => lensStore.dispatch(setState({ searchSessionId: startSession() }))),
+      switchMap((done) =>
+        // best way in lens to estimate that all panels are updated is to rely on search session service state
+        waitUntilNextSessionCompletes$(data.search.session).pipe(finalize(done))
+      )
+    )
+    .subscribe();
+
+  const sessionSubscription = data.search.session
+    .getSession$()
+    // wait for a tick to filter/timerange subscribers the chance to update the session id in the state
+    .pipe(delay(0))
+    // then update if it didn't get updated yet
+    .subscribe((newSessionId) => {
+      if (newSessionId && lensStore.getState().app.searchSessionId !== newSessionId) {
+        lensStore.dispatch(
+          setState({
+            searchSessionId: newSessionId,
+          })
+        );
+      }
+    });
+
   render(
     <I18nProvider>
       <KibanaContextProvider services={lensServices}>
-        <PresentationUtilContext>
-          <HashRouter>
-            <Switch>
-              <Route exact path="/edit/:id" component={EditorRoute} />
-              <Route
-                exact
-                path={`/${LENS_EDIT_BY_VALUE}`}
-                render={(routeProps) => <EditorRoute {...routeProps} editByValue />}
-              />
-              <Route exact path="/" component={EditorRoute} />
-              <Route path="/" component={NotFound} />
-            </Switch>
-          </HashRouter>
-        </PresentationUtilContext>
+        <Provider store={lensStore}>
+          <PresentationUtilContext>
+            <HashRouter>
+              <Switch>
+                <Route exact path="/edit/:id" component={EditorRoute} />
+                <Route
+                  exact
+                  path={`/${LENS_EDIT_BY_VALUE}`}
+                  render={(routeProps) => <EditorRoute {...routeProps} editByValue />}
+                />
+                <Route exact path="/" component={EditorRoute} />
+                <Route path="/" component={NotFound} />
+              </Switch>
+            </HashRouter>
+          </PresentationUtilContext>
+        </Provider>
       </KibanaContextProvider>
     </I18nProvider>,
     params.element
@@ -233,5 +311,10 @@ export async function mountApp(
     instance.unmount();
     unmountComponentAtNode(params.element);
     unlistenParentHistory();
+
+    filterSubscription.unsubscribe();
+    timeSubscription.unsubscribe();
+    autoRefreshSubscription.unsubscribe();
+    sessionSubscription.unsubscribe();
   };
 }

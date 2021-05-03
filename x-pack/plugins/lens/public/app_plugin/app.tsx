@@ -51,6 +51,8 @@ import {
 } from '../editor_frame_service/embeddable/embeddable';
 import { useTimeRange } from './time_range';
 import { EditorFrameInstance } from '../types';
+import { setState as setStateRedux } from './redux-toolkit';
+import { useSelector, useDispatch } from 'react-redux';
 
 export function App({
   history,
@@ -84,48 +86,37 @@ export function App({
 
   const startSession = useCallback(() => data.search.session.start(), [data]);
 
-  const [state, setState] = useState<LensAppState>(() => {
-    return {
-      query: data.query.queryString.getQuery(),
-      // Do not use app-specific filters from previous app,
-      // only if Lens was opened with the intention to visualize a field (e.g. coming from Discover)
-      filters: !initialContext
-        ? data.query.filterManager.getGlobalFilters()
-        : data.query.filterManager.getFilters(),
-      isLoading: Boolean(initialInput),
-      indexPatternsForTopNav: [],
-      isLinkedToOriginatingApp: Boolean(incomingState?.originatingApp),
-      isSaveModalVisible: false,
-      indicateNoData: false,
-      isSaveable: false,
-      searchSessionId: startSession(),
-    };
-  });
+  const [state, setState] = useState<LensAppState>({});
+
+  const dispatch = useDispatch();
+  const appState = useSelector((state) => state.app);
+
+  console.log('appState', appState);
+  console.log('state', state);
 
   const { lastKnownDoc } = state;
 
   const showNoDataPopover = useCallback(() => {
-    setState((prevState) => ({ ...prevState, indicateNoData: true }));
-  }, [setState]);
+    dispatch(setStateRedux({ indicateNoData: true }));
+  }, [setStateRedux]);
 
   useEffect(() => {
-    if (state.indicateNoData) {
-      setState((prevState) => ({ ...prevState, indicateNoData: false }));
+    if (appState.indicateNoData) {
+      dispatch(setStateRedux({ indicateNoData: false }));
     }
   }, [
-    setState,
-    state.indicateNoData,
-    state.query,
-    state.filters,
-    state.indexPatternsForTopNav,
-    state.searchSessionId,
+    appState.indicateNoData,
+    appState.query,
+    appState.filters,
+    appState.indexPatternsForTopNav,
+    appState.searchSessionId,
   ]);
 
   const { resolvedDateRange, from: fromDate, to: toDate } = useTimeRange(
     data,
     state.lastKnownDoc,
     setState,
-    state.searchSessionId
+    appState.searchSessionId
   );
 
   const onError = useCallback(
@@ -161,56 +152,13 @@ export function App({
       Boolean(
         // Temporarily required until the 'by value' paradigm is default.
         dashboardFeatureFlag.allowByValueEmbeddables &&
-          state.isLinkedToOriginatingApp &&
+          appState.isLinkedToOriginatingApp &&
           !(initialInput as LensByReferenceInput)?.savedObjectId
       ),
-    [dashboardFeatureFlag.allowByValueEmbeddables, state.isLinkedToOriginatingApp, initialInput]
+    [dashboardFeatureFlag.allowByValueEmbeddables, appState.isLinkedToOriginatingApp, initialInput]
   );
 
   useEffect(() => {
-    // Clear app-specific filters when navigating to Lens. Necessary because Lens
-    // can be loaded without a full page refresh. If the user navigates to Lens from Discover
-    // we keep the filters
-    if (!initialContext) {
-      data.query.filterManager.setAppFilters([]);
-    }
-
-    const filterSubscription = data.query.filterManager.getUpdates$().subscribe({
-      next: () => {
-        setState((s) => ({
-          ...s,
-          filters: data.query.filterManager.getFilters(),
-          searchSessionId: startSession(),
-        }));
-        trackUiEvent('app_filters_updated');
-      },
-    });
-
-    const timeSubscription = data.query.timefilter.timefilter.getTimeUpdate$().subscribe({
-      next: () => {
-        setState((s) => ({
-          ...s,
-          searchSessionId: startSession(),
-        }));
-      },
-    });
-
-    const autoRefreshSubscription = data.query.timefilter.timefilter
-      .getAutoRefreshFetch$()
-      .pipe(
-        tap(() => {
-          setState((s) => ({
-            ...s,
-            searchSessionId: startSession(),
-          }));
-        }),
-        switchMap((done) =>
-          // best way in lens to estimate that all panels are updated is to rely on search session service state
-          waitUntilNextSessionCompletes$(data.search.session).pipe(finalize(done))
-        )
-      )
-      .subscribe();
-
     const kbnUrlStateStorage = createKbnUrlStateStorage({
       history,
       useHash: uiSettings.get('state:storeInSessionStorage'),
@@ -221,41 +169,10 @@ export function App({
       kbnUrlStateStorage
     );
 
-    const sessionSubscription = data.search.session
-      .getSession$()
-      // wait for a tick to filter/timerange subscribers the chance to update the session id in the state
-      .pipe(delay(0))
-      // then update if it didn't get updated yet
-      .subscribe((newSessionId) => {
-        if (newSessionId) {
-          setState((prevState) => {
-            if (prevState.searchSessionId !== newSessionId) {
-              return { ...prevState, searchSessionId: newSessionId };
-            } else {
-              return prevState;
-            }
-          });
-        }
-      });
-
     return () => {
       stopSyncingQueryServiceStateWithUrl();
-      filterSubscription.unsubscribe();
-      timeSubscription.unsubscribe();
-      autoRefreshSubscription.unsubscribe();
-      sessionSubscription.unsubscribe();
     };
-  }, [
-    data.query.filterManager,
-    data.query.timefilter.timefilter,
-    data.search.session,
-    notifications.toasts,
-    uiSettings,
-    data.query,
-    history,
-    initialContext,
-    startSession,
-  ]);
+  }, [notifications.toasts, uiSettings, data.query, history]);
 
   useEffect(() => {
     onAppLeave((actions) => {
@@ -264,7 +181,7 @@ export function App({
       if (
         application.capabilities.visualize.save &&
         !_.isEqual(state.persistedDoc?.state, getLastKnownDocWithoutPinnedFilters()?.state) &&
-        (state.isSaveable || state.persistedDoc)
+        (appState.isSaveable || state.persistedDoc)
       ) {
         return actions.confirm(
           i18n.translate('xpack.lens.app.unsavedWorkMessage', {
@@ -281,7 +198,7 @@ export function App({
   }, [
     onAppLeave,
     lastKnownDoc,
-    state.isSaveable,
+    appState.isSaveable,
     state.persistedDoc,
     getLastKnownDocWithoutPinnedFilters,
     application.capabilities.visualize.save,
@@ -291,7 +208,7 @@ export function App({
   useEffect(() => {
     const isByValueMode = getIsByValueMode();
     const breadcrumbs: EuiBreadcrumb[] = [];
-    if (state.isLinkedToOriginatingApp && getOriginatingAppName() && redirectToOrigin) {
+    if (appState.isLinkedToOriginatingApp && getOriginatingAppName() && redirectToOrigin) {
       breadcrumbs.push({
         onClick: () => {
           redirectToOrigin();
@@ -323,7 +240,7 @@ export function App({
     chrome.setBreadcrumbs(breadcrumbs);
   }, [
     dashboardFeatureFlag.allowByValueEmbeddables,
-    state.isLinkedToOriginatingApp,
+    appState.isLinkedToOriginatingApp,
     getOriginatingAppName,
     state.persistedDoc,
     redirectToOrigin,
@@ -342,7 +259,7 @@ export function App({
       return;
     }
 
-    setState((s) => ({ ...s, isLoading: true }));
+    dispatch(setStateRedux({ isLoading: true }));
     attributeService
       .unwrapAttributes(initialInput)
       .then((attributes) => {
@@ -373,20 +290,25 @@ export function App({
             );
             setState((s) => ({
               ...s,
-              isLoading: false,
               persistedDoc: doc,
               lastKnownDoc: doc,
-              query: doc.state.query,
-              indexPatternsForTopNav: indexPatterns,
             }));
+
+            dispatch(
+              setStateRedux({
+                isLoading: false,
+                indexPatternsForTopNav: indexPatterns,
+                query: doc.state.query,
+              })
+            );
           })
           .catch((e) => {
-            setState((s) => ({ ...s, isLoading: false }));
+            dispatch(setStateRedux({ isLoading: false }));
             redirectTo();
           });
       })
       .catch((e) => {
-        setState((s) => ({ ...s, isLoading: false }));
+        dispatch(setStateRedux({ isLoading: false }));
         notifications.toasts.addDanger(
           i18n.translate('xpack.lens.app.docLoadingError', {
             defaultMessage: 'Error loading saved document',
@@ -520,11 +442,7 @@ export function App({
           docToSave.title,
           newInput.savedObjectId
         );
-        setState((s) => ({
-          ...s,
-          isSaveModalVisible: false,
-          isLinkedToOriginatingApp: false,
-        }));
+        dispatch(setStateRedux({ isLinkedToOriginatingApp: false, isSaveModalVisible: false }));
         // remove editor state so the connection is still broken after reload
         stateTransfer.clearEditorState(APP_ID);
 
@@ -540,14 +458,13 @@ export function App({
         ...s,
         persistedDoc: newDoc,
         lastKnownDoc: newDoc,
-        isSaveModalVisible: false,
-        isLinkedToOriginatingApp: false,
       }));
+      dispatch(setStateRedux({ isLinkedToOriginatingApp: false, isSaveModalVisible: false }));
     } catch (e) {
       // eslint-disable-next-line no-console
       console.dir(e);
       trackUiEvent('save_failed');
-      setState((s) => ({ ...s, isSaveModalVisible: false }));
+      dispatch(setStateRedux({ isSaveModalVisible: false }));
     }
   };
 
@@ -560,10 +477,10 @@ export function App({
   const { TopNavMenu } = navigation.ui;
 
   const savingToLibraryPermitted = Boolean(
-    state.isSaveable && application.capabilities.visualize.save
+    appState.isSaveable && application.capabilities.visualize.save
   );
   const savingToDashboardPermitted = Boolean(
-    state.isSaveable && application.capabilities.dashboard?.showWriteControls
+    appState.isSaveable && application.capabilities.dashboard?.showWriteControls
   );
 
   const unsavedTitle = i18n.translate('xpack.lens.app.unsavedFilename', {
@@ -571,16 +488,16 @@ export function App({
   });
   const topNavConfig = getLensTopNavConfig({
     showSaveAndReturn: Boolean(
-      state.isLinkedToOriginatingApp &&
+      appState.isLinkedToOriginatingApp &&
         // Temporarily required until the 'by value' paradigm is default.
         (dashboardFeatureFlag.allowByValueEmbeddables || Boolean(initialInput))
     ),
     enableExportToCSV: Boolean(
-      state.isSaveable && state.activeData && Object.keys(state.activeData).length
+      appState.isSaveable && state.activeData && Object.keys(state.activeData).length
     ),
     isByValueMode: getIsByValueMode(),
     allowByValue: dashboardFeatureFlag.allowByValueEmbeddables,
-    showCancel: Boolean(state.isLinkedToOriginatingApp),
+    showCancel: Boolean(appState.isLinkedToOriginatingApp),
     savingToLibraryPermitted,
     savingToDashboardPermitted,
     actions: {
@@ -634,7 +551,7 @@ export function App({
       },
       showSaveModal: () => {
         if (savingToDashboardPermitted || savingToLibraryPermitted) {
-          setState((s) => ({ ...s, isSaveModalVisible: true }));
+          dispatch(setStateRedux({ isSaveModalVisible: true }));
         }
       },
       cancel: () => {
@@ -655,9 +572,9 @@ export function App({
           showDatePicker={true}
           showQueryBar={true}
           showFilterBar={true}
-          indexPatterns={state.indexPatternsForTopNav}
+          indexPatterns={appState.indexPatternsForTopNav}
           showSaveQuery={Boolean(application.capabilities.visualize.saveQuery)}
-          savedQuery={state.savedQuery}
+          savedQuery={appState.savedQuery}
           data-test-subj="lnsApp_topNav"
           screenTitle={'lens'}
           appName={'lens'}
@@ -670,45 +587,56 @@ export function App({
             } else {
               // Query has changed, renew the session id.
               // Time change will be picked up by the time subscription
-              setState((s) => ({
-                ...s,
-                searchSessionId: startSession(),
-              }));
+              dispatch(
+                setStateRedux({
+                  searchSessionId: startSession(),
+                })
+              );
               trackUiEvent('app_query_change');
             }
-            setState((s) => ({
-              ...s,
-              query: query || s.query,
-            }));
+            if (query) {
+              dispatch(
+                setStateRedux({
+                  query,
+                })
+              );
+            }
           }}
           onSaved={(savedQuery) => {
-            setState((s) => ({ ...s, savedQuery }));
+            dispatch(
+              setStateRedux({
+                savedQuery: { ...savedQuery },
+              })
+            );
           }}
           onSavedQueryUpdated={(savedQuery) => {
             const savedQueryFilters = savedQuery.attributes.filters || [];
             const globalFilters = data.query.filterManager.getGlobalFilters();
             data.query.filterManager.setFilters([...globalFilters, ...savedQueryFilters]);
-            setState((s) => ({
-              ...s,
-              savedQuery: { ...savedQuery }, // Shallow query for reference issues
-              query: savedQuery.attributes.query,
-            }));
+
+            dispatch(
+              setStateRedux({
+                query: savedQuery.attributes.query,
+                savedQuery: { ...savedQuery },
+              })
+            );
           }}
           onClearSavedQuery={() => {
             data.query.filterManager.setFilters(data.query.filterManager.getGlobalFilters());
-            setState((s) => ({
-              ...s,
-              savedQuery: undefined,
-              filters: data.query.filterManager.getGlobalFilters(),
-              query: data.query.queryString.getDefaultQuery(),
-            }));
+            dispatch(
+              setStateRedux({
+                query: data.query.queryString.getDefaultQuery(),
+                filters: data.query.filterManager.getGlobalFilters(),
+                savedQuery: undefined,
+              })
+            );
           }}
-          query={state.query}
+          query={appState.query}
           dateRangeFrom={fromDate}
           dateRangeTo={toDate}
-          indicateNoData={state.indicateNoData}
+          indicateNoData={appState.indicateNoData}
         />
-        {(!state.isLoading || state.persistedDoc) && (
+        {(!appState.isLoading || state.persistedDoc) && (
           <MemoizedEditorFrameWrapper
             editorFrame={editorFrame}
             resolvedDateRange={resolvedDateRange}
@@ -716,29 +644,32 @@ export function App({
             showNoDataPopover={showNoDataPopover}
             initialContext={initialContext}
             setState={setState}
+            setStateRedux={(state) => dispatch(setStateRedux(state))}
             data={data}
-            query={state.query}
-            filters={state.filters}
-            searchSessionId={state.searchSessionId}
-            isSaveable={state.isSaveable}
-            savedQuery={state.savedQuery}
+            query={appState.query}
+            filters={appState.filters}
+            searchSessionId={appState.searchSessionId}
+            isSaveable={appState.isSaveable}
+            savedQuery={appState.savedQuery}
             persistedDoc={state.persistedDoc}
-            indexPatterns={state.indexPatternsForTopNav}
+            indexPatterns={appState.indexPatternsForTopNav}
             activeData={activeDataRef}
             lastKnownDoc={lastKnownDocRef}
           />
         )}
       </div>
       <SaveModal
-        isVisible={state.isSaveModalVisible}
-        originatingApp={state.isLinkedToOriginatingApp ? incomingState?.originatingApp : undefined}
+        isVisible={appState.isSaveModalVisible}
+        originatingApp={
+          appState.isLinkedToOriginatingApp ? incomingState?.originatingApp : undefined
+        }
         savingToLibraryPermitted={savingToLibraryPermitted}
         allowByValueEmbeddables={dashboardFeatureFlag.allowByValueEmbeddables}
         savedObjectsTagging={savedObjectsTagging}
         tagsIds={tagsIds}
         onSave={runSave}
         onClose={() => {
-          setState((s) => ({ ...s, isSaveModalVisible: false }));
+          dispatch(setStateRedux({ isSaveModalVisible: false }));
         }}
         getAppNameFromId={() => getOriginatingAppName()}
         lastKnownDoc={lastKnownDoc}
@@ -769,6 +700,7 @@ const MemoizedEditorFrameWrapper = React.memo(function EditorFrameWrapper({
   showNoDataPopover,
   initialContext,
   setState,
+  setStateRedux,
   data,
   lastKnownDoc,
   activeData: activeDataRef,
@@ -806,7 +738,7 @@ const MemoizedEditorFrameWrapper = React.memo(function EditorFrameWrapper({
         initialContext,
         onChange: ({ filterableIndexPatterns, doc, isSaveable, activeData }) => {
           if (isSaveable !== oldIsSaveable) {
-            setState((s) => ({ ...s, isSaveable }));
+            setStateRedux({ isSaveable });
           }
           if (!_.isEqual(persistedDoc, doc) && !_.isEqual(lastKnownDoc.current, doc)) {
             setState((s) => ({ ...s, lastKnownDoc: doc }));
@@ -825,7 +757,7 @@ const MemoizedEditorFrameWrapper = React.memo(function EditorFrameWrapper({
             getAllIndexPatterns(filterableIndexPatterns, data.indexPatterns).then(
               ({ indexPatterns }) => {
                 if (indexPatterns) {
-                  setState((s) => ({ ...s, indexPatternsForTopNav: indexPatterns }));
+                  setStateRedux({ indexPatternsForTopNav: indexPatterns });
                 }
               }
             );
