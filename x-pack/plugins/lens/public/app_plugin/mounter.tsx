@@ -20,11 +20,11 @@ import { Storage } from '../../../../../src/plugins/kibana_utils/public';
 
 import { LensReportManager, setReportManager, trackUiEvent } from '../lens_ui_telemetry';
 
-import { App } from './app';
+import { App, getAllIndexPatterns } from './app';
 import { EditorFrameStart } from '../types';
 import { addHelpMenuToAppChrome } from '../help_menu_util';
 import { LensPluginStartDependencies } from '../plugin';
-import { LENS_EMBEDDABLE_TYPE, LENS_EDIT_BY_VALUE, APP_ID } from '../../common';
+import { LENS_EMBEDDABLE_TYPE, LENS_EDIT_BY_VALUE, APP_ID, getFullPath } from '../../common';
 import {
   LensEmbeddableInput,
   LensByReferenceInput,
@@ -36,6 +36,7 @@ import { LensAppServices, RedirectToOriginProps, HistoryLocationState } from './
 import { KibanaContextProvider } from '../../../../../src/plugins/kibana_react/public';
 import { Provider } from 'react-redux';
 import { lensStore, setStateM } from './redux-toolkit';
+import { injectFilterReferences } from '../persistence';
 
 export async function mountApp(
   core: CoreSetup<LensPluginStartDependencies, void>,
@@ -164,7 +165,7 @@ export async function mountApp(
   if (!initialContext) {
     data.query.filterManager.setAppFilters([]);
   }
-   const startSession = () => data.search.session.start();
+  const startSession = () => data.search.session.start();
 
   const appState = lensStore.getState().app;
 
@@ -225,23 +226,16 @@ export async function mountApp(
     )
     .subscribe();
 
-  // const featureFlagConfig = await getByValueFeatureFlag();
-  const EditorRenderer = React.memo(
-    (props: { id?: string; history: History<unknown>; editByValue?: boolean }) => {
-      const redirectCallback = useCallback(
-        (id?: string) => {
-          redirectTo(props.history, id);
-        },
-        [props.history]
-      );
-      trackUiEvent('loaded');
-      const initialInput = getInitialInput(props.id, props.editByValue);
-      console.log('initialInput', initialInput);
-      console.log(
-        'isLinkedToOriginatingApp',
-        Boolean(embeddableEditorIncomingState?.originatingApp)
-      );
-      // todo move to place where it's not rerendering
+    const dispatchSetState = (state) => lensStore.dispatch(setStateM(state))
+    
+
+  function loadThings( redirectTo: (savedObjectId?: string) => void, initialInput?: LensEmbeddableInput,) {
+    const {attributeService, chrome, notifications} = lensServices
+    if (
+      !initialInput ||
+      (attributeService.inputIsRefType(initialInput) &&
+        initialInput.savedObjectId === appState.persistedDoc?.savedObjectId)
+    ) {
       lensStore.dispatch(
         setStateM({
           isLoading: Boolean(initialInput),
@@ -255,6 +249,84 @@ export async function mountApp(
           query: data.query.queryString.getQuery(),
         })
       );
+      return
+    }
+
+    dispatchSetState({ isLoading: true });
+    attributeService
+      .unwrapAttributes(initialInput)
+      .then(async (attributes) => {
+        if (!initialInput) {
+          return;
+        }
+        const doc = {
+          ...initialInput,
+          ...attributes,
+          type: LENS_EMBEDDABLE_TYPE,
+        };
+
+        if (attributeService.inputIsRefType(initialInput)) {
+          chrome.recentlyAccessed.add(
+            getFullPath(initialInput.savedObjectId),
+            attributes.title,
+            initialInput.savedObjectId
+          );
+        }
+        const indexPatternIds = _.uniq(
+          doc.references.filter(({ type }) => type === 'index-pattern').map(({ id }) => id)
+        );
+        try {
+          const { indexPatterns } = await getAllIndexPatterns(indexPatternIds, data.indexPatterns);
+          // Don't overwrite any pinned filters
+          data.query.filterManager.setAppFilters(
+            injectFilterReferences(doc.state.filters, doc.references)
+          );
+
+          dispatchSetState({
+            isLoading: false,
+            indexPatternsForTopNav: indexPatterns,
+            query: doc.state.query,
+            persistedDoc: doc,
+            lastKnownDoc: doc,
+
+
+             isLinkedToOriginatingApp: Boolean(embeddableEditorIncomingState?.originatingApp),
+            // Do not use app-specific filters from previous app,
+            // only if Lens was opened with the intention to visualize a field (e.g. coming from Discover)
+            filters: !initialContext
+              ? data.query.filterManager.getGlobalFilters()
+              : data.query.filterManager.getFilters(),
+            
+          });
+        } catch (err) {
+          dispatchSetState({ isLoading: false });
+          redirectTo();
+        }
+      })
+      .catch((e) => {
+        dispatchSetState({ isLoading: false });
+        notifications.toasts.addDanger(
+          i18n.translate('xpack.lens.app.docLoadingError', {
+            defaultMessage: 'Error loading saved document',
+          })
+        );
+
+        redirectTo();
+      });
+  }
+
+  // const featureFlagConfig = await getByValueFeatureFlag();
+  const EditorRenderer = React.memo(
+    (props: { id?: string; history: History<unknown>; editByValue?: boolean }) => {
+      const redirectCallback = useCallback(
+        (id?: string) => {
+          redirectTo(props.history, id);
+        },
+        [props.history]
+      );
+      trackUiEvent('loaded');
+      const initialInput = getInitialInput(props.id, props.editByValue);
+      loadThings(redirectCallback, initialInput)
 
       return (
         <App
@@ -279,8 +351,8 @@ export async function mountApp(
     return (
       <EditorRenderer
         id={routeProps.match.params.id}
-        history={routeProps.history}
         editByValue={routeProps.editByValue}
+        history={routeProps.history}
       />
     );
   };
@@ -298,8 +370,6 @@ export async function mountApp(
   params.element.classList.add('lnsAppWrapper');
 
   const PresentationUtilContext = await getPresentationUtilContext();
-
- 
 
   render(
     <I18nProvider>
