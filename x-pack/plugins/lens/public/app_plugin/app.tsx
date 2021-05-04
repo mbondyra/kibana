@@ -682,7 +682,7 @@ const MemoizedEditorFrameWrapper = React.memo(function EditorFrameWrapper({
   onError: (e: { message: string }) => Toast;
   showNoDataPopover: () => void;
   initialContext: VisualizeFieldContext | undefined;
-  dispatchSetState: React.Dispatch<React.SetStateAction<LensAppState>>;
+  dispatchSetState: DispatchSetState;
   data: DataPublicPluginStart;
   lastKnownDoc: React.MutableRefObject<Document | undefined>;
   activeData: React.MutableRefObject<Record<string, Datatable> | undefined>;
@@ -712,8 +712,6 @@ const MemoizedEditorFrameWrapper = React.memo(function EditorFrameWrapper({
               (id) => !indexPatternsForTopNav.find((indexPattern) => indexPattern.id === id)
             );
 
-          console.log(indexPatternsForTopNav, filterableIndexPatterns);
-
           let batchedStateToUpdate: Partial<LensAppState> = {};
 
           if (hasSaveableChanged) {
@@ -736,7 +734,9 @@ const MemoizedEditorFrameWrapper = React.memo(function EditorFrameWrapper({
               batchedStateToUpdate.indexPatternsForTopNav = indexPatterns;
             }
           }
-          dispatchSetState(batchedStateToUpdate);
+          if (Object.keys(batchedStateToUpdate).length) {
+            dispatchSetState(batchedStateToUpdate);
+          }
         },
       }}
     />

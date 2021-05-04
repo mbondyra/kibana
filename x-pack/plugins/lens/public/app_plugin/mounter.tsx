@@ -246,7 +246,7 @@ export async function mountApp(
         setStateM({
           isLoading: Boolean(initialInput),
           isLinkedToOriginatingApp: Boolean(embeddableEditorIncomingState?.originatingApp),
-          searchSessionId: data.search.session.start(),
+          searchSessionId: startSession(),
           // Do not use app-specific filters from previous app,
           // only if Lens was opened with the intention to visualize a field (e.g. coming from Discover)
           filters: !initialContext
