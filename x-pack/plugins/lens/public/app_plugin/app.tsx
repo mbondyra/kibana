@@ -169,7 +169,9 @@ export function App({
 
   useEffect(() => {
     // when persistedDoc is moved, this can be moved up too
+    console.log('onAppLeaveEffect')
     onAppLeave((actions) => {
+      console.log('onAppLeaveInside')
       // Confirm when the user has made any changes to an existing doc
       // or when the user has configured something without saving
       if (

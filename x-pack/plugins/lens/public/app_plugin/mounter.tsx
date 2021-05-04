@@ -6,7 +6,7 @@
  */
 
 import React, { FC, useCallback } from 'react';
-
+import _ from 'lodash';
 import { delay, finalize, switchMap, tap } from 'rxjs/operators';
 import { AppMountParameters, CoreSetup } from 'kibana/public';
 import { FormattedMessage, I18nProvider } from '@kbn/i18n/react';
@@ -14,7 +14,7 @@ import { HashRouter, Route, RouteComponentProps, Switch } from 'react-router-dom
 import { History } from 'history';
 import { render, unmountComponentAtNode } from 'react-dom';
 import { i18n } from '@kbn/i18n';
-import { waitUntilNextSessionCompletes$ } from '../../../../../src/plugins/data/public';
+import { waitUntilNextSessionCompletes$, esFilters } from '../../../../../src/plugins/data/public';
 import { DashboardFeatureFlagConfig } from 'src/plugins/dashboard/public';
 import { Storage } from '../../../../../src/plugins/kibana_utils/public';
 
@@ -226,11 +226,31 @@ export async function mountApp(
     )
     .subscribe();
 
-    const dispatchSetState = (state) => lensStore.dispatch(setStateM(state))
-    
+  const dispatchSetState = (state) => lensStore.dispatch(setStateM(state));
 
-  function loadThings( redirectTo: (savedObjectId?: string) => void, initialInput?: LensEmbeddableInput,) {
-    const {attributeService, chrome, notifications} = lensServices
+  const getLastKnownDocWithoutPinnedFilters = function () {
+    const lastKnownDoc = appState.lastKnownDoc;
+    if (!lastKnownDoc) return undefined;
+    const [pinnedFilters, appFilters] = _.partition(
+      injectFilterReferences(lastKnownDoc.state?.filters || [], lastKnownDoc.references),
+      esFilters.isFilterPinned
+    );
+    return pinnedFilters?.length
+      ? {
+          ...lastKnownDoc,
+          state: {
+            ...lastKnownDoc.state,
+            filters: appFilters,
+          },
+        }
+      : lastKnownDoc;
+  };
+
+  function loadThings(
+    redirectTo: (savedObjectId?: string) => void,
+    initialInput?: LensEmbeddableInput
+  ) {
+    const { attributeService, chrome, notifications } = lensServices;
     if (
       !initialInput ||
       (attributeService.inputIsRefType(initialInput) &&
@@ -249,7 +269,7 @@ export async function mountApp(
           query: data.query.queryString.getQuery(),
         })
       );
-      return
+      return;
     }
 
     dispatchSetState({ isLoading: true });
@@ -289,14 +309,12 @@ export async function mountApp(
             persistedDoc: doc,
             lastKnownDoc: doc,
 
-
-             isLinkedToOriginatingApp: Boolean(embeddableEditorIncomingState?.originatingApp),
+            isLinkedToOriginatingApp: Boolean(embeddableEditorIncomingState?.originatingApp),
             // Do not use app-specific filters from previous app,
             // only if Lens was opened with the intention to visualize a field (e.g. coming from Discover)
             filters: !initialContext
               ? data.query.filterManager.getGlobalFilters()
               : data.query.filterManager.getFilters(),
-            
           });
         } catch (err) {
           dispatchSetState({ isLoading: false });
@@ -326,8 +344,29 @@ export async function mountApp(
       );
       trackUiEvent('loaded');
       const initialInput = getInitialInput(props.id, props.editByValue);
-      loadThings(redirectCallback, initialInput)
-
+      loadThings(redirectCallback, initialInput);
+      // when persistedDoc is moved, this can be moved up too
+      params.onAppLeave((actions) => {
+        console.log('onAppLeaveInside mounter');
+        // Confirm when the user has made any changes to an existing doc
+        // or when the user has configured something without saving
+        if (
+          lensServices.application.capabilities.visualize.save &&
+          !_.isEqual(appState.persistedDoc?.state, getLastKnownDocWithoutPinnedFilters()?.state) &&
+          (appState.isSaveable || appState.persistedDoc)
+        ) {
+          return actions.confirm(
+            i18n.translate('xpack.lens.app.unsavedWorkMessage', {
+              defaultMessage: 'Leave Lens with unsaved work?',
+            }),
+            i18n.translate('xpack.lens.app.unsavedWorkTitle', {
+              defaultMessage: 'Unsaved changes',
+            })
+          );
+        } else {
+          return actions.default();
+        }
+      });
       return (
         <App
           incomingState={embeddableEditorIncomingState}
