@@ -32,10 +32,15 @@ import {
 } from '../editor_frame_service/embeddable/embeddable';
 import { ACTION_VISUALIZE_LENS_FIELD } from '../../../../../src/plugins/ui_actions/public';
 import { LensAttributeService } from '../lens_attribute_service';
-import { LensAppServices, RedirectToOriginProps, HistoryLocationState } from './types';
+import {
+  LensAppServices,
+  RedirectToOriginProps,
+  HistoryLocationState,
+  LensAppState,
+} from './types';
 import { KibanaContextProvider } from '../../../../../src/plugins/kibana_react/public';
 import { Provider } from 'react-redux';
-import { lensStore, setStateM } from './redux-toolkit';
+import { configureLensStore, setStateM } from './state/index';
 import { injectFilterReferences } from '../persistence';
 
 export async function mountApp(
@@ -166,7 +171,8 @@ export async function mountApp(
     data.query.filterManager.setAppFilters([]);
   }
   const startSession = () => data.search.session.start();
-
+  
+  const lensStore = configureLensStore();
   const appState = lensStore.getState().app;
 
   const sessionSubscription = data.search.session
@@ -187,15 +193,14 @@ export async function mountApp(
         );
       }
     });
+  const dispatchSetState = (state: Partial<LensAppState>) => lensStore.dispatch(setStateM(state));
 
   const filterSubscription = data.query.filterManager.getUpdates$().subscribe({
     next: () => {
-      lensStore.dispatch(
-        setStateM({
-          searchSessionId: startSession(),
-          filters: data.query.filterManager.getFilters(),
-        })
-      );
+      dispatchSetState({
+        searchSessionId: startSession(),
+        filters: data.query.filterManager.getFilters(),
+      });
       trackUiEvent('app_filters_updated');
       console.log('%c filterSubscription ', 'background: #222; color: #bada55');
     },
@@ -203,8 +208,7 @@ export async function mountApp(
 
   const timeSubscription = data.query.timefilter.timefilter.getTimeUpdate$().subscribe({
     next: () => {
-      lensStore.dispatch(setStateM({ searchSessionId: startSession() }));
-
+      dispatchSetState({ searchSessionId: startSession() });
       console.log('%c timeSubscription ', 'background: #222; color: #bada55');
     },
   });
@@ -213,7 +217,7 @@ export async function mountApp(
     .getAutoRefreshFetch$()
     .pipe(
       tap(() => {
-        lensStore.dispatch(setStateM({ searchSessionId: startSession() }));
+        dispatchSetState({ searchSessionId: startSession() });
         console.log(
           '%c timeautoRefreshSubscriptionSubscription ',
           'background: #222; color: #bada55'
@@ -225,8 +229,6 @@ export async function mountApp(
       )
     )
     .subscribe();
-
-  const dispatchSetState = (state) => lensStore.dispatch(setStateM(state));
 
   const getLastKnownDocWithoutPinnedFilters = function () {
     const lastKnownDoc = appState.lastKnownDoc;
@@ -246,29 +248,34 @@ export async function mountApp(
       : lastKnownDoc;
   };
 
-  function loadThings(
+  function loadDoc(
     redirectTo: (savedObjectId?: string) => void,
     initialInput?: LensEmbeddableInput
   ) {
     const { attributeService, chrome, notifications } = lensServices;
+
     if (
       !initialInput ||
       (attributeService.inputIsRefType(initialInput) &&
         initialInput.savedObjectId === appState.persistedDoc?.savedObjectId)
     ) {
-      lensStore.dispatch(
-        setStateM({
-          isLoading: Boolean(initialInput),
-          isLinkedToOriginatingApp: Boolean(embeddableEditorIncomingState?.originatingApp),
-          searchSessionId: startSession(),
-          // Do not use app-specific filters from previous app,
-          // only if Lens was opened with the intention to visualize a field (e.g. coming from Discover)
-          filters: !initialContext
-            ? data.query.filterManager.getGlobalFilters()
-            : data.query.filterManager.getFilters(),
-          query: data.query.queryString.getQuery(),
-        })
+      console.log(
+        !initialInput ||
+          (attributeService.inputIsRefType(initialInput) &&
+            initialInput.savedObjectId === appState.persistedDoc?.savedObjectId)
       );
+
+      dispatchSetState({
+        isLoading: Boolean(initialInput),
+        isLinkedToOriginatingApp: Boolean(embeddableEditorIncomingState?.originatingApp),
+        searchSessionId: startSession(),
+        // Do not use app-specific filters from previous app,
+        // only if Lens was opened with the intention to visualize a field (e.g. coming from Discover)
+        filters: !initialContext
+          ? data.query.filterManager.getGlobalFilters()
+          : data.query.filterManager.getFilters(),
+        query: data.query.queryString.getQuery(),
+      });
       return;
     }
 
@@ -344,7 +351,7 @@ export async function mountApp(
       );
       trackUiEvent('loaded');
       const initialInput = getInitialInput(props.id, props.editByValue);
-      loadThings(redirectCallback, initialInput);
+      loadDoc(redirectCallback, initialInput);
       // when persistedDoc is moved, this can be moved up too
       params.onAppLeave((actions) => {
         console.log('onAppLeaveInside mounter');
@@ -433,6 +440,7 @@ export async function mountApp(
     </I18nProvider>,
     params.element
   );
+
   return () => {
     data.search.session.clear();
     instance.unmount();

@@ -6,6 +6,8 @@
  */
 
 import React from 'react';
+import { Provider } from 'react-redux';
+
 import { Observable, Subject } from 'rxjs';
 import { ReactWrapper } from 'enzyme';
 import { act } from 'react-dom/test-utils';
@@ -47,6 +49,7 @@ import { KibanaContextProvider } from '../../../../../src/plugins/kibana_react/p
 import { EmbeddableStateTransfer } from '../../../../../src/plugins/embeddable/public';
 import { NativeRenderer } from '../native_renderer';
 import moment from 'moment';
+import configureStore from 'redux-mock-store';
 
 jest.mock('../editor_frame_service/editor_frame/expression_helpers');
 jest.mock('src/core/public');
@@ -162,10 +165,13 @@ function createMockTimefilter() {
   };
 }
 
+const mockStore = configureStore([]);
+
 describe('Lens App', () => {
   let core: ReturnType<typeof coreMock['createStart']>;
   let defaultDoc: Document;
   let defaultSavedObjectId: string;
+  let store;
 
   const navMenuItems = {
     expectedSaveButton: { emphasize: true, testId: 'lnsApp_saveButton' },
@@ -268,7 +274,9 @@ describe('Lens App', () => {
     }> = ({ children }) => {
       return (
         <I18nProvider>
+          <Provider store={store}>
           <KibanaContextProvider services={services}>{children}</KibanaContextProvider>
+        </Provider>
         </I18nProvider>
       );
     };
@@ -290,6 +298,20 @@ describe('Lens App', () => {
       },
       references: [{ type: 'index-pattern', id: '1', name: 'index-pattern-0' }],
     } as unknown) as Document;
+
+    store = mockStore({
+      app: {
+        searchSessionId: '',
+        filters: [],
+        query: { language: 'kquery', query: '' },
+        indexPatternsForTopNav: [],
+        isSaveModalVisible: false,
+        isSaveable: false,
+        indicateNoData: false,
+        isLoading: false,
+        isLinkedToOriginatingApp: false,
+      },
+    });
 
     core.uiSettings.get.mockImplementation(
       jest.fn((type) => {

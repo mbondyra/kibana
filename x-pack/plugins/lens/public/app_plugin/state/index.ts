@@ -11,9 +11,9 @@ import { useDispatch, TypedUseSelectorHook, useSelector } from 'react-redux';
 import { LensAppState } from './types';
 
 const initialState: LensAppState = {
-  searchSessionId: 'something',
+  searchSessionId: '',
   filters: [],
-  query: { language: 'kquery', query: '' },
+  query: { language: 'kuery', query: '' },
   indexPatternsForTopNav: [],
   isSaveModalVisible: false,
   isSaveable: false,
@@ -22,14 +22,12 @@ const initialState: LensAppState = {
   isLinkedToOriginatingApp: false,
 };
 
-const appSlice = createSlice({
+export const appSlice = createSlice({
   name: 'app',
   initialState,
   reducers: {
-    setup: (state, { payload }) => {
-      state.searchSessionId = payload.id;
-      state.query = payload.query;
-      state.filters = payload.filters;
+    reset: (state) => {
+      return initialState
     },
     setState: (state, { payload }: PayloadAction<Partial<LensAppState>>) => {
       return {
@@ -61,25 +59,20 @@ export const reducer = {
   app: appSlice.reducer,
 };
 
-export const { startSession, setFilters, setQuery, setup, setState, setStateM } = appSlice.actions;
+export const { startSession, setFilters, setQuery, setState, setStateM } = appSlice.actions;
 
-// const serializableMiddleware = createSerializableStateInvariantMiddleware({
-//     serializableCheck: {
-//         ignoredPaths: ['app.indexPatternsForTopNav', 'payload.indexPatterns', 'app.filters'],
-//       },
-// });
 
-export const lensStore = configureStore({
+export const configureLensStore = () => configureStore({
   reducer,
   middleware: [
     ...getDefaultMiddleware({
       serializableCheck: {
         ignoredPaths: [
           'app.indexPatternsForTopNav',
-          'app.indexPatterns',
-          'payload.indexPatterns.0',
-          'app.filters',
           'payload.indexPatternsForTopNav',
+          'app.indexPatterns',
+          'payload.indexPatterns',
+          'app.filters',
         ],
         ignoredActions: ['app/setState'],
       },

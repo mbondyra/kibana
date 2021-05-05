@@ -38,7 +38,7 @@ import {
   SavedQuery,
   syncQueryStateWithUrl,
 } from '../../../../../src/plugins/data/public';
-import { LENS_EMBEDDABLE_TYPE, getFullPath, APP_ID } from '../../common';
+import { getFullPath, APP_ID } from '../../common';
 import { LensAppProps, LensAppServices, LensAppState, DispatchSetState } from './types';
 import { getLensTopNavConfig } from './lens_top_nav';
 import { Document } from '../persistence';
@@ -49,7 +49,7 @@ import {
 } from '../editor_frame_service/embeddable/embeddable';
 import { useTimeRange } from './time_range';
 import { EditorFrameInstance } from '../types';
-import { setState as setAppState, useLensSelector, useLensDispatch } from './redux-toolkit';
+import { setState as setAppState, useLensSelector, useLensDispatch } from './state/index';
 
 export function App({
   history,
@@ -79,6 +79,8 @@ export function App({
     // Temporarily required until the 'by value' paradigm is default.
     dashboardFeatureFlag,
   } = useKibana<LensAppServices>().services;
+
+  console.log('##APPRERENDER')
 
   const dispatch = useLensDispatch();
   const dispatchSetState: DispatchSetState = useCallback(
@@ -169,9 +171,9 @@ export function App({
 
   useEffect(() => {
     // when persistedDoc is moved, this can be moved up too
-    console.log('onAppLeaveEffect')
+    console.log('onAppLeaveEffect');
     onAppLeave((actions) => {
-      console.log('onAppLeaveInside')
+      console.log('onAppLeaveInside');
       // Confirm when the user has made any changes to an existing doc
       // or when the user has configured something without saving
       if (
@@ -507,7 +509,8 @@ export function App({
               dispatchSetState({ searchSessionId: data.search.session.start() });
               trackUiEvent('app_query_change');
             }
-            if (query) {
+            if (query && query !== appState.query) {
+              console.log(query, appState.query);
               dispatchSetState({ query });
             }
           }}
@@ -635,6 +638,7 @@ const MemoizedEditorFrameWrapper = React.memo(function EditorFrameWrapper({
           const hasDocChanged =
             !_.isEqual(persistedDoc, doc) && !_.isEqual(lastKnownDoc.current, doc);
           const hasDataChanged = !_.isEqual(activeDataRef.current, activeData);
+          console.log(activeDataRef.current, activeData)
           const hasIndexPatternsChanged =
             indexPatternsForTopNav.length !== filterableIndexPatterns.length ||
             filterableIndexPatterns.some(
