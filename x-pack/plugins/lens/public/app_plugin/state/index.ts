@@ -81,6 +81,8 @@ export const configureLensStore = () => configureStore({
   ],
 });
 
+export const lensStore = configureLensStore()
+
 export type LensRootStore = ReturnType<typeof lensStore.getState>;
 export type LensDispatch = typeof lensStore.dispatch;
 

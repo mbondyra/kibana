@@ -303,7 +303,7 @@ describe('Lens App', () => {
       app: {
         searchSessionId: '',
         filters: [],
-        query: { language: 'kquery', query: '' },
+        query: { language: 'kuery', query: '' },
         indexPatternsForTopNav: [],
         isSaveModalVisible: false,
         isSaveable: false,

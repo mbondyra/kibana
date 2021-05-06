@@ -31,6 +31,9 @@ import { ChartsPluginSetup } from '../../../../../src/plugins/charts/public';
 import { DashboardStart } from '../../../../../src/plugins/dashboard/public';
 import { LensAttributeService } from '../lens_attribute_service';
 
+import { lensStore } from '../app_plugin/state/index';
+import { Provider } from 'react-redux';
+
 export interface EditorFrameSetupPlugins {
   data: DataPublicPluginSetup;
   embeddable?: EmbeddableSetup;
@@ -149,45 +152,48 @@ export class EditorFrameService {
             showNoDataPopover,
             initialContext,
             searchSessionId,
+            data
           }
         ) => {
           if (domElement !== element) {
             unmount();
           }
+          console.log('is the mount function run???????');
           domElement = element;
           const firstDatasourceId = Object.keys(resolvedDatasources)[0];
           const firstVisualizationId = Object.keys(resolvedVisualizations)[0];
 
-          const { EditorFrame, getActiveDatasourceIdFromDoc } = await import('../async_services');
+          const { EditorFrame, getActiveDatasourceIdFromDoc } = await import('../async_services'); // lazy loading
 
           const palettes = await plugins.charts.palettes.getPalettes();
 
           render(
             <I18nProvider>
-              <EditorFrame
-                data-test-subj="lnsEditorFrame"
-                onError={onError}
-                datasourceMap={resolvedDatasources}
-                visualizationMap={resolvedVisualizations}
-                initialDatasourceId={getActiveDatasourceIdFromDoc(doc) || firstDatasourceId || null}
-                initialVisualizationId={
-                  (doc && doc.visualizationType) || firstVisualizationId || null
-                }
-                key={doc?.savedObjectId} // ensures rerendering when switching to another visualization inside of lens (eg global search)
-                core={core}
-                plugins={plugins}
-                ExpressionRenderer={plugins.expressions.ReactExpressionRenderer}
-                palettes={palettes}
-                doc={doc}
-                dateRange={dateRange}
-                query={query}
-                filters={filters}
-                savedQuery={savedQuery}
-                onChange={onChange}
-                showNoDataPopover={showNoDataPopover}
-                initialContext={initialContext}
-                searchSessionId={searchSessionId}
-              />
+              <Provider store={lensStore}>
+                <EditorFrame
+                  data-test-subj="lnsEditorFrame"
+                  onError={onError}
+                  datasourceMap={resolvedDatasources}
+                  visualizationMap={resolvedVisualizations}
+                  initialDatasourceId={getActiveDatasourceIdFromDoc(doc) || firstDatasourceId || null}
+                  initialVisualizationId={doc?.visualizationType || firstVisualizationId || null}
+                  key={doc?.savedObjectId} // ensures rerendering when switching to another visualization inside of lens (eg global search)
+                  core={core}
+                  plugins={plugins}
+                  ExpressionRenderer={plugins.expressions.ReactExpressionRenderer}
+                  palettes={palettes}
+                  doc={doc}
+                  data={data}
+                  dateRange={dateRange}
+                  query={query}
+                  filters={filters}
+                  savedQuery={savedQuery}
+                  onChange={onChange}
+                  showNoDataPopover={showNoDataPopover}
+                  initialContext={initialContext}
+                  searchSessionId={searchSessionId}
+                />
+              </Provider>
             </I18nProvider>,
             domElement
           );

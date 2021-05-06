@@ -80,8 +80,7 @@ export function App({
     dashboardFeatureFlag,
   } = useKibana<LensAppServices>().services;
 
-  console.log('##APPRERENDER')
-
+  console.log('APP RERENDER');
   const dispatch = useLensDispatch();
   const dispatchSetState: DispatchSetState = useCallback(
     (state: Partial<LensAppState>) => dispatch(setAppState(state)),
@@ -154,6 +153,7 @@ export function App({
   );
 
   useEffect(() => {
+    console.log('!!!!!@@@@his');
     const kbnUrlStateStorage = createKbnUrlStateStorage({
       history,
       useHash: uiSettings.get('state:storeInSessionStorage'),
@@ -390,6 +390,9 @@ export function App({
   const lastKnownDocRef = useRef(appState.lastKnownDoc);
   lastKnownDocRef.current = appState.lastKnownDoc;
 
+  console.log('REFS',lastKnownDocRef.current)
+  console.log('REFS',appState.lastKnownDoc)
+
   const activeDataRef = useRef(appState.activeData);
   activeDataRef.current = appState.activeData;
 
@@ -500,18 +503,21 @@ export function App({
           onQuerySubmit={(payload) => {
             const { dateRange, query } = payload;
             const currentRange = data.query.timefilter.timefilter.getTime();
+            let batchedStateToUpdate: Partial<LensAppState> = {};
             if (dateRange.from !== currentRange.from || dateRange.to !== currentRange.to) {
               data.query.timefilter.timefilter.setTime(dateRange);
               trackUiEvent('app_date_change');
             } else {
               // Query has changed, renew the session id.
               // Time change will be picked up by the time subscription
-              dispatchSetState({ searchSessionId: data.search.session.start() });
+              batchedStateToUpdate.searchSessionId = data.search.session.start();
               trackUiEvent('app_query_change');
             }
-            if (query && query !== appState.query) {
-              console.log(query, appState.query);
-              dispatchSetState({ query });
+            if (!_.isEqual(query, appState.query)) {
+              batchedStateToUpdate.query = query;
+            }
+            if (Object.keys(batchedStateToUpdate).length) {
+              dispatchSetState(batchedStateToUpdate);
             }
           }}
           onSaved={(savedQuery) => {
@@ -625,11 +631,12 @@ const MemoizedEditorFrameWrapper = React.memo(function EditorFrameWrapper({
       render={editorFrame.mount}
       nativeProps={{
         searchSessionId,
-        dateRange: resolvedDateRange,
-        query,
         filters,
+        query,
         savedQuery,
+        dateRange: resolvedDateRange,
         doc: persistedDoc,
+        data: data,
         onError,
         showNoDataPopover,
         initialContext,
