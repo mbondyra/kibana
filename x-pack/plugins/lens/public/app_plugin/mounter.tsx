@@ -35,6 +35,8 @@ import { LensAppServices, RedirectToOriginProps, HistoryLocationState } from './
 import { KibanaContextProvider } from '../../../../../src/plugins/kibana_react/public';
 import { lensStore, setStateM, syncExternalContextState, LensAppState } from '../state/index';
 import { injectFilterReferences } from '../persistence';
+import { syncLensFilterState } from './lib';
+import { registerValueSuggestionsRoute } from 'src/plugins/data/server/autocomplete/value_suggestions_route';
 
 export async function mountApp(
   core: CoreSetup<LensPluginStartDependencies, void>,
@@ -159,7 +161,7 @@ export async function mountApp(
 
   const dispatchSetState = (state: Partial<LensAppState>) => lensStore.dispatch(setStateM(state));
 
-  const { stopSyncingLensFilterState } = syncExternalContextState({
+  const { stopSyncingExternalContextState } = syncExternalContextState({
     data,
     initialContext,
     getState: lensStore.getState,
@@ -252,6 +254,10 @@ export async function mountApp(
           dispatchSetState(initialState);
         }
       })
+      .then((state) => {
+        console.log(state);
+        dispatchSetState(state);
+      })
       .catch((e) => {
         dispatchSetState({ isAppLoading: false });
         notifications.toasts.addDanger(
@@ -269,7 +275,7 @@ export async function mountApp(
     (props: { id?: string; history: History<unknown>; editByValue?: boolean }) => {
       const redirectCallback = useCallback(
         (id?: string) => {
-          redirectToCallback(props.history, id);
+          redirectTo(props.history, id);
         },
         [props.history]
       );
@@ -346,11 +352,11 @@ export async function mountApp(
   );
 
   return () => {
-    dispatchEmptyDoc();
+    dispatchSetState(initEmptyDocState());
     data.search.session.clear();
     instance.unmount();
     unmountComponentAtNode(params.element);
     unlistenParentHistory();
-    stopSyncingLensFilterState();
+    stopSyncingExternalContextState();
   };
 }

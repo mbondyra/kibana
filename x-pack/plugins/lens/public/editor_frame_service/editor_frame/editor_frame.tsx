@@ -64,12 +64,6 @@ export interface EditorFrameProps {
 }
 
 export function EditorFrame(props: EditorFrameProps) {
-  const [state, dispatchA] = useReducer(reducer, props, (args) => {
-    console.log('EditorFrame: getInitialState', getInitialState(args));
-    // const { doc, initialDatasourceId, initialVisualizationId } = props;
-    return getInitialState(props);
-  });
-
   const {
     activeData,
     isSaveable: isSaveable,
@@ -87,6 +81,12 @@ export function EditorFrame(props: EditorFrameProps) {
     (s: Partial<LensAppState>) => dispatchRedux(setAppState(s)),
     [dispatchRedux]
   );
+
+  const [state, dispatchA] = useReducer(reducer, props, (args) => {
+    console.log('EditorFrame: getInitialState', getInitialState(args));
+    // const { doc, initialDatasourceId, initialVisualizationId } = props;
+    return getInitialState(props);
+  });
 
   console.log('EditorFrame: core', props.core, props.plugins);
   console.log('EditorFrame: activeData', state.activeData);

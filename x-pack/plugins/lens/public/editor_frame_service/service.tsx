@@ -31,7 +31,6 @@ import { UiActionsStart } from '../../../../../src/plugins/ui_actions/public';
 import { ChartsPluginSetup } from '../../../../../src/plugins/charts/public';
 import { DashboardStart } from '../../../../../src/plugins/dashboard/public';
 import { LensAttributeService } from '../lens_attribute_service';
-
 import { lensStore } from '../state/index';
 export interface EditorFrameSetupPlugins {
   data: DataPublicPluginSetup;

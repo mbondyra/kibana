@@ -77,12 +77,12 @@ export const syncExternalContextState = ({ data, initialContext, getState, dispa
     )
     .subscribe();
 
-  const stopSyncingLensFilterState = () => {
+  const stopSyncingExternalContextState = () => {
     filterSubscription.unsubscribe();
     timeSubscription.unsubscribe();
     autoRefreshSubscription.unsubscribe();
     sessionSubscription.unsubscribe();
   };
 
-  return { stopSyncingLensFilterState };
+  return { stopSyncingExternalContextState };
 };

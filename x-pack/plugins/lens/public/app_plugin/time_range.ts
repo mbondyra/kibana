@@ -11,7 +11,7 @@ import _ from 'lodash';
 import moment from 'moment';
 import { useEffect, useMemo } from 'react';
 import { DataPublicPluginStart } from '../../../../../src/plugins/data/public';
-import { DispatchSetState } from './types';
+import { DispatchSetState } from '../state/types';
 import { Document } from '../persistence';
 
 function containsDynamicMath(dateMathString: string) {
