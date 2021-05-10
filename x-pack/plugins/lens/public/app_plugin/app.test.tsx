@@ -275,8 +275,8 @@ describe('Lens App', () => {
       return (
         <I18nProvider>
           <Provider store={store}>
-          <KibanaContextProvider services={services}>{children}</KibanaContextProvider>
-        </Provider>
+            <KibanaContextProvider services={services}>{children}</KibanaContextProvider>
+          </Provider>
         </I18nProvider>
       );
     };
@@ -305,10 +305,8 @@ describe('Lens App', () => {
         filters: [],
         query: { language: 'kuery', query: '' },
         indexPatternsForTopNav: [],
-        isSaveModalVisible: false,
         isSaveable: false,
-        indicateNoData: false,
-        isLoading: false,
+        isAppLoading: false,
         isLinkedToOriginatingApp: false,
       },
     });

@@ -411,6 +411,8 @@ export const VisualizationWrapper = ({
   const onData$ = useCallback(
     (data: unknown, inspectorAdapters?: Partial<DefaultInspectorAdapters>) => {
       if (inspectorAdapters && inspectorAdapters.tables) {
+        console.log('WORKSPACE, WORKSPACE, WORKSPACE, WORKSPACE UPDATE_ACTIVE_DATA');
+        // should directly modify data in the redux store
         dispatch({
           type: 'UPDATE_ACTIVE_DATA',
           tables: inspectorAdapters.tables.tables,

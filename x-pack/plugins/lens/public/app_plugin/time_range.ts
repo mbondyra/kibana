@@ -71,11 +71,11 @@ export function useTimeRange(
     // calculate lag of managed "now" for date math
     const nowDiff = Date.now() - data.nowProvider.get().valueOf();
 
-    // if the lag is signifcant, start a new session to clear the cache
+    // if the lag is significant, start a new session to clear the cache
     if (nowDiff > timeRangeLength * TIME_LAG_PERCENTAGE_LIMIT) {
       dispatchSetState({ searchSessionId: data.search.session.start() });
     }
-  }, [data.nowProvider, data.search.session, timefilter, lastKnownDoc, dispatchSetState]);
+  }, [data.nowProvider, data.search.session, timefilter, dispatchSetState, lastKnownDoc]);
 
   return { resolvedDateRange, from, to };
 }

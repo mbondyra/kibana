@@ -47,20 +47,7 @@ export interface EditorFrameProps {
   onError: ErrorCallback;
   doc?: Document;
   dateRange: DateRange;
-  query: Query;
-  filters: Filter[];
-  savedQuery?: SavedQuery;
-  searchSessionId: string;
   initialContext?: VisualizeFieldContext;
-
-  // Frame loader (app or embeddable) is expected to call this when it loads and updates
-  // This should be replaced with a top-down state
-  onChange: (newState: {
-    filterableIndexPatterns: string[];
-    doc: Document;
-    isSaveable: boolean;
-    activeData?: Record<string, Datatable>;
-  }) => void;
   showNoDataPopover: () => void;
 }
 export interface EditorFrameInstance {

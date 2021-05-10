@@ -59,14 +59,21 @@ export const SaveModal = (props: Props) => {
     onSave,
   } = props;
 
+  const sharedProps = {
+    savedObjectsTagging,
+    initialTags: tagsIds,
+    onClose,
+    objectType: i18n.translate('xpack.lens.app.saveModalType', {
+      defaultMessage: 'Lens visualization',
+    }),
+  };
+
   // Use the modal with return-to-origin features if we're in an app's edit flow or if by-value embeddables are disabled
   if (originatingApp || !allowByValueEmbeddables) {
     return (
       <TagEnhancedSavedObjectSaveModalOrigin
-        savedObjectsTagging={savedObjectsTagging}
-        initialTags={tagsIds}
+        {...sharedProps}
         originatingApp={originatingApp}
-        onClose={onClose}
         onSave={(saveProps) => onSave(saveProps, { saveToLibrary: true })}
         getAppNameFromId={getAppNameFromId}
         documentInfo={{
@@ -75,9 +82,6 @@ export const SaveModal = (props: Props) => {
           description: lastKnownDoc.description || '',
         }}
         returnToOriginSwitchLabel={returnToOriginSwitchLabel}
-        objectType={i18n.translate('xpack.lens.app.saveModalType', {
-          defaultMessage: 'Lens visualization',
-        })}
         data-test-subj="lnsApp_saveModalOrigin"
       />
     );
@@ -85,23 +89,18 @@ export const SaveModal = (props: Props) => {
 
   return (
     <TagEnhancedSavedObjectSaveModalDashboard
-      savedObjectsTagging={savedObjectsTagging}
-      initialTags={tagsIds}
+      {...sharedProps}
       canSaveByReference={Boolean(savingToLibraryPermitted)}
       onSave={(saveProps) => {
         const saveToLibrary = Boolean(saveProps.addToLibrary);
         onSave(saveProps, { saveToLibrary });
       }}
-      onClose={onClose}
       documentInfo={{
         // if the user cannot save to the library - treat this as a new document.
         id: savingToLibraryPermitted ? lastKnownDoc.savedObjectId : undefined,
         title: lastKnownDoc.title || '',
         description: lastKnownDoc.description || '',
       }}
-      objectType={i18n.translate('xpack.lens.app.saveModalType', {
-        defaultMessage: 'Lens visualization',
-      })}
       data-test-subj="lnsApp_saveModalDashboard"
     />
   );

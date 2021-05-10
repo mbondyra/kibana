@@ -6,9 +6,14 @@
  */
 
 import React, { useEffect, useReducer, useState, useCallback } from 'react';
+
+import _ from 'lodash';
 import { CoreStart } from 'kibana/public';
 import { PaletteRegistry } from 'src/plugins/charts/public';
-import { ReactExpressionRendererType } from '../../../../../../src/plugins/expressions/public';
+import {
+  ReactExpressionRendererType,
+  Datatable,
+} from '../../../../../../src/plugins/expressions/public';
 import { Datasource, FramePublicAPI, Visualization } from '../../types';
 import { reducer, getInitialState } from './state_management';
 import { DataPanelWrapper } from './data_panel_wrapper';
@@ -20,16 +25,24 @@ import { Document } from '../../persistence/saved_object_store';
 import { DragDropIdentifier, RootDragDropProvider } from '../../drag_drop';
 import { getSavedObjectFormat } from './save';
 import { generateId } from '../../id_generator';
-import { Filter, Query, SavedQuery } from '../../../../../../src/plugins/data/public';
 import { VisualizeFieldContext } from '../../../../../../src/plugins/ui_actions/public';
 import { EditorFrameStartPlugins } from '../service';
 import { initializeDatasources, createDatasourceLayers } from './state_helpers';
+
+import { getAllIndexPatterns } from '../../app_plugin';
 import {
   applyVisualizeFieldSuggestions,
   getTopSuggestionForField,
   switchToSuggestion,
 } from './suggestion_helpers';
 import { trackUiEvent } from '../../lens_ui_telemetry';
+import {
+  setState as setAppState,
+  useLensSelector,
+  useLensDispatch,
+  DispatchSetState,
+  LensAppState,
+} from '../../state/index';
 
 export interface EditorFrameProps {
   doc?: Document;
@@ -46,21 +59,42 @@ export interface EditorFrameProps {
     fromDate: string;
     toDate: string;
   };
-  query: Query;
-  filters: Filter[];
-  savedQuery?: SavedQuery;
-  searchSessionId: string;
-  onChange: (arg: {
-    filterableIndexPatterns: string[];
-    doc: Document;
-    isSaveable: boolean;
-  }) => void;
   showNoDataPopover: () => void;
   initialContext?: VisualizeFieldContext;
 }
 
 export function EditorFrame(props: EditorFrameProps) {
-  const [state, dispatch] = useReducer(reducer, props, getInitialState);
+  const [state, dispatchA] = useReducer(reducer, props, (args) => {
+    console.log('EditorFrame: getInitialState', getInitialState(args));
+    // const { doc, initialDatasourceId, initialVisualizationId } = props;
+    return getInitialState(props);
+  });
+
+  const {
+    activeData,
+    isSaveable: isSaveable,
+    lastKnownDoc,
+    persistedDoc,
+    indexPatternsForTopNav,
+    query,
+    savedQuery,
+    filters,
+    searchSessionId,
+  } = useLensSelector((s) => s.app);
+
+  const dispatchRedux = useLensDispatch();
+  const dispatchSetState: DispatchSetState = useCallback(
+    (s: Partial<LensAppState>) => dispatchRedux(setAppState(s)),
+    [dispatchRedux]
+  );
+
+  console.log('EditorFrame: core', props.core, props.plugins);
+  console.log('EditorFrame: activeData', state.activeData);
+
+  const dispatch = useCallback((action) => {
+    console.log('EditorFrame: Action dispatched', action);
+    return dispatchA(action);
+  }, []);
   const [visualizeTriggerFieldContext, setVisualizeTriggerFieldContext] = useState(
     props.initialContext
   );
@@ -78,6 +112,8 @@ export function EditorFrame(props: EditorFrameProps) {
       // prevents executing dispatch on unmounted component
       let isUnmounted = false;
       if (!allLoaded) {
+        console.log('EditorFrame: initializeDatasources effect');
+
         initializeDatasources(
           props.datasourceMap,
           state.datasourceStates,
@@ -109,11 +145,11 @@ export function EditorFrame(props: EditorFrameProps) {
 
   const framePublicAPI: FramePublicAPI = {
     datasourceLayers,
-    activeData: state.activeData,
+    activeData,
     dateRange: props.dateRange,
-    query: props.query,
-    filters: props.filters,
-    searchSessionId: props.searchSessionId,
+    query,
+    filters,
+    searchSessionId,
     availablePalettes: props.palettes,
 
     addNewLayer() {
@@ -161,6 +197,7 @@ export function EditorFrame(props: EditorFrameProps) {
   useEffect(
     () => {
       if (props.doc) {
+        console.log('EditorFrame: Visualization loaded effect', props.doc);
         dispatch({
           type: 'VISUALIZATION_LOADED',
           doc: {
@@ -177,6 +214,7 @@ export function EditorFrame(props: EditorFrameProps) {
           },
         });
       } else {
+        console.log('EditorFrame: Visualization loaded reset');
         dispatch({
           type: 'RESET',
           state: getInitialState(props),
@@ -192,6 +230,7 @@ export function EditorFrame(props: EditorFrameProps) {
     () => {
       if (allLoaded && state.visualization.state === null && activeVisualization) {
         const initialVisualizationState = activeVisualization.initialize(framePublicAPI);
+
         dispatch({
           type: 'UPDATE_VISUALIZATION_STATE',
           visualizationId: activeVisualization.id,
@@ -232,20 +271,66 @@ export function EditorFrame(props: EditorFrameProps) {
         return;
       }
 
-      props.onChange(
-        getSavedObjectFormat({
-          activeDatasources: Object.keys(state.datasourceStates).reduce(
-            (datasourceMap, datasourceId) => ({
-              ...datasourceMap,
-              [datasourceId]: props.datasourceMap[datasourceId],
-            }),
-            {}
-          ),
-          visualization: activeVisualization,
-          state,
-          framePublicAPI,
-        })
-      );
+      const savedObjectFormat = getSavedObjectFormat({
+        activeDatasources: Object.keys(state.datasourceStates).reduce(
+          (datasourceMap, datasourceId) => ({
+            ...datasourceMap,
+            [datasourceId]: props.datasourceMap[datasourceId],
+          }),
+          {}
+        ),
+        visualization: activeVisualization,
+        state,
+        framePublicAPI,
+      });
+
+      const onChange: (newState: {
+        filterableIndexPatterns: string[];
+        doc: Document;
+        isSaveable: boolean;
+        activeData?: Record<string, Datatable>;
+      }) => void = async ({
+        filterableIndexPatterns,
+        doc,
+        isSaveable: newIsSaveable,
+        activeData: newActiveData,
+      }) => {
+        const hasSaveableChanged = newIsSaveable !== isSaveable;
+        const hasDocChanged = !_.isEqual(persistedDoc, doc) && !_.isEqual(lastKnownDoc, doc);
+        const hasDataChanged = !_.isEqual(activeData, newActiveData);
+        const hasIndexPatternsChanged =
+          indexPatternsForTopNav.length !== filterableIndexPatterns.length ||
+          filterableIndexPatterns.some(
+            (id) => !indexPatternsForTopNav.find((indexPattern) => indexPattern.id === id)
+          );
+
+        const batchedStateToUpdate: Partial<LensAppState> = {};
+
+        if (hasSaveableChanged) {
+          batchedStateToUpdate.isSaveable = newIsSaveable;
+        }
+        if (hasDocChanged) {
+          batchedStateToUpdate.lastKnownDoc = doc;
+        }
+        if (hasDataChanged) {
+          batchedStateToUpdate.activeData = newActiveData;
+        }
+
+        // Update the cached index patterns if the user made a change to any of them
+        if (hasIndexPatternsChanged) {
+          const { indexPatterns } = await getAllIndexPatterns(
+            filterableIndexPatterns,
+            props.plugins.data.indexPatterns
+          );
+          if (indexPatterns) {
+            batchedStateToUpdate.indexPatternsForTopNav = indexPatterns;
+          }
+        }
+        if (Object.keys(batchedStateToUpdate).length) {
+          dispatchSetState(batchedStateToUpdate);
+        }
+      };
+      onChange(savedObjectFormat);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
@@ -253,9 +338,9 @@ export function EditorFrame(props: EditorFrameProps) {
       state.datasourceStates,
       state.visualization,
       state.activeData,
-      props.query,
-      props.filters,
-      props.savedQuery,
+      query,
+      filters,
+      savedQuery,
       state.title,
     ]
   );
@@ -304,7 +389,7 @@ export function EditorFrame(props: EditorFrameProps) {
         switchToSuggestion(dispatch, suggestion, 'SWITCH_VISUALIZATION');
       }
     },
-    [getSuggestionForField]
+    [getSuggestionForField, dispatch]
   );
 
   return (
@@ -326,9 +411,9 @@ export function EditorFrame(props: EditorFrameProps) {
             }
             dispatch={dispatch}
             core={props.core}
-            query={props.query}
+            query={query}
             dateRange={props.dateRange}
-            filters={props.filters}
+            filters={filters}
             showNoDataPopover={props.showNoDataPopover}
             dropOntoWorkspace={dropOntoWorkspace}
             hasSuggestionForField={hasSuggestionForField}

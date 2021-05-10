@@ -115,13 +115,13 @@ function getInitialDatasourceId(props: EditorFrameProps) {
 
 export const getInitialState = (props: EditorFrameProps): EditorFrameState => {
   const datasourceStates: EditorFrameState['datasourceStates'] = {};
-
-  if (props.doc) {
-    Object.entries(props.doc.state.datasourceStates).forEach(([datasourceId, state]) => {
+  const { doc, initialDatasourceId, initialVisualizationId } = props;
+  if (doc) {
+    Object.entries(doc.state.datasourceStates).forEach(([datasourceId, state]) => {
       datasourceStates[datasourceId] = { isLoading: true, state };
     });
-  } else if (props.initialDatasourceId) {
-    datasourceStates[props.initialDatasourceId] = {
+  } else if (initialDatasourceId) {
+    datasourceStates[initialDatasourceId] = {
       state: null,
       isLoading: true,
     };
@@ -130,10 +130,10 @@ export const getInitialState = (props: EditorFrameProps): EditorFrameState => {
   return {
     title: '',
     datasourceStates,
-    activeDatasourceId: getInitialDatasourceId(props),
+    activeDatasourceId: getInitialDatasourceId({ initialDatasourceId, doc }),
     visualization: {
       state: null,
-      activeId: props.initialVisualizationId,
+      activeId: initialVisualizationId,
     },
   };
 };

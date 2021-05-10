@@ -10,6 +10,7 @@ import { render, unmountComponentAtNode } from 'react-dom';
 import { I18nProvider } from '@kbn/i18n/react';
 import { CoreSetup, CoreStart } from 'kibana/public';
 import { UsageCollectionSetup } from 'src/plugins/usage_collection/public';
+import { Provider } from 'react-redux';
 import { ExpressionsSetup, ExpressionsStart } from '../../../../../src/plugins/expressions/public';
 import { EmbeddableSetup, EmbeddableStart } from '../../../../../src/plugins/embeddable/public';
 import {
@@ -31,9 +32,7 @@ import { ChartsPluginSetup } from '../../../../../src/plugins/charts/public';
 import { DashboardStart } from '../../../../../src/plugins/dashboard/public';
 import { LensAttributeService } from '../lens_attribute_service';
 
-import { lensStore } from '../app_plugin/state/index';
-import { Provider } from 'react-redux';
-
+import { lensStore } from '../state/index';
 export interface EditorFrameSetupPlugins {
   data: DataPublicPluginSetup;
   embeddable?: EmbeddableSetup;
@@ -139,26 +138,10 @@ export class EditorFrameService {
       };
 
       return {
-        mount: async (
-          element,
-          {
-            doc,
-            onError,
-            dateRange,
-            query,
-            filters,
-            savedQuery,
-            onChange,
-            showNoDataPopover,
-            initialContext,
-            searchSessionId,
-            data
-          }
-        ) => {
+        mount: async (element, { doc, onError, dateRange, showNoDataPopover, initialContext }) => {
           if (domElement !== element) {
             unmount();
           }
-          console.log('is the mount function run???????');
           domElement = element;
           const firstDatasourceId = Object.keys(resolvedDatasources)[0];
           const firstVisualizationId = Object.keys(resolvedVisualizations)[0];
@@ -166,6 +149,9 @@ export class EditorFrameService {
           const { EditorFrame, getActiveDatasourceIdFromDoc } = await import('../async_services'); // lazy loading
 
           const palettes = await plugins.charts.palettes.getPalettes();
+          const initialDatasourceId =
+            getActiveDatasourceIdFromDoc(doc) || firstDatasourceId || null;
+          const initialVisualizationId = doc?.visualizationType || firstVisualizationId || null;
 
           render(
             <I18nProvider>
@@ -175,23 +161,17 @@ export class EditorFrameService {
                   onError={onError}
                   datasourceMap={resolvedDatasources}
                   visualizationMap={resolvedVisualizations}
-                  initialDatasourceId={getActiveDatasourceIdFromDoc(doc) || firstDatasourceId || null}
-                  initialVisualizationId={doc?.visualizationType || firstVisualizationId || null}
+                  initialDatasourceId={initialDatasourceId}
+                  initialVisualizationId={initialVisualizationId}
                   key={doc?.savedObjectId} // ensures rerendering when switching to another visualization inside of lens (eg global search)
                   core={core}
                   plugins={plugins}
                   ExpressionRenderer={plugins.expressions.ReactExpressionRenderer}
                   palettes={palettes}
                   doc={doc}
-                  data={data}
                   dateRange={dateRange}
-                  query={query}
-                  filters={filters}
-                  savedQuery={savedQuery}
-                  onChange={onChange}
                   showNoDataPopover={showNoDataPopover}
                   initialContext={initialContext}
-                  searchSessionId={searchSessionId}
                 />
               </Provider>
             </I18nProvider>,

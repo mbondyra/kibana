@@ -16,14 +16,7 @@ import {
   OverlayStart,
   SavedObjectsStart,
 } from '../../../../../src/core/public';
-import {
-  DataPublicPluginStart,
-  Filter,
-  IndexPattern,
-  Query,
-  SavedQuery,
-} from '../../../../../src/plugins/data/public';
-import { Document } from '../persistence';
+import { DataPublicPluginStart } from '../../../../../src/plugins/data/public';
 import { LensEmbeddableInput } from '../editor_frame_service/embeddable/embeddable';
 import { NavigationPublicPluginStart } from '../../../../../src/plugins/navigation/public';
 import { LensAttributeService } from '../lens_attribute_service';
@@ -38,38 +31,7 @@ import {
   EmbeddableEditorState,
   EmbeddableStateTransfer,
 } from '../../../../../src/plugins/embeddable/public';
-import { TableInspectorAdapter } from '../editor_frame_service/types';
 import { EditorFrameInstance } from '../types';
-
-export interface LensAppState {
-  isLoading: boolean;
-  persistedDoc?: Document;
-  lastKnownDoc?: Document;
-  isSaveModalVisible: boolean;
-
-  // Used to show a popover that guides the user towards changing the date range when no data is available.
-  indicateNoData: boolean;
-
-  // index patterns used to determine which filters are available in the top nav.
-  indexPatternsForTopNav: IndexPattern[];
-
-  // Determines whether the lens editor shows the 'save and return' button, and the originating app breadcrumb.
-  isLinkedToOriginatingApp?: boolean;
-
-  query: Query;
-  filters: Filter[];
-  savedQuery?: SavedQuery;
-  isSaveable: boolean;
-  activeData?: TableInspectorAdapter;
-  searchSessionId: string;
-}
-
-export type DispatchSetState = (
-  state: Partial<LensAppState>
-) => {
-  payload: Partial<LensAppState>;
-  type: string;
-};
 
 export interface RedirectToOriginProps {
   input?: LensEmbeddableInput;

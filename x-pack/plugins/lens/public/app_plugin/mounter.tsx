@@ -7,15 +7,14 @@
 
 import React, { FC, useCallback } from 'react';
 import _ from 'lodash';
-import { delay, finalize, switchMap, tap } from 'rxjs/operators';
 import { AppMountParameters, CoreSetup } from 'kibana/public';
 import { FormattedMessage, I18nProvider } from '@kbn/i18n/react';
 import { HashRouter, Route, RouteComponentProps, Switch } from 'react-router-dom';
 import { History } from 'history';
 import { render, unmountComponentAtNode } from 'react-dom';
 import { i18n } from '@kbn/i18n';
-import { waitUntilNextSessionCompletes$, esFilters } from '../../../../../src/plugins/data/public';
 import { DashboardFeatureFlagConfig } from 'src/plugins/dashboard/public';
+import { Provider } from 'react-redux';
 import { Storage } from '../../../../../src/plugins/kibana_utils/public';
 
 import { LensReportManager, setReportManager, trackUiEvent } from '../lens_ui_telemetry';
@@ -32,15 +31,9 @@ import {
 } from '../editor_frame_service/embeddable/embeddable';
 import { ACTION_VISUALIZE_LENS_FIELD } from '../../../../../src/plugins/ui_actions/public';
 import { LensAttributeService } from '../lens_attribute_service';
-import {
-  LensAppServices,
-  RedirectToOriginProps,
-  HistoryLocationState,
-  LensAppState,
-} from './types';
+import { LensAppServices, RedirectToOriginProps, HistoryLocationState } from './types';
 import { KibanaContextProvider } from '../../../../../src/plugins/kibana_react/public';
-import { Provider } from 'react-redux';
-import { lensStore, setStateM } from './state/index';
+import { lensStore, setStateM, syncExternalContextState, LensAppState } from '../state/index';
 import { injectFilterReferences } from '../persistence';
 
 export async function mountApp(
@@ -60,7 +53,7 @@ export async function mountApp(
     getPresentationUtilContext,
   } = mountProps;
   const [coreStart, startDependencies] = await core.getStartServices();
-  const { data, navigation, embeddable, savedObjectsTagging } = startDependencies;
+  const { data, navigation, embeddable, savedObjectsTagging, charts } = startDependencies;
 
   const instance = await createEditorFrame();
   const storage = new Storage(localStorage);
@@ -164,128 +157,52 @@ export async function mountApp(
       ? historyLocationState.payload
       : undefined;
 
-  // Clear app-specific filters when navigating to Lens. Necessary because Lens
-  // can be loaded without a full page refresh. If the user navigates to Lens from Discover
-  // we keep the filters
-  if (!initialContext) {
-    data.query.filterManager.setAppFilters([]);
-  }
-  const startSession = () => data.search.session.start();
-
-  const appState = lensStore.getState().app;
-
-  const sessionSubscription = data.search.session
-    .getSession$()
-    // wait for a tick to filter/timerange subscribers the chance to update the session id in the state
-    .pipe(delay(0))
-    // then update if it didn't get updated yet
-    .subscribe((newSessionId) => {
-      if (newSessionId && appState.searchSessionId !== newSessionId) {
-        console.log(
-          `%c sessionSubscription ${newSessionId}, ${appState.searchSessionId}`,
-          'background: #222; color: #bada55'
-        );
-        lensStore.dispatch(
-          setStateM({
-            searchSessionId: newSessionId,
-          })
-        );
-      }
-    });
   const dispatchSetState = (state: Partial<LensAppState>) => lensStore.dispatch(setStateM(state));
 
-  const filterSubscription = data.query.filterManager.getUpdates$().subscribe({
-    next: () => {
-      dispatchSetState({
-        searchSessionId: startSession(),
-        filters: data.query.filterManager.getFilters(),
-      });
-      trackUiEvent('app_filters_updated');
-      console.log('%c filterSubscription ', 'background: #222; color: #bada55');
-    },
+  const { stopSyncingLensFilterState } = syncExternalContextState({
+    data,
+    initialContext,
+    getState: lensStore.getState,
+    dispatchSetState,
   });
 
-  const timeSubscription = data.query.timefilter.timefilter.getTimeUpdate$().subscribe({
-    next: () => {
-      dispatchSetState({ searchSessionId: startSession() });
-      console.log('%c timeSubscription ', 'background: #222; color: #bada55');
-    },
-  });
-
-  const autoRefreshSubscription = data.query.timefilter.timefilter
-    .getAutoRefreshFetch$()
-    .pipe(
-      tap(() => {
-        dispatchSetState({ searchSessionId: startSession() });
-        console.log(
-          '%c timeautoRefreshSubscriptionSubscription ',
-          'background: #222; color: #bada55'
-        );
-      }),
-      switchMap((done) =>
-        // best way in lens to estimate that all panels are updated is to rely on search session service state
-        waitUntilNextSessionCompletes$(data.search.session).pipe(finalize(done))
-      )
-    )
-    .subscribe();
-
-  const getLastKnownDocWithoutPinnedFilters = function () {
-    const lastKnownDoc = appState.lastKnownDoc;
-    if (!lastKnownDoc) return undefined;
-    const [pinnedFilters, appFilters] = _.partition(
-      injectFilterReferences(lastKnownDoc.state?.filters || [], lastKnownDoc.references),
-      esFilters.isFilterPinned
-    );
-    return pinnedFilters?.length
-      ? {
-          ...lastKnownDoc,
-          state: {
-            ...lastKnownDoc.state,
-            filters: appFilters,
-          },
-        }
-      : lastKnownDoc;
-  };
-
-  const dispatchEmptyDoc = (initialInput?: LensEmbeddableInput) => {
-    dispatchSetState({
-      isLoading: Boolean(initialInput),
+  const initEmptyDocState = (initialInput?: LensEmbeddableInput) => {
+    return {
+      isAppLoading: Boolean(initialInput), // isAppLoading should be
       isLinkedToOriginatingApp: Boolean(embeddableEditorIncomingState?.originatingApp),
-      searchSessionId: startSession(),
+      searchSessionId: data.search.session.start(),
       // Do not use app-specific filters from previous app,
       // only if Lens was opened with the intention to visualize a field (e.g. coming from Discover)
       filters: !initialContext
         ? data.query.filterManager.getGlobalFilters()
         : data.query.filterManager.getFilters(),
       query: data.query.queryString.getQuery(),
-    });
+      persistedDoc: undefined,
+      lastKnownDoc: undefined,
+    };
   };
 
   function loadDoc(
-    redirectTo: (savedObjectId?: string) => void,
+    redirectToCallback: (savedObjectId?: string) => void,
     initialInput?: LensEmbeddableInput
   ) {
-    const { attributeService, chrome, notifications } = lensServices;
-    console.log('loadDoc');
+    const { attributeService: attributeServiceInstance, chrome, notifications } = lensServices;
+    console.log('Mounter: loadDoc');
     if (
       !initialInput ||
-      (attributeService.inputIsRefType(initialInput) &&
-        initialInput.savedObjectId === appState.persistedDoc?.savedObjectId)
+      (attributeServiceInstance.inputIsRefType(initialInput) &&
+        initialInput.savedObjectId === lensStore.getState().app.persistedDoc?.savedObjectId)
     ) {
-      console.log(
-        !initialInput ||
-          (attributeService.inputIsRefType(initialInput) &&
-            initialInput.savedObjectId === appState.persistedDoc?.savedObjectId)
-      );
-      return dispatchEmptyDoc(initialInput);
+      const initialState = initEmptyDocState(initialInput);
+      return dispatchSetState(initialState);
     }
 
-    dispatchSetState({ isLoading: true });
-    attributeService
+    dispatchSetState({ isAppLoading: true });
+    attributeServiceInstance
       .unwrapAttributes(initialInput)
       .then(async (attributes) => {
         if (!initialInput) {
-          return dispatchEmptyDoc(initialInput);
+          return initEmptyDocState(initialInput);
         }
         const doc = {
           ...initialInput,
@@ -293,7 +210,7 @@ export async function mountApp(
           type: LENS_EMBEDDABLE_TYPE,
         };
 
-        if (attributeService.inputIsRefType(initialInput)) {
+        if (attributeServiceInstance.inputIsRefType(initialInput)) {
           chrome.recentlyAccessed.add(
             getFullPath(initialInput.savedObjectId),
             attributes.title,
@@ -310,8 +227,8 @@ export async function mountApp(
             injectFilterReferences(doc.state.filters, doc.references)
           );
 
-          dispatchSetState({
-            isLoading: false,
+          return {
+            isAppLoading: false,
             indexPatternsForTopNav: indexPatterns,
             query: doc.state.query,
             persistedDoc: doc,
@@ -323,21 +240,27 @@ export async function mountApp(
             filters: !initialContext
               ? data.query.filterManager.getGlobalFilters()
               : data.query.filterManager.getFilters(),
-          });
+          };
         } catch (err) {
-          dispatchSetState({ isLoading: false });
-          redirectTo();
+          dispatchSetState({ isAppLoading: false });
+          redirectToCallback();
+        }
+      })
+      .then((initialState) => {
+        console.log('Mounter: dispatch initial state', initialState);
+        if (initialState) {
+          dispatchSetState(initialState);
         }
       })
       .catch((e) => {
-        dispatchSetState({ isLoading: false });
+        dispatchSetState({ isAppLoading: false });
         notifications.toasts.addDanger(
           i18n.translate('xpack.lens.app.docLoadingError', {
             defaultMessage: 'Error loading saved document',
           })
         );
 
-        redirectTo();
+        redirectToCallback();
       });
   }
 
@@ -346,35 +269,15 @@ export async function mountApp(
     (props: { id?: string; history: History<unknown>; editByValue?: boolean }) => {
       const redirectCallback = useCallback(
         (id?: string) => {
-          redirectTo(props.history, id);
+          redirectToCallback(props.history, id);
         },
         [props.history]
       );
       trackUiEvent('loaded');
       const initialInput = getInitialInput(props.id, props.editByValue);
+
       loadDoc(redirectCallback, initialInput);
-      // when persistedDoc is moved, this can be moved up too
-      params.onAppLeave((actions) => {
-        console.log('onAppLeaveInside mounter');
-        // Confirm when the user has made any changes to an existing doc
-        // or when the user has configured something without saving
-        if (
-          lensServices.application.capabilities.visualize.save &&
-          !_.isEqual(appState.persistedDoc?.state, getLastKnownDocWithoutPinnedFilters()?.state) &&
-          (appState.isSaveable || appState.persistedDoc)
-        ) {
-          return actions.confirm(
-            i18n.translate('xpack.lens.app.unsavedWorkMessage', {
-              defaultMessage: 'Leave Lens with unsaved work?',
-            }),
-            i18n.translate('xpack.lens.app.unsavedWorkTitle', {
-              defaultMessage: 'Unsaved changes',
-            })
-          );
-        } else {
-          return actions.default();
-        }
-      });
+
       return (
         <App
           incomingState={embeddableEditorIncomingState}
@@ -443,14 +346,11 @@ export async function mountApp(
   );
 
   return () => {
+    dispatchEmptyDoc();
     data.search.session.clear();
     instance.unmount();
     unmountComponentAtNode(params.element);
     unlistenParentHistory();
-
-    filterSubscription.unsubscribe();
-    timeSubscription.unsubscribe();
-    autoRefreshSubscription.unsubscribe();
-    sessionSubscription.unsubscribe();
+    stopSyncingLensFilterState();
   };
 }
