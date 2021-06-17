@@ -33,7 +33,7 @@ import {
   EmbeddableEditorState,
   EmbeddableStateTransfer,
 } from '../../../../../src/plugins/embeddable/public';
-import { Datasource, EditorFrameInstance } from '../types';
+import { Datasource, EditorFrameInstance, Visualization } from '../types';
 import { PresentationUtilPluginStart } from '../../../../../src/plugins/presentation_util/public';
 export interface RedirectToOriginProps {
   input?: LensEmbeddableInput;
@@ -55,6 +55,7 @@ export interface LensAppProps {
   incomingState?: EmbeddableEditorState;
   initialContext?: VisualizeFieldContext;
   datasourceMap: Record<string, Datasource>;
+  visualizationMap: Record<string, Visualization>;
 }
 
 export type RunSave = (
@@ -81,6 +82,8 @@ export interface LensTopNavMenuProps {
   indicateNoData: boolean;
   setIsSaveModalVisible: React.Dispatch<React.SetStateAction<boolean>>;
   runSave: RunSave;
+  datasourceMap: Record<string, Datasource>;
+  title?: string;
 }
 
 export interface HistoryLocationState {
