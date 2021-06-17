@@ -375,7 +375,7 @@ export const getLastKnownDoc = async ({
   data: DataPublicPluginStart;
   notifications: NotificationsStart;
   chrome: ChromeStart;
-}): Promise<{ doc: Document; indexPatterns: IndexPattern[] } | undefined> => {
+}): Promise<{ doc: Document; indexPatterns: string[] } | undefined> => {
   let doc: Document;
 
   try {
@@ -397,7 +397,7 @@ export const getLastKnownDoc = async ({
     const indexPatternIds = uniq(
       doc.references.filter(({ type }) => type === 'index-pattern').map(({ id }) => id)
     );
-    const { indexPatterns } = await getAllIndexPatterns(indexPatternIds, data.indexPatterns);
+    // const { indexPatterns } = await getAllIndexPatterns(indexPatternIds, data.indexPatterns);
 
     // Don't overwrite any pinned filters
     data.query.filterManager.setAppFilters(
@@ -405,7 +405,7 @@ export const getLastKnownDoc = async ({
     );
     return {
       doc,
-      indexPatterns,
+      indexPatterns: indexPatternIds,
     };
   } catch (e) {
     notifications.toasts.addDanger(

@@ -239,6 +239,7 @@ export async function mountApp(
             setHeaderActionMenu={params.setHeaderActionMenu}
             history={props.history}
             initialContext={initialContext}
+            datasourceMap={datasourceMap}
           />
         </Provider>
       );
@@ -392,7 +393,6 @@ export function loadDocument(
         lensStore.dispatch(
           setLoadedDocument({
             query: doc.state.query,
-            indexPatternsForTopNav: indexPatterns,
             lastKnownDoc: doc,
             searchSessionId:
               dashboardFeatureFlag.allowByValueEmbeddables &&

@@ -55,6 +55,7 @@ export function App({
   redirectToOrigin,
   setHeaderActionMenu,
   initialContext,
+  datasourceMap
 }: LensAppProps) {
   const lensAppServices = useKibana<LensAppServices>().services;
 
@@ -95,7 +96,6 @@ export function App({
   }, [
     setIndicateNoData,
     indicateNoData,
-    appState.indexPatternsForTopNav,
     appState.searchSessionId,
   ]);
 
@@ -252,6 +252,7 @@ export function App({
           setIsSaveModalVisible={setIsSaveModalVisible}
           setHeaderActionMenu={setHeaderActionMenu}
           indicateNoData={indicateNoData}
+          datasourceMap={datasourceMap}
         />
         {(!appState.isAppLoading || appState.persistedDoc) && (
           <MemoizedEditorFrameWrapper
@@ -264,7 +265,6 @@ export function App({
       </div>
       {isSaveModalVisible && (
         <SaveModalContainer
-          isVisible={isSaveModalVisible}
           lensServices={lensAppServices}
           originatingApp={
             appState.isLinkedToOriginatingApp ? incomingState?.originatingApp : undefined

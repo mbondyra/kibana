@@ -1579,7 +1579,6 @@ describe('editor_frame', () => {
       expect(lensStore.dispatch).toHaveBeenCalledTimes(4);
       expect(lensStore.dispatch).toHaveBeenNthCalledWith(3, {
         payload: {
-          indexPatternsForTopNav: [{ id: '1' }],
           lastKnownDoc: {
             savedObjectId: undefined,
             description: undefined,
@@ -1605,7 +1604,6 @@ describe('editor_frame', () => {
       });
       expect(lensStore.dispatch).toHaveBeenLastCalledWith({
         payload: {
-          indexPatternsForTopNav: [{ id: '1' }],
           lastKnownDoc: {
             references: [
               {

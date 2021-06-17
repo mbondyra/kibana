@@ -33,7 +33,7 @@ import {
   EmbeddableEditorState,
   EmbeddableStateTransfer,
 } from '../../../../../src/plugins/embeddable/public';
-import { EditorFrameInstance } from '../types';
+import { Datasource, EditorFrameInstance } from '../types';
 import { PresentationUtilPluginStart } from '../../../../../src/plugins/presentation_util/public';
 export interface RedirectToOriginProps {
   input?: LensEmbeddableInput;
@@ -54,6 +54,7 @@ export interface LensAppProps {
   // State passed in by the container which is used to determine the id of the Originating App.
   incomingState?: EmbeddableEditorState;
   initialContext?: VisualizeFieldContext;
+  datasourceMap: Record<string, Datasource>;
 }
 
 export type RunSave = (
