@@ -30,7 +30,6 @@ type ExtraProps = Pick<LensAppProps, 'initialInput'> &
   Partial<Pick<LensAppProps, 'redirectToOrigin' | 'redirectTo' | 'onAppLeave'>>;
 
 export type SaveModalContainerProps = {
-  isVisible: boolean;
   originatingApp?: string;
   persistedDoc?: Document;
   lastKnownDoc?: Document;
@@ -48,7 +47,6 @@ export function SaveModalContainer({
   onClose,
   onSave,
   runSave,
-  isVisible,
   persistedDoc,
   originatingApp,
   initialInput,
@@ -59,7 +57,16 @@ export function SaveModalContainer({
   lastKnownDoc: initLastKnowDoc,
   lensServices,
 }: SaveModalContainerProps) {
+  console.log('SAVE MODAL CONTQINER***')
   const [lastKnownDoc, setLastKnownDoc] = useState<Document | undefined>(initLastKnowDoc);
+  let title = '';
+  let description;
+  let savedObjectId;
+  if (lastKnownDoc) {
+    title = lastKnownDoc.title;
+    description = lastKnownDoc.description;
+    savedObjectId = lastKnownDoc.savedObjectId;
+  }
 
   const {
     attributeService,
@@ -77,7 +84,7 @@ export function SaveModalContainer({
 
   useEffect(() => {
     async function loadLastKnownDoc() {
-      if (initialInput && isVisible) {
+      if (initialInput) {
         getLastKnownDoc({
           data,
           initialInput,
@@ -91,7 +98,7 @@ export function SaveModalContainer({
     }
 
     loadLastKnownDoc();
-  }, [chrome, data, initialInput, notifications, attributeService, isVisible]);
+  }, [chrome, data, initialInput, notifications, attributeService]);
 
   const tagsIds =
     persistedDoc && savedObjectsTagging
@@ -129,7 +136,6 @@ export function SaveModalContainer({
 
   return (
     <SaveModal
-      isVisible={isVisible}
       originatingApp={originatingApp}
       savingToLibraryPermitted={savingToLibraryPermitted}
       allowByValueEmbeddables={dashboardFeatureFlag?.allowByValueEmbeddables}
@@ -140,7 +146,9 @@ export function SaveModalContainer({
       }}
       onClose={onClose}
       getAppNameFromId={getAppNameFromId}
-      lastKnownDoc={lastKnownDoc}
+      title={title}
+      description={description}
+      savedObjectId={savedObjectId}
       returnToOriginSwitchLabel={returnToOriginSwitchLabel}
     />
   );
