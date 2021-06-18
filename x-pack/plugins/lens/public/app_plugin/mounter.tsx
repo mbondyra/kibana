@@ -32,7 +32,10 @@ import {
   LensByReferenceInput,
   LensByValueInput,
 } from '../editor_frame_service/embeddable/embeddable';
-import { ACTION_VISUALIZE_LENS_FIELD } from '../../../../../src/plugins/ui_actions/public';
+import {
+  ACTION_VISUALIZE_LENS_FIELD,
+  VisualizeFieldContext,
+} from '../../../../../src/plugins/ui_actions/public';
 import { LensAttributeService } from '../lens_attribute_service';
 import { LensAppServices, RedirectToOriginProps, HistoryLocationState } from './types';
 import { KibanaContextProvider } from '../../../../../src/plugins/kibana_react/public';
@@ -54,6 +57,10 @@ import { getLastKnownDoc } from './save_modal_container';
 import { getResolvedDateRange, getActiveDatasourceIdFromDoc } from '../utils';
 import { initializeDatasources } from '../editor_frame_service/editor_frame';
 import { generateId } from '../id_generator';
+import {
+  getVisualizeFieldSuggestions,
+  switchToSuggestion,
+} from '../editor_frame_service/editor_frame/suggestion_helpers';
 
 export async function getLensServices(
   coreStart: CoreStart,
@@ -310,10 +317,12 @@ export function loadDocument(
   dashboardFeatureFlag: DashboardFeatureFlagConfig,
   datasourceMap: Record<string, Datasource>,
   visualizationMap: Record<string, Visualization>,
-  initialContext
+  initialContext?: VisualizeFieldContext
 ) {
   const { attributeService, chrome, notifications, data } = lensServices;
   const { persistedDoc } = lensStore.getState().app;
+
+  lensStore.dispatch(setState({ isAppLoading: true }));
   if (
     !initialInput ||
     (attributeService.inputIsRefType(initialInput) &&
@@ -335,12 +344,30 @@ export function loadDocument(
             })
           );
 
+          lensStore.dispatch(setState({ isAppLoading: false }));
           {
+            if (initialContext) {
+              const { visualization, datasourceStates } = lensStore.getState().app;
+
+              const selectedSuggestion = getVisualizeFieldSuggestions({
+                datasourceMap,
+                datasourceStates,
+                visualizationMap,
+                activeVisualizationId: visualization.activeId,
+                visualizationState: visualization.state,
+                visualizeTriggerFieldContext: initialContext,
+              });
+              if (selectedSuggestion) {
+                switchToSuggestion(lensStore.dispatch, selectedSuggestion, 'SWITCH_VISUALIZATION');
+              }
+            }
+
             const activeDatasourceId = Object.keys(datasourceMap)[0] || null;
 
             const visualization = lensStore.getState().app.visualization;
             const activeVisualization =
               visualization.activeId && visualizationMap[visualization.activeId];
+            // if (activeVisualization) {
             if (visualization.state === null && activeVisualization) {
               const initialVisualizationState = activeVisualization.initialize(() => {
                 const newLayerId = generateId();
@@ -363,13 +390,13 @@ export function loadDocument(
             }
           }
         });
+        lensStore.dispatch(setState({ isAppLoading: false }));
       })
       .catch((e) => {
         // console.error('error ', e);
       });
     return;
   }
-  lensStore.dispatch(setState({ isAppLoading: true }));
 
   getLastKnownDoc({
     initialInput,

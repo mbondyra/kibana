@@ -8,18 +8,18 @@
 import { Dispatch, MiddlewareAPI, PayloadAction } from '@reduxjs/toolkit';
 import moment from 'moment';
 
+import { isEqual } from 'lodash';
 import { DataPublicPluginStart } from '../../../../../src/plugins/data/public';
 import { setState, LensDispatch } from '.';
 import { LensAppState } from './types';
 import { getResolvedDateRange, containsDynamicMath, TIME_LAG_PERCENTAGE_LIMIT } from '../utils';
-import { isEqual } from 'lodash';
 
 export const timeRangeMiddleware = (data: DataPublicPluginStart) => (store: MiddlewareAPI) => {
   return (next: Dispatch) => (action: PayloadAction<Partial<LensAppState>>) => {
     //  check if too much time passed to update searchSessionId
     // check if document changed
 
-    //todo: move to optimizing reducer
+    // todo: move to optimizing reducer
     if (action.type === 'app/onActiveDataChange') {
       if (isEqual(store.getState().app.activeData, action.payload?.activeData)) {
         return;

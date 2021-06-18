@@ -6,7 +6,6 @@
  */
 
 import { createSlice, current, PayloadAction } from '@reduxjs/toolkit';
-import { isEqual } from 'lodash';
 import { LensAppState } from './types';
 import { getActiveDatasourceIdFromDoc } from '../utils';
 import { Document } from '../persistence/saved_object_store';
