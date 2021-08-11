@@ -26,6 +26,7 @@ import {
   EuiPopoverTitle,
   EuiComboBox,
   EuiRange,
+  EuiTitle,
 } from '@elastic/eui';
 import type { PaletteRegistry } from 'src/plugins/charts/public';
 import type {
@@ -35,7 +36,7 @@ import type {
   FramePublicAPI,
 } from '../types';
 import { State, visualizationTypes, XYState } from './types';
-import type { FormatFactory } from '../../common';
+import { FormatFactory, layerTypes } from '../../common';
 import {
   SeriesType,
   YAxisMode,
@@ -54,6 +55,7 @@ import { getAccessorColorConfig, getColorAssignments } from './color_assignment'
 import { getScaleType, getSortedAccessors } from './to_expression';
 import { VisualOptionsPopover } from './visual_options_popover/visual_options_popover';
 import { ToolbarButton } from '../../../../../src/plugins/kibana_react/public';
+import { LensIconChartBarThreshold } from '../assets/chart_bar_threshold';
 
 type UnwrapArray<T> = T extends Array<infer P> ? P : T;
 type AxesSettingsConfigKeys = keyof AxesSettingsConfig;
@@ -104,6 +106,24 @@ export function LayerHeader(props: VisualizationLayerWidgetProps<State>) {
   const layer = state.layers[index];
   if (!layer) {
     return null;
+  }
+  // if it's a threshold just draw a static text
+  if (layer.layerType === layerTypes.THRESHOLD) {
+    return (
+      <>
+        <EuiIcon
+          type={LensIconChartBarThreshold}
+          className="lnsLayerPanel__settingsStaticHeaderIcon"
+        />
+        <EuiTitle size="xxs" className="lnsLayerPanel__settingsStaticHeader">
+          <h5>
+            {i18n.translate('xpack.lens.xyChart.layerThresholdLabel', {
+              defaultMessage: 'Thresholds',
+            })}
+          </h5>
+        </EuiTitle>
+      </>
+    );
   }
   const currentVisType = visualizationTypes.find(({ id }) => id === layer.seriesType)!;
 
