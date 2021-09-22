@@ -36,10 +36,10 @@ export const getPersisted = async ({
     const result = await attributeService.unwrapAttributes(initialInput);
     if (!result) {
       return {
-        doc: ({
+        doc: {
           ...initialInput,
           type: LENS_EMBEDDABLE_TYPE,
-        } as unknown) as Document,
+        } as unknown as Document,
         sharingSavedObjectProps: {
           outcome: 'exactMatch',
         },
@@ -83,13 +83,7 @@ export const getPersisted = async ({
 
 export function loadInitial(
   store: MiddlewareAPI,
-  {
-    lensServices,
-    datasourceMap,
-    visualizationMap,
-    embeddableEditorIncomingState,
-    initialContext,
-  }: LensStoreDeps,
+  { lensServices, datasourceMap, embeddableEditorIncomingState, initialContext }: LensStoreDeps,
   {
     redirectCallback,
     initialInput,
@@ -112,9 +106,10 @@ export function loadInitial(
     return initializeDatasources(datasourceMap, lens.datasourceStates, undefined, initialContext, {
       isFullEditor: true,
     })
-      .then((result) =>
+      .then((result) => {
         store.dispatch(
           initEmpty({
+            // este init empty hace algo mal
             newState: {
               ...emptyState,
               datasourceStates: Object.entries(result).reduce(
@@ -131,8 +126,8 @@ export function loadInitial(
             },
             initialContext,
           })
-        )
-      )
+        );
+      })
       .catch((e: { message: string }) => {
         notifications.toasts.addDanger({
           title: e.message,

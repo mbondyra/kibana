@@ -23,12 +23,7 @@ import {
 import { DragDropIdentifier } from '../../drag_drop';
 import { LayerType, layerTypes } from '../../../common';
 import { getLayerType } from './config_panel/add_layer';
-import {
-  LensDispatch,
-  switchVisualization,
-  DatasourceStates,
-  VisualizationState,
-} from '../../state_management';
+import { DatasourceStates, VisualizationState } from '../../state_management';
 
 export interface Suggestion {
   visualizationId: string;

@@ -9,7 +9,6 @@ import { createAction, createReducer, current, PayloadAction } from '@reduxjs/to
 import { VisualizeFieldContext } from 'src/plugins/ui_actions/public';
 import { History } from 'history';
 import { LensEmbeddableInput } from '..';
-import { getDatasourceLayersIds } from '../async_services';
 import { TableInspectorAdapter } from '../editor_frame_service/types';
 import { getInitialDatasourceId, getResolvedDateRange } from '../utils';
 import { LensAppState, LensStoreDeps } from './types';
@@ -76,7 +75,7 @@ export const getPreloadedState = ({
   return state;
 };
 
-export const setState = createAction<Partial<LensAppState>>('setState');
+export const setState = createAction<Partial<LensAppState>>('lens/setState');
 
 export const initEmpty = createAction(
   'initEmpty',
@@ -91,37 +90,37 @@ export const initEmpty = createAction(
   }
 );
 
-export const onActiveDataChange = createAction<TableInspectorAdapter>('onActiveDataChange');
-export const setSaveable = createAction<boolean>('setSaveable');
-export const removeLayers = createAction<void>('removeLayers');
+export const onActiveDataChange = createAction<TableInspectorAdapter>('lens/onActiveDataChange');
+export const setSaveable = createAction<boolean>('lens/setSaveable');
+export const removeLayers = createAction<{ layerIds: string[] }>('lens/removeLayers');
 export const updateState = createAction<{
   subType: string;
   updater: (prevState: LensAppState) => LensAppState;
-}>('updateState');
+}>('lens/updateState');
 export const updateDatasourceState = createAction<{
   updater: unknown | ((prevState: unknown) => unknown);
   datasourceId: string;
   clearStagedPreview?: boolean;
-}>('updateDatasourceState');
+}>('lens/updateDatasourceState');
 export const updateVisualizationState = createAction<{
   visualizationId: string;
   newState: unknown;
-}>('updateVisualizationState');
+}>('lens/updateVisualizationState');
 
 export const editVisualizationAction = createAction<{
   visualizationId: string;
   event: LensEditEvent<keyof LensEditContextMapping>;
-}>('editVisualizationAction');
+}>('lens/editVisualizationAction');
 
 export const updateLayer = createAction<{
   layerId: string;
   datasourceId: string;
   updater: (state: unknown, layerId: string) => unknown;
-}>('updateLayer');
+}>('lens/updateLayer');
 export const insertLayer = createAction<{
   layerId: string;
   datasourceId: string;
-}>('insertLayer');
+}>('lens/insertLayer');
 
 export const switchVisualization = createAction<{
   visualizationId: string;
@@ -129,20 +128,20 @@ export const switchVisualization = createAction<{
   datasourceState?: unknown;
   datasourceId?: string;
   shouldStagePreview?: boolean;
-}>('switchVisualization');
-export const rollbackSuggestion = createAction<void>('rollbackSuggestion');
-export const setToggleFullscreen = createAction<void>('setToggleFullscreen');
-export const submitSuggestion = createAction<void>('submitSuggestion');
+}>('lens/switchVisualization');
+export const rollbackSuggestion = createAction<void>('lens/rollbackSuggestion');
+export const setToggleFullscreen = createAction<void>('lens/setToggleFullscreen');
+export const submitSuggestion = createAction<void>('lens/submitSuggestion');
 export const switchDatasource = createAction<{
   newDatasourceId: string;
-}>('switchDatasource');
-export const navigateAway = createAction<void>('navigateAway');
+}>('lens/switchDatasource');
+export const navigateAway = createAction<void>('lens/navigateAway');
 export const loadInitial = createAction<{
   initialInput?: LensEmbeddableInput;
   redirectCallback: (savedObjectId?: string) => void;
   emptyState: LensAppState;
   history: History<unknown>;
-}>('loadInitial');
+}>('lens/loadInitial');
 
 export const lensActions = {
   setState,

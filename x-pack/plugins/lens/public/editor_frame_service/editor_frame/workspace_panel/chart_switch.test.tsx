@@ -199,12 +199,12 @@ describe('chart_switch', () => {
 
     expect(lensStore.dispatch).toHaveBeenCalledWith({
       type: 'lens/switchVisualization',
-      payload: {
-        initialState: 'suggestion visB',
-        newVisualizationId: 'visB',
+      payload: expect.objectContaining({
+        visualizationState: 'suggestion visB',
+        visualizationId: 'visB',
         datasourceId: 'testDatasource',
         datasourceState: {},
-      },
+      }),
     });
   });
 
@@ -234,12 +234,13 @@ describe('chart_switch', () => {
     );
 
     switchTo('visB', instance);
+    // TODO: move to reducer testing ???
     expect(datasourceMap.testDatasource.removeLayer).toHaveBeenCalledWith({}, 'a'); // from preloaded state
     expect(lensStore.dispatch).toHaveBeenCalledWith({
       type: 'lens/switchVisualization',
       payload: {
-        initialState: 'visB initial state',
-        newVisualizationId: 'visB',
+        visualizationState: 'visB initial state',
+        visualizationId: 'visB',
       },
     });
     expect(lensStore.dispatch).toHaveBeenCalledWith({
@@ -524,8 +525,8 @@ describe('chart_switch', () => {
       payload: {
         datasourceId: undefined,
         datasourceState: undefined,
-        initialState: 'visB initial state',
-        newVisualizationId: 'visB',
+        visualizationState: 'visB initial state',
+        visualizationId: 'visB',
       },
     });
   });
@@ -597,12 +598,12 @@ describe('chart_switch', () => {
 
     expect(lensStore.dispatch).toHaveBeenCalledWith({
       type: 'lens/switchVisualization',
-      payload: {
+      payload: expect.objectContaining({
         datasourceId: 'testDatasource',
         datasourceState: {},
-        initialState: 'switched',
-        newVisualizationId: 'visC',
-      },
+        visualizationState: 'switched',
+        visualizationId: 'visC',
+      }),
     });
     expect(datasourceMap.testDatasource.removeLayer).not.toHaveBeenCalled();
   });
@@ -693,12 +694,12 @@ describe('chart_switch', () => {
 
     expect(lensStore.dispatch).toHaveBeenCalledWith({
       type: 'lens/switchVisualization',
-      payload: {
-        newVisualizationId: 'visB',
+      payload: expect.objectContaining({
+        visualizationId: 'visB',
         datasourceId: 'testDatasource',
         datasourceState: 'testDatasource suggestion',
-        initialState: 'suggestion visB',
-      },
+        visualizationState: 'suggestion visB',
+      }),
     });
   });
 
@@ -730,12 +731,12 @@ describe('chart_switch', () => {
 
     expect(lensStore.dispatch).toHaveBeenCalledWith({
       type: 'lens/switchVisualization',
-      payload: {
-        initialState: 'suggestion visB visB',
-        newVisualizationId: 'visB',
+      payload: expect.objectContaining({
+        visualizationState: 'suggestion visB visB',
+        visualizationId: 'visB',
         datasourceId: 'testDatasource',
         datasourceState: {},
-      },
+      }),
     });
   });
 

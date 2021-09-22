@@ -57,15 +57,6 @@ export async function initializeDatasources(
   return states;
 }
 
-export const getDatasourceLayersIds = function getDatasourceLayersIds(
-  datasourceStates: DatasourceStates,
-  datasourceMap: DatasourceMap
-) {
-  return Object.keys(datasourceMap)
-    .filter((id) => datasourceStates[id] && !datasourceStates[id].isLoading)
-    .flatMap((id) => datasourceMap[id].getLayers(datasourceStates[id].state));
-};
-
 export const getDatasourceLayers = memoizeOne(function getDatasourceLayers(
   datasourceStates: DatasourceStates,
   datasourceMap: DatasourceMap

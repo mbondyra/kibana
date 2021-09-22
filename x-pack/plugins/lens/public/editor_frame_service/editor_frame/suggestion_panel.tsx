@@ -395,7 +395,7 @@ export function SuggestionPanel({
                   rollbackToCurrentVisualization();
                 } else {
                   setLastSelectedSuggestion(index);
-                  dispatchLens(switchVisualization(suggestion));
+                  dispatchLens(switchVisualization({ ...suggestion, shouldStagePreview: true }));
                 }
               }}
               selected={index === lastSelectedSuggestion}

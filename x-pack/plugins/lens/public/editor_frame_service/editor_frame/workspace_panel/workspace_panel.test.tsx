@@ -832,8 +832,8 @@ describe('workspace_panel', () => {
       expect(lensStore.dispatch).toHaveBeenCalledWith({
         type: 'lens/switchVisualization',
         payload: {
-          newVisualizationId: 'testVis',
-          initialState: {},
+          visualizationId: 'testVis',
+          visualizationState: {},
           datasourceState: {},
           datasourceId: 'testDatasource',
         },

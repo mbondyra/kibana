@@ -77,7 +77,7 @@ export function EditorFrame(props: EditorFrameProps) {
       const suggestion = getSuggestionForField.current!(field);
       if (suggestion) {
         trackUiEvent('drop_onto_workspace');
-        dispatchLens(switchVisualization(suggestion));
+        dispatchLens(switchVisualization({ ...suggestion, shouldStagePreview: true }));
       }
     },
     [getSuggestionForField, dispatchLens]
