@@ -487,19 +487,17 @@ export const makeLensReducer = (storeDeps: LensStoreDeps) => {
         activeDatasourceId: payload.newDatasourceId,
       };
     },
-    [removeLayers.type]: (state) => {
+    [removeLayers.type]: (state, { payload }: { payload: { layerIds: string[] } }) => {
       if (!state.visualization.activeId) {
         throw new Error('Invariant: visualization state got updated without active visualization');
       }
-
-      const layers = getDatasourceLayersIds(state.datasourceStates, datasourceMap);
 
       const activeVisualization =
         state.visualization.activeId && visualizationMap[state.visualization.activeId];
 
       let newVisualization = state.visualization;
       if (activeVisualization && activeVisualization.removeLayer && state.visualization.state) {
-        const updater = layers.reduce(
+        const updater = payload.layerIds.reduce(
           (acc, layerId) =>
             activeVisualization.removeLayer ? activeVisualization.removeLayer(acc, layerId) : acc,
           state.visualization.state
@@ -512,7 +510,7 @@ export const makeLensReducer = (storeDeps: LensStoreDeps) => {
         };
       }
       let newDatasourceStates = state.datasourceStates;
-      layers.forEach((layerId) => {
+      payload.layerIds.forEach((layerId) => {
         const [layerDatasourceId] =
           Object.entries(datasourceMap).find(([datasourceId, datasource]) => {
             return (
