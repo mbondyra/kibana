@@ -25,7 +25,6 @@ import { LayerType, layerTypes } from '../../../common';
 import { getLayerType } from './config_panel/add_layer';
 import {
   LensDispatch,
-  selectSuggestion,
   switchVisualization,
   DatasourceStates,
   VisualizationState,
@@ -218,28 +217,6 @@ function getVisualizationSuggestions(
       columns: table.columns.length,
       changeType: table.changeType,
     }));
-}
-
-export function switchToSuggestion(
-  dispatchLens: LensDispatch,
-  suggestion: Pick<
-    Suggestion,
-    'visualizationId' | 'visualizationState' | 'datasourceState' | 'datasourceId'
-  >,
-  type: 'SWITCH_VISUALIZATION' | 'SELECT_SUGGESTION' = 'SELECT_SUGGESTION'
-) {
-  const pickedSuggestion = {
-    newVisualizationId: suggestion.visualizationId,
-    initialState: suggestion.visualizationState,
-    datasourceState: suggestion.datasourceState,
-    datasourceId: suggestion.datasourceId!,
-  };
-
-  dispatchLens(
-    type === 'SELECT_SUGGESTION'
-      ? selectSuggestion(pickedSuggestion)
-      : switchVisualization(pickedSuggestion)
-  );
 }
 
 export function getTopSuggestionForField(
