@@ -10,6 +10,7 @@ import { BandFillColorAccessorInput, Chart, Goal, Settings } from '@elastic/char
 // import type { CustomPaletteState } from 'src/plugins/charts/public';
 import { VisualizationContainer } from '../../visualization_container';
 import type { GaugeRenderProps } from './types';
+import { scaleLinear } from 'd3-scale';
 import './index.scss';
 import {
   // applyPaletteParams,
@@ -18,6 +19,7 @@ import {
   // findMinMaxByColumnId,
 } from '../../shared_components';
 import { LensIconChartGaugeHorizontal, LensIconChartGaugeVertical } from '../../assets/chart_gauge';
+import { CustomPaletteState } from 'src/plugins/charts/common';
 // import { DEFAULT_PALETTE_NAME } from './constants';
 
 declare global {
@@ -29,111 +31,91 @@ declare global {
   }
 }
 
-// function getStops(
-//   { colors, stops, range }: CustomPaletteState,
-//   { min, max }: { min: number; max: number }
-// ) {
-//   if (stops.length) {
-//     return stops.slice(0, stops.length - 1);
-//   }
-//   // Do not use relative values here
-//   const maxValue = range === 'percent' ? 100 : max;
-//   const minValue = range === 'percent' ? 0 : min;
-//   const step = (maxValue - minValue) / colors.length;
-//   return colors.slice(0, colors.length - 1).map((_, i) => minValue + (i + 1) * step);
-// }
+function getStops(
+  { colors, stops, range }: CustomPaletteState,
+  { min, max }: { min: number; max: number }
+) {
+  if (stops.length) {
+    return stops;
+  }
+  const step = (max - min) / colors.length;
+  return colors.map((_, i) => min + i * step);
+}
 
-// function computeColorRanges(
-//   paletteService: GaugeRenderProps['paletteService'],
-//   paletteParams: CustomPaletteState | undefined,
-//   baseColor: string,
-//   minMax: { min: number; max: number }
-// ) {
-//   const paletteColors =
-//     paletteParams?.colors ||
-//     applyPaletteParams(paletteService, { type: 'palette', name: DEFAULT_PALETTE_NAME }, minMax).map(
-//       ({ color }) => color
-//     );
-//   // Repeat the first color at the beginning to cover below and above the defined palette
-//   const colors = [paletteColors[0], ...paletteColors];
+function shiftAndNormalizeStops(
+  params: CustomPaletteState,
+  { min, max }: { min: number; max: number }
+) {
+  const baseStops = [
+    ...getStops(params, { min, max }).map((value) => {
+      let result = value;
+      if (params.range === 'percent' && params.stops.length) {
+        result = min + value * ((max - min) / 100);
+      }
+      // for a range of 1 value the formulas above will divide by 0, so here's a safety guard
+      if (Number.isNaN(result)) {
+        return 1;
+      }
+      return result;
+    }),
+    max,
+  ];
+  if (params.stops.length) {
+    if (params.range === 'percent') {
+      baseStops.unshift(min + params.rangeMin * ((max - min) / 100));
+    } else {
+      baseStops.unshift(params.rangeMin);
+    }
+  }
+  return baseStops;
+}
 
-//   const ranges = shiftAndNormalizeStops(
-//     {
-//       gradient: false,
-//       range: defaultPaletteParams.rangeType,
-//       rangeMin: defaultPaletteParams.rangeMin,
-//       rangeMax: defaultPaletteParams.rangeMax,
-//       stops: [],
-//       ...paletteParams,
-//       colors: colors.slice(1),
-//     },
-//     minMax
-//   );
-
-//   return { colors, ranges };
-// }
+function getTitle(title?: string, titleMode, fallbackTitle?: string) {
+  if (titleMode === 'none') {
+    return '';
+  } else if (titleMode === 'auto') {
+    return fallbackTitle || '';
+  }
+  return title || fallbackTitle || '';
+}
 
 export const GaugeComponent: FC<GaugeRenderProps> = ({
   data,
   args,
-  timeZone,
   formatFactory,
   chartsThemeService,
-  onClickValue,
-  onSelectRange,
   paletteService,
 }) => {
+  const {
+    appearance: { subtitle, title, titleMode, ticksPosition },
+    shape: subtype,
+    title: visTitle,
+    description,
+    goalAccessor,
+    maxAccessor,
+    minAccessor,
+    metricAccessor,
+  } = args;
+
   const chartTheme = chartsThemeService.useChartsTheme();
   // const isDarkTheme = chartsThemeService.useDarkMode();
 
-  const tableId = Object.keys(data.tables)[0];
-  const table = data.tables[tableId];
-
-  // const paletteParams = args.palette?.params;
-
-  // const minColumnIndex = table.columns.findIndex((v) => v.id === args.minAccessor);
-  // const yAxisColumnIndex = table.columns.findIndex((v) => v.id === args.maxAccessor);
-
-  // const xAxisColumn = table.columns[minColumnIndex];
-  // const yAxisColumn = table.columns[yAxisColumnIndex];
-  // const valueColumn = table.columns.find((v) => v.id === args.goalAccessor);
-
-  // todo: this should use min and max
-  // const minMaxByColumnId = useMemo(
-  //   () => findMinMaxByColumnId([args.goalAccessor!], table),
-  //   [args.goalAccessor, table]
-  // );
-
-  // if (!xAxisColumn || !valueColumn) {
-  //   // Chart is not ready
-  //   return null;
-  // }
-
-  let chartData = table.rows.filter((v) => typeof v[args.metricAccessor!] === 'number');
+  const table = Object.values(data.tables)[0];
+  let chartData = table.rows.filter((v) => typeof v[metricAccessor!] === 'number');
 
   console.log(chartData);
-  // if (!yAxisColumn) {
-  //   // required for tooltip
-  //   chartData = chartData.map((row) => {
-  //     return {
-  //       ...row,
-  //       unifiedY: '',
-  //     };
-  //   });
-  // }
 
-  // Fallback to the ordinal scale type when a single row of data is provided.
-  // Related issue https://github.com/elastic/elastic-charts/issues/1184
+  if (!metricAccessor) {
+    return (
+      <VisualizationContainer
+        reportTitle={visTitle}
+        reportDescription={description}
+        className="lnsGaugeExpression__container"
+      />
+    );
+  }
 
-  const subtype = args.shape; // GoalSubtype.HorizontalBullet || GoalSubtype.VerticalBullet;
-
-  if (
-    !chartData ||
-    !chartData.length ||
-    !args.metricAccessor ||
-    !args.minAccessor ||
-    !args.maxAccessor
-  ) {
+  if (!chartData || !chartData.length || !metricAccessor || !minAccessor || !maxAccessor) {
     return (
       <EmptyPlaceholder
         icon={
@@ -143,42 +125,39 @@ export const GaugeComponent: FC<GaugeRenderProps> = ({
     );
   }
 
-  const min = table.rows[0][args.minAccessor];
-  const bands = [min, table.rows[0][args.maxAccessor]];
+  const row = table.rows[0];
+
+  const min = row[minAccessor];
+  const max = row[maxAccessor];
+  const metric = row[metricAccessor];
+  const bands = [min, max];
+
+  const colors = (args.palette?.params as CustomPaletteState)?.colors ?? undefined;
+  const ranges = (args.palette?.params as CustomPaletteState)
+    ? shiftAndNormalizeStops(args.palette?.params as CustomPaletteState, { min, max })
+    : undefined;
+
+    console.log(ranges)
+
+
   function getTicks(ticksPosition: 'none' | 'auto' | 'bands') {
-    if (ticksPosition === 'none') {
-      return [];
-    } else if (ticksPosition === 'auto') {
-      // const min = args.minAccessor
-
-      return bands; //todo: no se
-    } else {
-      return bands;
-    }
+    // if (ticksPosition === 'none') {
+    //   return [];
+    // } else if (ticksPosition === 'auto') {
+    //   // const min = minAccessor
+    //   const TICKS_NO = 5;
+    //   return scaleLinear().domain([min, max]).nice().ticks(TICKS_NO);
+    // } else {
+      return ranges;
+    // }
   }
 
-  const ticks = getTicks(args.appearance.ticksPosition);
-
-  const metricColumn = data.tables[tableId].columns.find((col) => col.id === args.metricAccessor);
-  console.log(metricColumn, 'metricColumn');
-
-  function getTitle(title?: string, titleMode) {
-    if (titleMode === 'none') {
-      return '';
-    } else if (titleMode === 'auto') {
-      return metricColumn?.name || '';
-    }
-    return title || metricColumn?.name || '';
-  }
-  const title = getTitle(args.appearance.title, args.appearance.titleMode);
-
-  const subtitle = args.appearance.subtitle;
-
-  const actual = table.rows[0][args.metricAccessor];
+  const metricColumn = table.columns.find((col) => col.id === metricAccessor);
 
   const formatter = metricColumn?.meta?.params
     ? formatFactory(metricColumn.meta?.params)
     : undefined;
+
   return (
     <Chart>
       <Settings debugState={window._echDebugStateFlag ?? false} theme={chartTheme} />
@@ -186,15 +165,15 @@ export const GaugeComponent: FC<GaugeRenderProps> = ({
         id="spec_1"
         subtype={subtype}
         base={min}
-        target={args.goalAccessor && table.rows[0][args.goalAccessor]}
-        actual={actual}
+        target={goalAccessor && row[goalAccessor]}
+        actual={metric}
         bands={bands}
-        ticks={ticks}
+        ticks={getTicks(ticksPosition)}
         tickValueFormatter={({ value: tickValue }) =>
           formatter ? formatter.convert(tickValue) : String(tickValue)
         }
         //  bandFillColor={({ value }: BandFillColorAccessorInput) => bandFillColor(value)}
-        labelMajor={title}
+        labelMajor={getTitle(title, titleMode, metricColumn?.name)}
         labelMinor={subtitle || ''}
       />
     </Chart>

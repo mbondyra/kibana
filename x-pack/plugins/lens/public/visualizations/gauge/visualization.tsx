@@ -152,6 +152,7 @@ export const getGaugeVisualization = ({
 
     return {
       supportStaticValue: true,
+      supportFieldFormat: false,
       groups: [
         {
           layerId: state.layerId,
