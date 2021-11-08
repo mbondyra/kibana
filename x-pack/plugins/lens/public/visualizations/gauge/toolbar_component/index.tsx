@@ -28,17 +28,17 @@ const ticksPositionOptions: Array<{
     }),
   },
   {
-    id: `gauge_ticks_bands`,
-    value: 'bands',
-    label: i18n.translate('xpack.lens.gaugeChart.ticks.bands', {
-      defaultMessage: 'On color bands',
-    }),
-  },
-  {
     id: `gauge_ticks_none`,
     value: 'none',
     label: i18n.translate('xpack.lens.gaugeChart.ticks.none', {
       defaultMessage: 'None',
+    }),
+  },
+  {
+    id: `gauge_ticks_bands`,
+    value: 'bands',
+    label: i18n.translate('xpack.lens.gaugeChart.ticks.bands', {
+      defaultMessage: 'On band colors',
     }),
   },
 ];
