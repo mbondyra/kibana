@@ -81,7 +81,6 @@ export function VisLabel({
           data-test-subj={`lnsShowVisLabelSelect`}
           aria-label="Label"
           onChange={({ target }) => {
-            console.log(target.value);
             if (target.value === 'custom') {
               onLabelChange({ ...currentValue, mode: target.value as LabelMode });
               return;

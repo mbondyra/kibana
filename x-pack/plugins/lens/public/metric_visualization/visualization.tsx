@@ -83,7 +83,7 @@ export const getMetricVisualization = ({
         defaultMessage: 'Metric',
       }),
       groupLabel: i18n.translate('xpack.lens.metric.groupLabel', {
-        defaultMessage: 'Single value',
+        defaultMessage: 'Goal and single value',
       }),
       sortPriority: 3,
     },

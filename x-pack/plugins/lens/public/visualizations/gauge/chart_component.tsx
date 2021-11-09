@@ -101,9 +101,8 @@ export const GaugeComponent: FC<GaugeRenderProps> = ({
   // const isDarkTheme = chartsThemeService.useDarkMode();
 
   const table = Object.values(data.tables)[0];
+  console.log(table);
   let chartData = table.rows.filter((v) => typeof v[metricAccessor!] === 'number');
-
-  console.log(chartData);
 
   if (!metricAccessor) {
     return (
@@ -137,19 +136,15 @@ export const GaugeComponent: FC<GaugeRenderProps> = ({
     ? shiftAndNormalizeStops(args.palette?.params as CustomPaletteState, { min, max })
     : undefined;
 
-    console.log(ranges)
-
-
   function getTicks(ticksPosition: 'none' | 'auto' | 'bands') {
-    // if (ticksPosition === 'none') {
-    //   return [];
-    // } else if (ticksPosition === 'auto') {
-    //   // const min = minAccessor
-    //   const TICKS_NO = 5;
-    //   return scaleLinear().domain([min, max]).nice().ticks(TICKS_NO);
-    // } else {
+    if (ticksPosition === 'none') {
+      return [];
+    } else if (ticksPosition === 'auto') {
+      const TICKS_NO = 5;
+      return scaleLinear().domain([min, max]).nice().ticks(TICKS_NO);
+    } else {
       return ranges;
-    // }
+    }
   }
 
   const metricColumn = table.columns.find((col) => col.id === metricAccessor);
@@ -173,8 +168,8 @@ export const GaugeComponent: FC<GaugeRenderProps> = ({
           formatter ? formatter.convert(tickValue) : String(tickValue)
         }
         //  bandFillColor={({ value }: BandFillColorAccessorInput) => bandFillColor(value)}
-        labelMajor={getTitle(title, titleMode, metricColumn?.name)}
-        labelMinor={subtitle || ''}
+        labelMajor={getTitle(title, titleMode, metricColumn?.name) + '  '}
+        labelMinor={subtitle ? subtitle + '  ' : ''}
       />
     </Chart>
   );
