@@ -55,7 +55,6 @@ export const makeConfigureStore = (
     middleware.push(
       createLogger({
         // @ts-ignore
-        predicate: () => window.ELASTIC_LENS_LOGGER,
       })
     );
   }

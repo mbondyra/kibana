@@ -29,8 +29,9 @@ import { getSafePaletteParams } from './utils';
 import type { CustomPaletteParams } from '../../../common';
 import { layerTypes } from '../../../common';
 import { GoalSubtype } from '@elastic/charts/dist/chart_types/goal_chart/specs/constants';
+import { generateId } from '../../id_generator';
 
-const groupLabelForGauge = i18n.translate('xpack.lens.gaugeVisualization.gaugeGroupLabel', {
+const groupLabelForGauge = i18n.translate('xpack.lens.metric.groupLabel', {
   defaultMessage: 'Goal and single value',
 });
 
@@ -151,10 +152,10 @@ export const getGaugeVisualization = ({
     );
 
     return {
-      supportStaticValue: true,
-      supportFieldFormat: false,
       groups: [
         {
+          supportStaticValue: true,
+          supportFieldFormat: true,
           layerId: state.layerId,
           groupId: GROUP_ID.METRIC,
           groupLabel: i18n.translate('xpack.lens.gauge.metricLabel', {
@@ -186,6 +187,8 @@ export const getGaugeVisualization = ({
           enableDimensionEditor: true,
         },
         {
+          supportStaticValue: true,
+          supportFieldFormat: false,
           layerId: state.layerId,
           groupId: GROUP_ID.MIN,
           groupLabel: i18n.translate('xpack.lens.gauge.minValueLabel', {
@@ -198,6 +201,8 @@ export const getGaugeVisualization = ({
           dataTestSubj: 'lnsGauge_minDimensionPanel',
         },
         {
+          supportStaticValue: true,
+          supportFieldFormat: false,
           layerId: state.layerId,
           groupId: GROUP_ID.MAX,
           groupLabel: i18n.translate('xpack.lens.gauge.maxValueLabel', {
@@ -210,6 +215,8 @@ export const getGaugeVisualization = ({
           dataTestSubj: 'lnsGauge_maxDimensionPanel',
         },
         {
+          supportStaticValue: true,
+          supportFieldFormat: false,
           layerId: state.layerId,
           groupId: GROUP_ID.GOAL,
           groupLabel: i18n.translate('xpack.lens.gauge.goalValueLabel', {
@@ -282,13 +289,32 @@ export const getGaugeVisualization = ({
     );
   },
 
-  getSupportedLayers() {
+  getSupportedLayers(state, frame) {
+    console.log(state);
     return [
       {
         type: layerTypes.DATA,
         label: i18n.translate('xpack.lens.gauge.addLayer', {
           defaultMessage: 'Add visualization layer',
         }),
+        initialDimensions: state
+          ? [
+              {
+                groupId: 'min',
+                columnId: generateId(),
+                dataType: 'number',
+                label: 'minAccessor',
+                staticValue: 1,
+              },
+              {
+                groupId: 'max',
+                columnId: generateId(),
+                dataType: 'number',
+                label: 'maxAccessor',
+                staticValue: 100,
+              },
+            ]
+          : undefined,
       },
     ];
   },
@@ -361,7 +387,6 @@ export const getGaugeVisualization = ({
 
   toPreviewExpression(state, datasourceLayers): Ast | null {
     const datasource = datasourceLayers[state.layerId];
-    console.log(datasource);
 
     const originalOrder = datasource.getTableSpec().map(({ columnId }) => columnId);
     // When we add a column it could be empty, and therefore have no order
