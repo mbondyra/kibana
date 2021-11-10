@@ -137,20 +137,6 @@ export const getGaugeVisualization = ({
   getSuggestions,
 
   getConfiguration({ state, frame, layerId }) {
-    const datasourceLayer = frame.datasourceLayers[layerId];
-
-    const originalOrder = datasourceLayer.getTableSpec().map(({ columnId }) => columnId);
-    if (!originalOrder) {
-      return { groups: [], supportStaticValue: true };
-    }
-    // todo
-    const { displayStops, activePalette } = getSafePaletteParams(
-      paletteService,
-      frame.activeData?.[state.layerId],
-      state.metricAccessor,
-      state?.palette && state.palette.accessor === state.metricAccessor ? state.palette : undefined
-    );
-
     return {
       groups: [
         {
@@ -161,25 +147,7 @@ export const getGaugeVisualization = ({
           groupLabel: i18n.translate('xpack.lens.gauge.metricLabel', {
             defaultMessage: 'Metric',
           }),
-          accessors: state.metricAccessor
-            ? [
-                // When data is not available and the range type is numeric, return a placeholder while refreshing
-                displayStops.length &&
-                (frame.activeData || activePalette?.params?.rangeType !== 'number')
-                  ? {
-                      columnId: state.metricAccessor,
-                      triggerIcon: 'colorBy',
-                      palette: getStopsForFixedMode(
-                        displayStops,
-                        activePalette?.params?.colorStops
-                      ),
-                    }
-                  : {
-                      columnId: state.metricAccessor,
-                      triggerIcon: 'none',
-                    },
-              ]
-            : [],
+          accessors: state.metricAccessor ? [{ columnId: state.metricAccessor }] : [],
           filterOperations: isNumericMetric,
           supportsMoreColumns: !state.metricAccessor,
           required: true,
@@ -300,18 +268,32 @@ export const getGaugeVisualization = ({
         initialDimensions: state
           ? [
               {
+                groupId: 'metric',
+                columnId: generateId(),
+                dataType: 'number',
+                label: 'metricAccessor',
+                staticValue: 60,
+              },
+              {
                 groupId: 'min',
                 columnId: generateId(),
                 dataType: 'number',
                 label: 'minAccessor',
-                staticValue: 1,
+                staticValue: 0,
               },
               {
                 groupId: 'max',
                 columnId: generateId(),
                 dataType: 'number',
                 label: 'maxAccessor',
-                staticValue: 100,
+                staticValue: 100, // add 20 to the maximum from metric ?
+              },
+              {
+                groupId: 'goal',
+                columnId: generateId(),
+                dataType: 'number',
+                label: 'goalAccessor',
+                staticValue: 80,
               },
             ]
           : undefined,

@@ -446,6 +446,7 @@ export const ChartSwitch = memo(function ChartSwitch(props: Props) {
               return;
             }
             const id = chosenType.value!;
+            console.log(id)
             commitSelection(visualizationsLookup[id].selection);
           }}
           noMatchesMessage={
