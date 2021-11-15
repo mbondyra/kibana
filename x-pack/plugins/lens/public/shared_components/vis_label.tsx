@@ -6,9 +6,8 @@
  */
 
 import React from 'react';
-import { EuiFlexGroup, EuiFlexItem, EuiText, EuiFieldText, EuiSelect } from '@elastic/eui';
+import { EuiFlexGroup, EuiFlexItem, EuiFieldText, EuiSelect } from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
-import { useDebouncedValue } from '.';
 
 type LabelMode = 'none' | 'custom' | 'auto';
 
@@ -66,13 +65,6 @@ export function VisLabel({
   placeholder = '',
   header = defaultHeader,
 }: VisLabelProps) {
-  const { inputValue: currentValue, handleInputChange: onLabelChange } = useDebouncedValue<Label>({
-    value: {
-      label,
-      mode,
-    },
-    onChange: handleChange,
-  });
   return (
     <EuiFlexGroup gutterSize="s" justifyContent="flexEnd" alignItems="center">
       <EuiFlexItem grow={false}>
@@ -82,25 +74,23 @@ export function VisLabel({
           aria-label="Label"
           onChange={({ target }) => {
             if (target.value === 'custom') {
-              onLabelChange({ ...currentValue, mode: target.value as LabelMode });
+              handleChange({ label: '', mode: target.value as LabelMode });
               return;
             }
-            onLabelChange({ label: '', mode: target.value as LabelMode });
+            handleChange({ label: '', mode: target.value as LabelMode });
           }}
           options={hasAutoOption ? modeEnhancedOptions : modeDefaultOptions}
-          value={currentValue.mode}
+          value={mode}
         />
       </EuiFlexItem>
       <EuiFlexItem grow={false}>
         <EuiFieldText
           data-test-subj={`lnsVisLabel`}
           compressed
-          placeholder={placeholder}
-          value={currentValue.label || ''}
-          disabled={currentValue.mode === 'none'}
-          onChange={({ target }) =>
-            onLabelChange({ ...currentValue, mode: 'custom', label: target.value })
-          }
+          placeholder={mode === 'none' ? '' : placeholder}
+          value={label || ''}
+          disabled={mode === 'none'}
+          onChange={({ target }) => handleChange({ mode: 'custom', label: target.value })}
           aria-label={header}
         />
       </EuiFlexItem>

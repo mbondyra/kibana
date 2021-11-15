@@ -10,14 +10,17 @@ import type { ExpressionFunctionDefinition } from '../../../../../../src/plugins
 
 export const GAUGE_APPEARANCE_FUNCTION = 'lens_gauge_appearance';
 
+export type GaugeTitleMode = 'auto' | 'custom' | 'none';
 export interface GaugeAppearanceConfig {
   ticksPosition: 'auto' | 'bands' | 'none';
-  titleMode: 'auto' | 'custom' | 'none';
+  titleMode: GaugeTitleMode;
   title?: string;
   subtitle?: string;
 }
 
-export type GaugeAppearanceResult = GaugeAppearanceConfig & { type: typeof GAUGE_APPEARANCE_FUNCTION };
+export type GaugeAppearanceResult = GaugeAppearanceConfig & {
+  type: typeof GAUGE_APPEARANCE_FUNCTION;
+};
 
 export const gaugeAppearanceConfig: ExpressionFunctionDefinition<
   typeof GAUGE_APPEARANCE_FUNCTION,

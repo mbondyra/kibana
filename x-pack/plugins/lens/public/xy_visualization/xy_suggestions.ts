@@ -117,7 +117,10 @@ function getSuggestionForColumns(
   } else if (buckets.length === 0) {
     const [yValues, [xValue, splitBy]] = partition(
       prioritizeColumns(values),
-      (col) => col.operation.dataType === 'number' && !col.operation.isBucketed
+      (col) =>
+        col.operation.dataType === 'number' &&
+        !col.operation.isBucketed &&
+        col.operation.operationType !== 'static_value'
     );
     return getSuggestionsForLayer({
       layerId: table.layerId,

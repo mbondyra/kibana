@@ -33,7 +33,7 @@ function newLayerState(layerId: string): PieLayerState {
 
 const bucketedOperations = (op: OperationMetadata) => op.isBucketed;
 const numberMetricOperations = (op: OperationMetadata) =>
-  !op.isBucketed && op.dataType === 'number';
+  !op.isBucketed && op.dataType === 'number' && op.operationType !== 'static_value';
 
 export const getPieVisualization = ({
   paletteService,

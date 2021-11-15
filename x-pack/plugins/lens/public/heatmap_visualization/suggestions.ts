@@ -74,7 +74,9 @@ export const getSuggestions: Visualization<HeatmapVisualizationState>['getSugges
     },
   };
 
-  const numberMetric = metrics.find((m) => m.operation.dataType === 'number');
+  const numberMetric = metrics.find(
+    (m) => m.operation.dataType === 'number' && m.operationType !== 'static_value'
+  );
 
   if (numberMetric) {
     score += 0.3;

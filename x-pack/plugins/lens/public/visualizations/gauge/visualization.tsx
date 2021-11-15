@@ -10,6 +10,7 @@ import { render } from 'react-dom';
 import { i18n } from '@kbn/i18n';
 import { FormattedMessage, I18nProvider } from '@kbn/i18n/react';
 import { Ast } from '@kbn/interpreter/common';
+import { GoalSubtype } from '@elastic/charts/dist/chart_types/goal_chart/specs/constants';
 import { PaletteRegistry } from '../../../../../../src/plugins/charts/public';
 import type { OperationMetadata, Visualization } from '../../types';
 import type { GaugeVisualizationState } from './types';
@@ -27,7 +28,6 @@ import { CUSTOM_PALETTE, getStopsForFixedMode } from '../../shared_components';
 import { GaugeDimensionEditor } from './dimension_editor';
 import type { CustomPaletteParams } from '../../../common';
 import { layerTypes } from '../../../common';
-import { GoalSubtype } from '@elastic/charts/dist/chart_types/goal_chart/specs/constants';
 import { generateId } from '../../id_generator';
 
 const groupLabelForGauge = i18n.translate('xpack.lens.metric.groupLabel', {
@@ -179,6 +179,7 @@ export const getGaugeVisualization = ({
           supportsMoreColumns: !state.minAccessor,
           required: true,
           dataTestSubj: 'lnsGauge_minDimensionPanel',
+          prioritizedOperation: 'min',
         },
         {
           supportStaticValue: true,
@@ -193,6 +194,7 @@ export const getGaugeVisualization = ({
           supportsMoreColumns: !state.maxAccessor,
           required: true,
           dataTestSubj: 'lnsGauge_maxDimensionPanel',
+          prioritizedOperation: 'max',
         },
         {
           supportStaticValue: true,
@@ -270,6 +272,24 @@ export const getGaugeVisualization = ({
   },
 
   getSupportedLayers(state, frame) {
+    const metricAccessor = state?.metricAccessor;
+
+    let minAccessorValue = 0;
+    let maxAccessorValue = 100;
+    let goalAccessorValue = 80;
+
+    const metricValue =
+      metricAccessor &&
+      state?.layerId &&
+      frame?.activeData?.[state.layerId].rows[0][metricAccessor];
+    if (metricValue) {
+      maxAccessorValue = metricValue * 1.2 || 1; // do not allow 0 as default max 0
+      goalAccessorValue = Math.max(metricValue, 1);
+      if (metricValue < 0) {
+        minAccessorValue = metricValue - 10; // TO THINK
+      }
+    }
+
     return [
       {
         type: layerTypes.DATA,
@@ -290,21 +310,21 @@ export const getGaugeVisualization = ({
                 columnId: generateId(),
                 dataType: 'number',
                 label: 'minAccessor',
-                staticValue: 0,
+                staticValue: minAccessorValue,
               },
               {
                 groupId: 'max',
                 columnId: generateId(),
                 dataType: 'number',
                 label: 'maxAccessor',
-                staticValue: 100, // add 20 to the maximum from metric ?
+                staticValue: maxAccessorValue,
               },
               {
                 groupId: 'goal',
                 columnId: generateId(),
                 dataType: 'number',
                 label: 'goalAccessor',
-                staticValue: 80,
+                staticValue: goalAccessorValue,
               },
             ]
           : undefined,
@@ -369,7 +389,9 @@ export const getGaugeVisualization = ({
                         : ['auto'],
                       subtitle: state.appearance.subtitle ? [state.appearance.subtitle] : [],
                       title: state.appearance.title ? [state.appearance.title] : [],
-                      titleMode: state.appearance.title ? [state.appearance.title] : ['auto'],
+                      titleMode: state.appearance.titleMode
+                        ? [state.appearance.titleMode]
+                        : ['auto'],
                     },
                   },
                 ],
@@ -470,8 +492,7 @@ export const getGaugeVisualization = ({
       ]);
     }
 
-    const { activeData } = frame;
-    const row = activeData?.[state.layerId].rows[0];
+    const row = frame?.activeData?.[state.layerId]?.rows?.[0];
     if (!row) {
       return [];
     }

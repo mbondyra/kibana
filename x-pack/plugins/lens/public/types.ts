@@ -39,6 +39,7 @@ import {
   LENS_TOGGLE_ACTION,
 } from './datatable_visualization/components/constants';
 import type { LensInspector } from './lens_inspector_service';
+import { OperationType } from './async_services';
 
 export type ErrorCallback = (e: { message: string }) => void;
 
@@ -214,6 +215,7 @@ export interface Datasource<T = unknown, P = unknown> {
     props: DatasourceDimensionDropProps<T> & {
       groupId: string;
       dragging: DragContextState['dragging'];
+      prioritizedOperation?: string;
     }
   ) => { dropTypes: DropType[]; nextLabel?: string } | undefined;
   onDrop: (props: DatasourceDimensionDropHandlerProps<T>) => false | true | { deleted: string };
@@ -428,6 +430,8 @@ export interface OperationMetadata {
   // TODO currently it's not possible to differentiate between a field from a raw
   // document and an aggregated metric which might be handy in some cases. Once we
   // introduce a raw document datasource, this should be considered here.
+
+  operationType?: OperationType;
 }
 
 export interface VisualizationConfigProps<T = unknown> {
@@ -471,6 +475,7 @@ export type VisualizationDimensionGroupConfig = SharedDimensionProps & {
   /** If required, a warning will appear if accessors are empty */
   required?: boolean;
   dataTestSubj?: string;
+  prioritizedOperation?: string;
 
   /**
    * When the dimension editor is enabled for this group, all dimensions in the group

@@ -9,7 +9,7 @@ import React, { memo, useState } from 'react';
 import { EuiButtonGroup, EuiFlexGroup, EuiFlexItem, EuiFormRow } from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
 import type { VisualizationToolbarProps } from '../../../types';
-import { ToolbarPopover, VisLabel } from '../../../shared_components';
+import { ToolbarPopover, useDebouncedValue, VisLabel } from '../../../shared_components';
 import type { GaugeVisualizationState } from '../types';
 import './gauge_config_panel.scss';
 
@@ -45,16 +45,18 @@ const ticksPositionOptions: Array<{
 
 export const GaugeToolbar = memo((props: VisualizationToolbarProps<GaugeVisualizationState>) => {
   const { state, setState, frame } = props;
-  const metricAccessor = state.metricAccessor;
   const metricDimensionTitle =
     state.layerId &&
-    frame.activeData?.[state.layerId]?.columns.find((col) => col.id === metricAccessor)?.name;
+    frame.activeData?.[state.layerId]?.columns.find((col) => col.id === state.metricAccessor)?.name;
 
   const [subtitleMode, setSubtitleMode] = useState<LabelMode>(() =>
     state.appearance.subtitle ? 'custom' : 'none'
   );
 
-  console.log(state);
+  const { inputValue, handleInputChange } = useDebouncedValue({
+    onChange: setState,
+    value: state,
+  });
 
   return (
     <EuiFlexGroup gutterSize="m" justifyContent="spaceBetween" responsive={false}>
@@ -62,7 +64,7 @@ export const GaugeToolbar = memo((props: VisualizationToolbarProps<GaugeVisualiz
         <EuiFlexGroup gutterSize="none" responsive={false}>
           <ToolbarPopover
             handleClose={() => {
-              setSubtitleMode(state.appearance.subtitle ? 'custom' : 'none');
+              setSubtitleMode(inputValue.appearance.subtitle ? 'custom' : 'none');
             }}
             title={i18n.translate('xpack.lens.gauge.appearanceLabel', {
               defaultMessage: 'Appearance',
@@ -79,15 +81,18 @@ export const GaugeToolbar = memo((props: VisualizationToolbarProps<GaugeVisualiz
               fullWidth
             >
               <VisLabel
-                label={state.appearance.title || ''}
-                mode={state.appearance.titleMode}
+                header={i18n.translate('xpack.lens.label.gauge.title.header', {
+                  defaultMessage: 'title',
+                })}
+                label={inputValue.appearance.title || ''}
+                mode={inputValue.appearance.titleMode}
                 placeholder={metricDimensionTitle || ''}
                 hasAutoOption={true}
                 handleChange={(value) => {
-                  setState({
-                    ...state,
+                  handleInputChange({
+                    ...inputValue,
                     appearance: {
-                      ...state.appearance,
+                      ...inputValue.appearance,
                       title: value.label,
                       titleMode: value.mode,
                     },
@@ -102,17 +107,18 @@ export const GaugeToolbar = memo((props: VisualizationToolbarProps<GaugeVisualiz
                 defaultMessage: 'Subtitle',
               })}
             >
+              {/* <div/> */}
               <VisLabel
                 header={i18n.translate('xpack.lens.label.gauge.subtitle.header', {
                   defaultMessage: 'Subtitle',
                 })}
-                label={state.appearance.subtitle || ''}
+                label={inputValue.appearance.subtitle || ''}
                 mode={subtitleMode}
                 handleChange={(value) => {
-                  setState({
-                    ...state,
+                  handleInputChange({
+                    ...inputValue,
                     appearance: {
-                      ...state.appearance,
+                      ...inputValue.appearance,
                       subtitle: value.label,
                     },
                   });
@@ -136,12 +142,12 @@ export const GaugeToolbar = memo((props: VisualizationToolbarProps<GaugeVisualiz
                 name="ticksDisplay"
                 buttonSize="compressed"
                 options={ticksPositionOptions}
-                idSelected={state.appearance.ticksPosition}
+                idSelected={`gauge_ticks_${inputValue.appearance.ticksPosition}`}
                 onChange={(value) => {
-                  setState({
-                    ...state,
+                  handleInputChange({
+                    ...inputValue,
                     appearance: {
-                      ...state.appearance,
+                      ...inputValue.appearance,
                       ticksPosition: value.replace(/gauge_ticks_/g, ''),
                     },
                   });

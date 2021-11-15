@@ -62,12 +62,13 @@ export type { OperationType, IndexPatternColumn } from './operations';
 export { deleteColumn } from './operations';
 
 export function columnToOperation(column: IndexPatternColumn, uniqueLabel?: string): Operation {
-  const { dataType, label, isBucketed, scale } = column;
+  const { dataType, label, isBucketed, scale, operationType } = column;
   return {
     dataType: normalizeOperationDataType(dataType),
     isBucketed,
     scale,
     label: uniqueLabel || label,
+    operationType,
   };
 }
 

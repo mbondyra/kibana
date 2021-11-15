@@ -6,21 +6,15 @@
  */
 
 import React, { FC, useEffect, useState } from 'react';
-import { BandFillColorAccessorInput, Chart, Goal, Settings } from '@elastic/charts';
-// import type { CustomPaletteState } from 'src/plugins/charts/public';
+import { Chart, Goal, Settings } from '@elastic/charts';
+import type { CustomPaletteState } from 'src/plugins/charts/public';
+import { scaleLinear } from 'd3-scale';
 import { VisualizationContainer } from '../../visualization_container';
 import type { GaugeRenderProps } from './types';
-import { scaleLinear } from 'd3-scale';
 import './index.scss';
-import {
-  // applyPaletteParams,
-  // defaultPaletteParams,
-  EmptyPlaceholder,
-  // findMinMaxByColumnId,
-} from '../../shared_components';
+import { EmptyPlaceholder } from '../../shared_components';
 import { LensIconChartGaugeHorizontal, LensIconChartGaugeVertical } from '../../assets/chart_gauge';
-import { CustomPaletteState } from 'src/plugins/charts/common';
-// import { DEFAULT_PALETTE_NAME } from './constants';
+import { GaugeTitleMode } from '../../../../../../node_modules/x-pack/plugins/lens/common/expressions/gauge_chart';
 
 declare global {
   interface Window {
@@ -70,13 +64,30 @@ function shiftAndNormalizeStops(
   return baseStops;
 }
 
-function getTitle(title?: string, titleMode, fallbackTitle?: string) {
+function getTitle(titleMode: GaugeTitleMode, title?: string, fallbackTitle?: string) {
   if (titleMode === 'none') {
     return '';
   } else if (titleMode === 'auto') {
-    return fallbackTitle || '';
+    return `${fallbackTitle || ''}   `;
   }
-  return title || fallbackTitle || '';
+  return `${title || fallbackTitle || ''}   `;
+}
+
+const getDefaultMax = (metric: number, goal?: number) => {
+  const FALLBACK_VALUE = 100;
+  const MAX_FACTOR = 1.2;
+  return Math.max(goal || 0, metric) * MAX_FACTOR || FALLBACK_VALUE;
+};
+
+function getTicks(ticksPosition: 'none' | 'auto' | 'bands', range, colorBands) {
+  if (ticksPosition === 'none') {
+    return [];
+  } else if (ticksPosition === 'auto') {
+    const TICKS_NO = 3;
+    return scaleLinear().domain(range).nice().ticks(TICKS_NO);
+  } else {
+    return colorBands;
+  }
 }
 
 export const GaugeComponent: FC<GaugeRenderProps> = ({
@@ -102,7 +113,7 @@ export const GaugeComponent: FC<GaugeRenderProps> = ({
   // const isDarkTheme = chartsThemeService.useDarkMode();
 
   const table = Object.values(data.tables)[0];
-  let chartData = table.rows.filter((v) => typeof v[metricAccessor!] === 'number');
+  const chartData = table.rows.filter((v) => typeof v[metricAccessor!] === 'number');
 
   if (!metricAccessor) {
     return (
@@ -124,37 +135,20 @@ export const GaugeComponent: FC<GaugeRenderProps> = ({
     );
   }
 
-  const getDefaultMax = (metric: number, goal?: number) => {
-    const MAX_FACTOR = 1.2;
-    if (!goal) {
-      return metric * MAX_FACTOR;
-    }
-    return Math.max(goal, metric) * MAX_FACTOR;
-  };
-
-  const row = table.rows[0];
+  const row = chartData[0];
   const metric = row[metricAccessor];
   const goal = goalAccessor && row[goalAccessor];
   const min = minAccessor && typeof row[minAccessor] === 'number' ? row[minAccessor] : 0;
-  const max = maxAccessor && typeof row[maxAccessor] === 'number' ? row[maxAccessor] : getDefaultMax(metric, goal);
+  const max =
+    maxAccessor && typeof row[maxAccessor] === 'number'
+      ? row[maxAccessor]
+      : getDefaultMax(metric, goal);
   const bands = [min, max];
-
 
   const colors = (palette?.params as CustomPaletteState)?.colors ?? undefined;
   const ranges = (palette?.params as CustomPaletteState)
     ? shiftAndNormalizeStops(args.palette?.params as CustomPaletteState, { min, max })
     : undefined;
-
-  function getTicks(ticksPosition: 'none' | 'auto' | 'bands') {
-    if (ticksPosition === 'none') {
-      return [];
-    } else if (ticksPosition === 'auto') {
-      const TICKS_NO = 5;
-      return scaleLinear().domain([min, max]).nice().ticks(TICKS_NO);
-    } else {
-      return ranges;
-    }
-  }
 
   const metricColumn = table.columns.find((col) => col.id === metricAccessor);
 
@@ -162,7 +156,6 @@ export const GaugeComponent: FC<GaugeRenderProps> = ({
     ? formatFactory(metricColumn.meta?.params)
     : undefined;
 
-  // return null;
   return (
     <Chart>
       <Settings debugState={window._echDebugStateFlag ?? false} theme={chartTheme} />
@@ -173,7 +166,7 @@ export const GaugeComponent: FC<GaugeRenderProps> = ({
         target={goal}
         actual={metric}
         bands={bands}
-        ticks={getTicks(ticksPosition)}
+        ticks={getTicks(ticksPosition, [min, max], ranges)}
         tickValueFormatter={({ value: tickValue }) =>
           formatter ? formatter.convert(tickValue) : String(tickValue)
         }
@@ -181,7 +174,7 @@ export const GaugeComponent: FC<GaugeRenderProps> = ({
           const index = ranges && ranges.indexOf(val.value) - 1;
           return index !== undefined && colors && index >= 0 ? colors[index] : 'rgb(255,255,255)';
         }}
-        labelMajor={getTitle(title, titleMode, metricColumn?.name) + '  '}
+        labelMajor={getTitle(titleMode, title, metricColumn?.name)}
         labelMinor={subtitle ? subtitle + '  ' : ''}
       />
     </Chart>
