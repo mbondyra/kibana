@@ -25,7 +25,6 @@ import { GaugeToolbar } from './toolbar_component';
 import { LensIconChartGaugeHorizontal, LensIconChartGaugeVertical } from '../../assets/chart_gauge';
 import { CUSTOM_PALETTE, getStopsForFixedMode } from '../../shared_components';
 import { GaugeDimensionEditor } from './dimension_editor';
-import { getSafePaletteParams } from './utils';
 import type { CustomPaletteParams } from '../../../common';
 import { layerTypes } from '../../../common';
 import { GoalSubtype } from '@elastic/charts/dist/chart_types/goal_chart/specs/constants';
@@ -122,7 +121,7 @@ export const getGaugeVisualization = ({
         layerType: layerTypes.DATA,
         title: 'Empty Gauge chart',
         shape: GoalSubtype.HorizontalBullet,
-        // palette: mainPalette,
+        palette: mainPalette,
 
         appearance: {
           ticksPosition: 'auto',
@@ -133,10 +132,11 @@ export const getGaugeVisualization = ({
     );
   },
 
-  // getMainPalette: (state) => (state ? state.palette : undefined),
+  getMainPalette: (state) => (state ? state.palette : undefined),
   getSuggestions,
 
   getConfiguration({ state, frame, layerId }) {
+    const hasColoring = Boolean(state.palette?.params?.stops);
     return {
       groups: [
         {
@@ -147,7 +147,19 @@ export const getGaugeVisualization = ({
           groupLabel: i18n.translate('xpack.lens.gauge.metricLabel', {
             defaultMessage: 'Metric',
           }),
-          accessors: state.metricAccessor ? [{ columnId: state.metricAccessor }] : [],
+          accessors: state.metricAccessor
+            ? [
+                {
+                  columnId: state.metricAccessor,
+                  palette: hasColoring
+                    ? getStopsForFixedMode(
+                        state.palette?.params?.stops || [],
+                        state.palette?.params?.colorStops
+                      )
+                    : undefined,
+                },
+              ]
+            : [],
           filterOperations: isNumericMetric,
           supportsMoreColumns: !state.metricAccessor,
           required: true,
@@ -258,7 +270,6 @@ export const getGaugeVisualization = ({
   },
 
   getSupportedLayers(state, frame) {
-    console.log(state);
     return [
       {
         type: layerTypes.DATA,
@@ -316,9 +327,20 @@ export const getGaugeVisualization = ({
     //   .map((columnId) => ({ columnId, operation: datasource.getOperationForColumnId(columnId) }))
     //   .filter((o): o is { columnId: string; operation: Operation } => !!o.operation);
 
-    if (!originalOrder || !state.metricAccessor || !state.minAccessor || !state.maxAccessor) {
+    if (!originalOrder || !state.metricAccessor) {
       return null;
     }
+    const paletteParams = {
+      ...state.palette?.params,
+      // rewrite colors and stops as two distinct arguments
+      colors: (state.palette?.params?.stops || []).map(({ color }) => color),
+      stops:
+        state.palette?.params?.name === 'custom'
+          ? (state.palette?.params?.stops || []).map(({ stop }) => stop)
+          : [],
+      reverse: false, // managed at UI level
+    };
+
     return {
       type: 'expression',
       chain: [
@@ -332,16 +354,8 @@ export const getGaugeVisualization = ({
             minAccessor: [state.minAccessor ?? ''],
             maxAccessor: [state.maxAccessor ?? ''],
             goalAccessor: [state.goalAccessor ?? ''],
-            shape: [state.shape ?? CHART_NAMES.horizontalBullet],
-            palette: state.palette?.params
-              ? [
-                  paletteService
-                    .get(CUSTOM_PALETTE)
-                    .toExpression(
-                      computePaletteParams((state.palette?.params || {}) as CustomPaletteParams)
-                    ),
-                ]
-              : [paletteService.get(DEFAULT_PALETTE_NAME).toExpression()],
+            shape: [state.shape ?? 'horizontalBullet'],
+            palette: [paletteService.get(CUSTOM_PALETTE).toExpression(paletteParams)],
             appearance: [
               {
                 type: 'expression',
@@ -424,53 +438,74 @@ export const getGaugeVisualization = ({
   },
 
   getErrorMessages(state) {
-    if (!state.maxAccessor && !state.minAccessor && !state.goalAccessor && !state.metricAccessor) {
-      // nothing configured yet
-      return;
-    }
-
-    const errors: ReturnType<Visualization['getErrorMessages']> = [];
-
-    if (!state.minAccessor) {
-      errors.push({
-        shortMessage: i18n.translate(
-          'xpack.lens.gaugeVisualization.missingMinAccessorShortMessage',
-          {
-            defaultMessage: 'Missing Minimum Value.',
-          }
-        ),
-        longMessage: i18n.translate('xpack.lens.gaugeVisualization.missingMinAccessorLongMessage', {
-          defaultMessage: 'Configuration for the minimum value is missing.',
-        }),
-      });
-    }
-
-    return errors.length ? errors : undefined;
+    // not possible to break it?
+    return undefined;
   },
 
   getWarningMessages(state, frame) {
-    if (!state?.layerId || !frame.activeData || !state.metricAccessor) {
+    const { maxAccessor, minAccessor, goalAccessor, metricAccessor } = state;
+    if (!maxAccessor && !minAccessor && !goalAccessor && !metricAccessor) {
+      // nothing configured yet
       return;
     }
-
-    const rows = frame.activeData[state.layerId] && frame.activeData[state.layerId].rows;
-    if (!rows) {
-      return;
+    if (!metricAccessor) {
+      return [];
     }
 
-    const hasArrayValues = rows.some((row) => Array.isArray(row[state.metricAccessor!]));
+    const warnings = [];
+    if (!minAccessor) {
+      warnings.push([
+        <FormattedMessage
+          id="xpack.lens.gaugeVisualization.missingMinAccessorShortMessage"
+          defaultMessage="Configuration for the minimum value is missing. Minimum value will default to 0."
+        />,
+      ]);
+    }
+    if (!maxAccessor) {
+      warnings.push([
+        <FormattedMessage
+          id="xpack.lens.gaugeVisualization.missingMaxAccessorShortMessage"
+          defaultMessage="Configuration for the maximum value is missing. Maximum value will be calculated automatically."
+        />,
+      ]);
+    }
 
-    const datasource = frame.datasourceLayers[state.layerId];
-    const operation = datasource.getOperationForColumnId(state.metricAccessor);
+    const { activeData } = frame;
+    const row = activeData?.[state.layerId].rows[0];
+    if (!row) {
+      return [];
+    }
+    const metricValue = row[metricAccessor];
+    const maxValue = maxAccessor && row[maxAccessor];
+    const minValue = minAccessor && row[minAccessor];
+    const goalValue = goalAccessor && row[goalAccessor];
 
-    return hasArrayValues
-      ? [
-          <FormattedMessage
-            id="xpack.lens.gaugeVisualization.arrayValuesWarningMessage"
-            defaultMessage="{label} contains array values. Your visualization may not render as expected."
-            values={{ label: <strong>{operation?.label}</strong> }}
-          />,
-        ]
-      : undefined;
+    if (minValue > metricValue) {
+      warnings.push([
+        <FormattedMessage
+          id="xpack.lens.gaugeVisualization.minValueBiggerMetricShortMessage"
+          defaultMessage="Minimum value is bigger than metric value."
+        />,
+      ]);
+    }
+    if (maxValue && minValue > maxValue) {
+      warnings.push([
+        <FormattedMessage
+          id="xpack.lens.gaugeVisualization.minValueBiggerMaximumShortMessage"
+          defaultMessage="Minimum value is bigger than maximum value."
+        />,
+      ]);
+    }
+
+    if (maxValue && goalValue && goalValue > maxValue) {
+      warnings.push([
+        <FormattedMessage
+          id="xpack.lens.gaugeVisualization.goalValueBiggerMaximumShortMessage"
+          defaultMessage="Goal value is bigger than maximum value."
+        />,
+      ]);
+    }
+
+    return warnings;
   },
 });

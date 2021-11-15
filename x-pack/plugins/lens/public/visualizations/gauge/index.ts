@@ -9,7 +9,6 @@ import type { CoreSetup } from 'kibana/public';
 import type { ExpressionsSetup } from '../../../../../../src/plugins/expressions/public';
 import type { EditorFrameSetup } from '../../types';
 import type { ChartsPluginSetup } from '../../../../../../src/plugins/charts/public';
-import { getTimeZone } from '../../utils';
 import type { FormatFactory } from '../../../common';
 
 export interface GaugeVisualizationPluginSetupPlugins {
@@ -17,15 +16,14 @@ export interface GaugeVisualizationPluginSetupPlugins {
   formatFactory: FormatFactory;
   editorFrame: EditorFrameSetup;
   charts: ChartsPluginSetup;
-}
-
+} 
+ 
 export class GaugeVisualization {
   setup(
     core: CoreSetup,
     { expressions, formatFactory, editorFrame, charts }: GaugeVisualizationPluginSetupPlugins
   ) {
     editorFrame.registerVisualization(async () => {
-      const timeZone = getTimeZone(core.uiSettings);
       const { getGaugeVisualization, getGaugeRenderer } = await import('../../async_services');
       const palettes = await charts.palettes.getPalettes();
 
@@ -34,7 +32,6 @@ export class GaugeVisualization {
           formatFactory,
           chartsThemeService: charts.theme,
           paletteService: palettes,
-          timeZone,
         })
       );
       return getGaugeVisualization({ paletteService: palettes });

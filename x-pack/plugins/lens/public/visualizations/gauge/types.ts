@@ -6,11 +6,6 @@
  */
 
 import type {
-  CustomPaletteState,
-  PaletteOutput,
-} from '../../../../../../src/plugins/charts/common';
-import type { LensBrushEvent, LensFilterEvent } from '../../types';
-import type {
   LensMultiTable,
   FormatFactory,
   CustomPaletteParams,
@@ -19,9 +14,11 @@ import type {
 import type { GaugeAppearanceResult, GaugeShape } from '../../../common/expressions';
 import { GAUGE_CHART_TYPES, LENS_GAUGE_RENDERER } from './constants';
 import type {
+  CustomPaletteState,
   ChartsPluginSetup,
   PaletteRegistry,
-} from '../../../../../../src/plugins/charts/public';
+  PaletteOutput
+} from 'src/plugins/charts/public';
 
 export type GaugeTypes = typeof GAUGE_CHART_TYPES[keyof typeof GAUGE_CHART_TYPES];
 
@@ -40,8 +37,7 @@ export type GaugeLayerState = SharedGaugeLayerState & {
 };
 
 export type GaugeVisualizationState = GaugeLayerState & {
-  // need to store the current accessor to reset the color stops at accessor change
-  palette?: PaletteOutput<CustomPaletteParams> & { accessor: string };
+  palette?: PaletteOutput<CustomPaletteParams>;
   shape: 'horizontalBullet' | 'verticalBullet';
 };
 
@@ -63,10 +59,7 @@ export interface GaugeExpressionProps {
 }
 
 export type GaugeRenderProps = GaugeExpressionProps & {
-  timeZone: string;
   formatFactory: FormatFactory;
   chartsThemeService: ChartsPluginSetup['theme'];
-  onClickValue: (data: LensFilterEvent['data']) => void;
-  onSelectRange: (data: LensBrushEvent['data']) => void;
   paletteService: PaletteRegistry;
 };

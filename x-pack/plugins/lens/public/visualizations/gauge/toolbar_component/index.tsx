@@ -54,6 +54,8 @@ export const GaugeToolbar = memo((props: VisualizationToolbarProps<GaugeVisualiz
     state.appearance.subtitle ? 'custom' : 'none'
   );
 
+  console.log(state);
+
   return (
     <EuiFlexGroup gutterSize="m" justifyContent="spaceBetween" responsive={false}>
       <EuiFlexItem>

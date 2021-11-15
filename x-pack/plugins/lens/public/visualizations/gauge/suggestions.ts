@@ -11,7 +11,7 @@ import type { GaugeVisualizationState } from './types';
 import { GAUGE_APPEARANCE_FUNCTION } from './constants';
 import { layerTypes } from '../../../common';
 import { LensIconChartGaugeHorizontal } from '../../assets/chart_gauge';
-import { CHART_NAMES } from './gauge_visualization';
+import { GoalSubtype } from '@elastic/charts/dist/chart_types/goal_chart/specs/constants';
 
 export const getSuggestions: Visualization<GaugeVisualizationState>['getSuggestions'] = ({
   table,
@@ -24,14 +24,15 @@ export const getSuggestions: Visualization<GaugeVisualizationState>['getSuggesti
     table.columns[0].operation.dataType !== 'number' ||
     (state &&
       (state.minAccessor || state.maxAccessor || state.goalAccessor || state.metricAccessor) &&
-      table.changeType !== 'extended' && table.changeType !== 'unchanged' )
+      table.changeType !== 'extended' &&
+      table.changeType !== 'unchanged')
   ) {
     return [];
   }
-  console.log('table.changeType', table.changeType);
   const baseSuggestion = {
     state: {
-      shape: subVisualizationId || CHART_NAMES.horizontalBullet,
+      ...state,
+      shape: subVisualizationId || GoalSubtype.HorizontalBullet,
       layerId: table.layerId,
       metricAccessor: table.columns[0].columnId,
       layerType: layerTypes.DATA,
@@ -51,10 +52,7 @@ export const getSuggestions: Visualization<GaugeVisualizationState>['getSuggesti
     baseSuggestion,
     {
       ...baseSuggestion,
-      shape:
-        subVisualizationId === CHART_NAMES.horizontalBullet
-          ? CHART_NAMES.verticalBullet
-          : CHART_NAMES.horizontalBullet,
+      shape: subVisualizationId === 'horizontalBullet' ? 'verticalBullet' : 'horizontalBullet',
     },
   ];
 };

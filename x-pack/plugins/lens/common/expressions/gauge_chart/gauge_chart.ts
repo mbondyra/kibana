@@ -8,38 +8,38 @@
 import { i18n } from '@kbn/i18n';
 import type { ExpressionFunctionDefinition } from '../../../../../../src/plugins/expressions/common';
 import type { PaletteOutput } from '../../../../../../src/plugins/charts/common';
-import type { LensMultiTable, CustomPaletteParams } from '../../types';
+import type { LensMultiTable, CustomPaletteParams, LayerType } from '../../types';
 import { GaugeAppearanceResult, GAUGE_APPEARANCE_FUNCTION } from './gauge_appearance';
 
 export const GAUGE_FUNCTION = 'lens_gauge';
 export const GAUGE_FUNCTION_RENDERER = 'lens_gauge_renderer';
 
-export type GaugeType = "gauge";
-export type GaugeShape= "horizontalBullet" | "verticalBullet";
+export type GaugeType = 'gauge';
+export type GaugeShape = 'horizontalBullet' | 'verticalBullet';
 
 export interface SharedGaugeLayerState {
-  shape: GaugeShape;
   metricAccessor?: string;
   minAccessor?: string;
   maxAccessor?: string;
   goalAccessor?: string;
   appearance: GaugeAppearanceResult;
-
 }
 
 export type GaugeLayerState = SharedGaugeLayerState & {
   layerId: string;
+  layerType: LayerType;
 };
 
 export type GaugeVisualizationState = GaugeLayerState & {
-  // need to store the current accessor to reset the color stops at accessor change
-  palette?: PaletteOutput<CustomPaletteParams> & { accessor: string };
+  shape: GaugeShape;
+  palette?: PaletteOutput<CustomPaletteParams>;
 };
 
 export type GaugeExpressionArgs = SharedGaugeLayerState & {
   title?: string;
   description?: string;
-  palette: PaletteOutput;
+  shape: GaugeShape;
+  palette?: PaletteOutput<CustomPaletteParams>;
 };
 
 export interface GaugeRender {
@@ -73,6 +73,7 @@ export const gauge: ExpressionFunctionDefinition<
     },
     shape: {
       types: ['string'],
+      options: ['horizontalBullet', 'verticalBullet'],
       help: '',
     },
     description: {
@@ -96,9 +97,8 @@ export const gauge: ExpressionFunctionDefinition<
       help: '',
     },
     palette: {
-      default: `{theme "palette" default={system_palette name="default"} }`,
-      help: '',
       types: ['palette'],
+      help: '',
     },
     appearance: {
       types: [GAUGE_APPEARANCE_FUNCTION],

@@ -18,13 +18,16 @@ import type { PaletteRegistry } from 'src/plugins/charts/public';
 import type { VisualizationDimensionEditorProps } from '../../types';
 import {
   CustomizablePalette,
+  applyPaletteParams,
+  defaultPaletteParams,
   FIXED_PROGRESSION,
   getStopsForFixedMode,
+  useDebouncedValue,
   PalettePanelContainer,
+  findMinMaxByColumnId,
 } from '../../shared_components/';
 import './dimension_editor.scss';
 import type { GaugeVisualizationState } from './types';
-import { getSafePaletteParams } from './utils';
 
 export function GaugeDimensionEditor(
   props: VisualizationDimensionEditorProps<GaugeVisualizationState> & {
@@ -37,13 +40,18 @@ export function GaugeDimensionEditor(
 
   const currentData = frame.activeData?.[state.layerId];
 
+  const activePalette = state?.palette || {
+    type: 'palette',
+    name: defaultPaletteParams.name,
+  };
+
+  const currentMinMaxBounds = {
+    min: 0,
+    max: 100,
+    fallback: false,
+  }
   // need to tell the helper that the colorStops are required to display
-  const { displayStops, activePalette, currentMinMax } = getSafePaletteParams(
-    props.paletteService,
-    currentData,
-    accessor,
-    state?.palette && state.palette.accessor === accessor ? state.palette : undefined
-  );
+  const displayStops = applyPaletteParams(props.paletteService, activePalette, currentMinMaxBounds);
 
   return (
     <EuiFormRow
@@ -95,17 +103,12 @@ export function GaugeDimensionEditor(
             <CustomizablePalette
               palettes={props.paletteService}
               activePalette={activePalette}
-              dataBounds={currentMinMax}
+              dataBounds={currentMinMaxBounds}
               showContinuity={false}
               setPalette={(newPalette) => {
-                // make sure to always have a list of stops
-                if (newPalette.params && !newPalette.params.stops) {
-                  newPalette.params.stops = displayStops;
-                }
-                (newPalette as GaugeVisualizationState['palette'])!.accessor = accessor;
                 setState({
                   ...state,
-                  palette: newPalette as GaugeVisualizationState['palette'],
+                  palette: newPalette,
                 });
               }}
             />

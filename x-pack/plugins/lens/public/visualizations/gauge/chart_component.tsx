@@ -58,7 +58,7 @@ function shiftAndNormalizeStops(
       }
       return result;
     }),
-    max,
+    Math.max(max, ...params.stops),
   ];
   if (params.stops.length) {
     if (params.range === 'percent') {
@@ -95,13 +95,13 @@ export const GaugeComponent: FC<GaugeRenderProps> = ({
     maxAccessor,
     minAccessor,
     metricAccessor,
+    palette,
   } = args;
 
   const chartTheme = chartsThemeService.useChartsTheme();
   // const isDarkTheme = chartsThemeService.useDarkMode();
 
   const table = Object.values(data.tables)[0];
-  console.log(table);
   let chartData = table.rows.filter((v) => typeof v[metricAccessor!] === 'number');
 
   if (!metricAccessor) {
@@ -114,7 +114,7 @@ export const GaugeComponent: FC<GaugeRenderProps> = ({
     );
   }
 
-  if (!chartData || !chartData.length || !metricAccessor || !minAccessor || !maxAccessor) {
+  if (!chartData || !chartData.length || !metricAccessor) {
     return (
       <EmptyPlaceholder
         icon={
@@ -124,15 +124,24 @@ export const GaugeComponent: FC<GaugeRenderProps> = ({
     );
   }
 
-  const row = table.rows[0];
+  const getDefaultMax = (metric: number, goal?: number) => {
+    const MAX_FACTOR = 1.2;
+    if (!goal) {
+      return metric * MAX_FACTOR;
+    }
+    return Math.max(goal, metric) * MAX_FACTOR;
+  };
 
-  const min = row[minAccessor];
-  const max = row[maxAccessor];
+  const row = table.rows[0];
   const metric = row[metricAccessor];
+  const goal = goalAccessor && row[goalAccessor];
+  const min = minAccessor && typeof row[minAccessor] === 'number' ? row[minAccessor] : 0;
+  const max = maxAccessor && typeof row[maxAccessor] === 'number' ? row[maxAccessor] : getDefaultMax(metric, goal);
   const bands = [min, max];
 
-  const colors = (args.palette?.params as CustomPaletteState)?.colors ?? undefined;
-  const ranges = (args.palette?.params as CustomPaletteState)
+
+  const colors = (palette?.params as CustomPaletteState)?.colors ?? undefined;
+  const ranges = (palette?.params as CustomPaletteState)
     ? shiftAndNormalizeStops(args.palette?.params as CustomPaletteState, { min, max })
     : undefined;
 
@@ -153,6 +162,7 @@ export const GaugeComponent: FC<GaugeRenderProps> = ({
     ? formatFactory(metricColumn.meta?.params)
     : undefined;
 
+  // return null;
   return (
     <Chart>
       <Settings debugState={window._echDebugStateFlag ?? false} theme={chartTheme} />
@@ -160,22 +170,23 @@ export const GaugeComponent: FC<GaugeRenderProps> = ({
         id="spec_1"
         subtype={subtype}
         base={min}
-        target={goalAccessor && row[goalAccessor]}
+        target={goal}
         actual={metric}
         bands={bands}
         ticks={getTicks(ticksPosition)}
         tickValueFormatter={({ value: tickValue }) =>
           formatter ? formatter.convert(tickValue) : String(tickValue)
         }
-        //  bandFillColor={({ value }: BandFillColorAccessorInput) => bandFillColor(value)}
+        bandFillColor={(val) => {
+          const index = ranges && ranges.indexOf(val.value) - 1;
+          return index !== undefined && colors && index >= 0 ? colors[index] : 'rgb(255,255,255)';
+        }}
         labelMajor={getTitle(title, titleMode, metricColumn?.name) + '  '}
         labelMinor={subtitle ? subtitle + '  ' : ''}
       />
     </Chart>
   );
 };
-
-const MemoizedChart = React.memo(GaugeComponent);
 
 export function GaugeChartReportable(props: GaugeRenderProps) {
   const [state, setState] = useState({
@@ -195,7 +206,7 @@ export function GaugeChartReportable(props: GaugeRenderProps) {
       reportTitle={props.args.title}
       reportDescription={props.args.description}
     >
-      <MemoizedChart {...props} />
+      <GaugeComponent {...props} />
     </VisualizationContainer>
   );
 }
