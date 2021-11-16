@@ -45,10 +45,21 @@ export function getSuggestions({
   subVisualizationId,
   mainPalette,
 }: SuggestionRequest<State>): Array<VisualizationSuggestion<State>> {
+  // // const newLayer = insertOrReplaceColumn({
+  // //   layer: state.layers[state.layerId],
+  // //   indexPattern: currentIndexPattern,
+  // //   columnId,
+  // //   op: formulaOperationName,
+  // //   visualizationGroups: dimensionGroups,
+  // // });
+
+  // console.log(state, table, subVisualizationId);
+
   const incompleteTable =
     !table.isMultiRow ||
     table.columns.length <= 1 ||
     table.columns.every((col) => col.operation.dataType !== 'number') ||
+    table.columns.some((col) => col.operation.isStaticValue) ||
     table.columns.some((col) => !columnSortOrder.hasOwnProperty(col.operation.dataType));
   if (incompleteTable && table.changeType === 'unchanged' && state) {
     // this isn't a table we would switch to, but we have a state already. In this case, just use the current state for all series types
@@ -99,6 +110,7 @@ function getSuggestionForColumns(
   mainPalette?: PaletteOutput
 ): VisualizationSuggestion<State> | Array<VisualizationSuggestion<State>> | undefined {
   const [buckets, values] = partition(table.columns, (col) => col.operation.isBucketed);
+  // const values = allValues.filter((col) => !col.operation.isStaticValue);
 
   if (buckets.length === 1 || buckets.length === 2) {
     const [x, splitBy] = getBucketMappings(table, currentState);
@@ -117,10 +129,8 @@ function getSuggestionForColumns(
   } else if (buckets.length === 0) {
     const [yValues, [xValue, splitBy]] = partition(
       prioritizeColumns(values),
-      (col) =>
-        col.operation.dataType === 'number' &&
-        !col.operation.isBucketed &&
-        col.operation.operationType !== 'static_value'
+      (col) => col.operation.dataType === 'number' && !col.operation.isBucketed && 1
+      // !col.operation.isStaticValue
     );
     return getSuggestionsForLayer({
       layerId: table.layerId,

@@ -68,7 +68,7 @@ export function columnToOperation(column: IndexPatternColumn, uniqueLabel?: stri
     isBucketed,
     scale,
     label: uniqueLabel || label,
-    operationType,
+    isStaticValue: operationType === 'static_value',
   };
 }
 

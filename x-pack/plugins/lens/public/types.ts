@@ -432,6 +432,8 @@ export interface OperationMetadata {
   // introduce a raw document datasource, this should be considered here.
 
   operationType?: OperationType;
+
+  isStaticValue?: boolean;
 }
 
 export interface VisualizationConfigProps<T = unknown> {

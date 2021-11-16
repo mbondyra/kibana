@@ -21,14 +21,18 @@ export const getSuggestions: Visualization<GaugeVisualizationState>['getSuggesti
 }) => {
   if (
     table.isMultiRow ||
-    table.columns[0].operation.dataType !== 'number' ||
+    keptLayerIds.length > 1 ||
+    (keptLayerIds.length && table.layerId !== keptLayerIds[0]) ||
+    table.columns.length !== 1 ||
+    table.columns?.[0]?.operation.dataType !== 'number' ||
     (state &&
-      (state.minAccessor || state.maxAccessor || state.goalAccessor || state.metricAccessor) &&
-      table.changeType !== 'extended' &&
-      table.changeType !== 'unchanged')
+      (state.minAccessor || state.maxAccessor || state.goalAccessor || state.metricAccessor)  &&
+          table.changeType !== 'extended' &&
+          table.changeType !== 'unchanged')
   ) {
     return [];
   }
+
   const baseSuggestion = {
     state: {
       ...state,
@@ -47,12 +51,35 @@ export const getSuggestions: Visualization<GaugeVisualizationState>['getSuggesti
     }),
     previewIcon: LensIconChartGaugeHorizontal,
     score: 0.1,
+    hide: !(state?.shape === 'horizontalBullet' || state?.shape === 'verticalBullet'), // only display for gauges for beta
   };
-  return [
-    baseSuggestion,
-    {
-      ...baseSuggestion,
-      shape: subVisualizationId === 'horizontalBullet' ? 'verticalBullet' : 'horizontalBullet',
-    },
-  ];
+  const suggestions =
+    state?.shape === 'horizontalBullet' || state?.shape === 'verticalBullet'
+      ? [
+          {
+            ...baseSuggestion,
+            state: {
+              ...baseSuggestion.state,
+              shape: state.shape === 'horizontalBullet' ? 'verticalBullet' : 'horizontalBullet',
+            },
+          },
+        ]
+      : [
+          {
+            ...baseSuggestion,
+            state: {
+              ...baseSuggestion.state,
+              shape: 'horizontalBullet',
+            },
+          },
+          {
+            ...baseSuggestion,
+            state: {
+              ...baseSuggestion.state,
+              shape: 'verticalBullet',
+            },
+          },
+        ];
+
+  return suggestions;
 };

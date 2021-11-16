@@ -11,7 +11,7 @@ import type {
   CustomPaletteParams,
   LayerType,
 } from '../../../common';
-import type { GaugeAppearanceResult, GaugeShape } from '../../../common/expressions';
+import type { GaugeAppearanceResult, GaugeColorMode, GaugeShape } from '../../../common/expressions';
 import { GAUGE_CHART_TYPES, LENS_GAUGE_RENDERER } from './constants';
 import type {
   CustomPaletteState,
@@ -29,6 +29,8 @@ export interface SharedGaugeLayerState {
   maxAccessor?: string;
   goalAccessor?: string;
   appearance: GaugeAppearanceResult;
+  colorMode?: GaugeColorMode;
+  palette?: PaletteOutput<CustomPaletteParams>;
 }
 
 export type GaugeLayerState = SharedGaugeLayerState & {

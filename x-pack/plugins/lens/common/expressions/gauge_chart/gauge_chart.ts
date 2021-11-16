@@ -16,6 +16,7 @@ export const GAUGE_FUNCTION_RENDERER = 'lens_gauge_renderer';
 
 export type GaugeType = 'gauge';
 export type GaugeShape = 'horizontalBullet' | 'verticalBullet';
+export type GaugeColorMode = 'none' | 'palette' | 'single';
 
 export interface SharedGaugeLayerState {
   metricAccessor?: string;
@@ -23,6 +24,8 @@ export interface SharedGaugeLayerState {
   maxAccessor?: string;
   goalAccessor?: string;
   appearance: GaugeAppearanceResult;
+  colorMode?: GaugeColorMode;
+  palette?: PaletteOutput<CustomPaletteParams>;
 }
 
 export type GaugeLayerState = SharedGaugeLayerState & {
@@ -32,14 +35,12 @@ export type GaugeLayerState = SharedGaugeLayerState & {
 
 export type GaugeVisualizationState = GaugeLayerState & {
   shape: GaugeShape;
-  palette?: PaletteOutput<CustomPaletteParams>;
 };
 
 export type GaugeExpressionArgs = SharedGaugeLayerState & {
   title?: string;
   description?: string;
   shape: GaugeShape;
-  palette?: PaletteOutput<CustomPaletteParams>;
 };
 
 export interface GaugeRender {
@@ -67,38 +68,60 @@ export const gauge: ExpressionFunctionDefinition<
   args: {
     title: {
       types: ['string'],
-      help: i18n.translate('xpack.lens.gauge.titleLabel', {
-        defaultMessage: 'Title',
+      help: i18n.translate('xpack.lens.gauge.title.help', {
+        defaultMessage: 'Saved gauge title',
       }),
     },
     shape: {
       types: ['string'],
       options: ['horizontalBullet', 'verticalBullet'],
-      help: '',
+      help: i18n.translate('xpack.lens.gauge.shape.help', {
+        defaultMessage: 'Type of gauge chart',
+      }),
     },
     description: {
       types: ['string'],
-      help: '',
+      help: i18n.translate('xpack.lens.gauge.description.help', {
+        defaultMessage: 'Saved gauge description',
+      }),
     },
     metricAccessor: {
       types: ['string'],
-      help: '',
+      help: i18n.translate('xpack.lens.gauge.metricAccessor.help', {
+        defaultMessage: 'Current value',
+      }),
     },
     minAccessor: {
       types: ['string'],
-      help: '',
+      help: i18n.translate('xpack.lens.gauge.minAccessor.help', {
+        defaultMessage: 'Minimum value',
+      }),
     },
     maxAccessor: {
       types: ['string'],
-      help: '',
+      help: i18n.translate('xpack.lens.gauge.maxAccessor.help', {
+        defaultMessage: 'Maximum value',
+      }),
     },
     goalAccessor: {
       types: ['string'],
-      help: '',
+      help: i18n.translate('xpack.lens.gauge.goalAccessor.help', {
+        defaultMessage: 'Goal value',
+      }),
+    },
+    colorMode: {
+      types: ['string'],
+      default: 'none',
+      options: ['none', 'palette', 'single'],
+      help: i18n.translate('xpack.lens.gauge.colorMode.help', {
+        defaultMessage: 'Which part of gauge to color',
+      }),
     },
     palette: {
       types: ['palette'],
-      help: '',
+      help: i18n.translate('xpack.lens.metric.palette.help', {
+        defaultMessage: 'Provides colors for the values',
+      }),
     },
     appearance: {
       types: [GAUGE_APPEARANCE_FUNCTION],

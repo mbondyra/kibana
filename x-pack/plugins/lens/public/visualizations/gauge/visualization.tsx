@@ -12,7 +12,7 @@ import { FormattedMessage, I18nProvider } from '@kbn/i18n/react';
 import { Ast } from '@kbn/interpreter/common';
 import { GoalSubtype } from '@elastic/charts/dist/chart_types/goal_chart/specs/constants';
 import { PaletteRegistry } from '../../../../../../src/plugins/charts/public';
-import type { OperationMetadata, Visualization } from '../../types';
+import type { DatasourcePublicAPI, OperationMetadata, Visualization } from '../../types';
 import type { GaugeVisualizationState } from './types';
 import { getSuggestions } from './suggestions';
 import {
@@ -24,11 +24,12 @@ import {
 } from './constants';
 import { GaugeToolbar } from './toolbar_component';
 import { LensIconChartGaugeHorizontal, LensIconChartGaugeVertical } from '../../assets/chart_gauge';
-import { CUSTOM_PALETTE, getStopsForFixedMode } from '../../shared_components';
+import { CUSTOM_PALETTE, getStopsForFixedMode, shiftPalette } from '../../shared_components';
 import { GaugeDimensionEditor } from './dimension_editor';
 import type { CustomPaletteParams } from '../../../common';
 import { layerTypes } from '../../../common';
 import { generateId } from '../../id_generator';
+import { getGoalValue, getMaxValue, getMetricValue, getMinValue } from './utils';
 
 const groupLabelForGauge = i18n.translate('xpack.lens.metric.groupLabel', {
   defaultMessage: 'Goal and single value',
@@ -66,6 +67,80 @@ export const CHART_NAMES = {
     }),
     groupLabel: groupLabelForGauge,
   },
+};
+
+const toExpression = (
+  paletteService: PaletteRegistry,
+  state: GaugeVisualizationState,
+  datasourceLayers: Record<string, DatasourcePublicAPI>,
+  attributes?: Partial<Omit<GaugeVisualizationConfig, keyof GaugeVisualizationState>>
+): Ast | null => {
+  const datasource = datasourceLayers[state.layerId];
+
+  const originalOrder = datasource.getTableSpec().map(({ columnId }) => columnId);
+  // When we add a column it could be empty, and therefore have no order
+  // const operations = state.groups
+  //   .map((columnId) => ({ columnId, operation: datasource.getOperationForColumnId(columnId) }))
+  //   .filter((o): o is { columnId: string; operation: Operation } => !!o.operation);
+
+  if (!originalOrder || !state.metricAccessor) {
+    return null;
+  }
+  const stops = state.palette?.params?.stops || [];
+  const isCustomPalette = state.palette?.params?.name === CUSTOM_PALETTE;
+
+  const paletteParams = {
+    ...state.palette?.params,
+    colors: stops.map(({ color }) => color),
+    stops:
+      isCustomPalette || state.palette?.params?.rangeMax == null
+        ? stops.map(({ stop }) => stop)
+        : shiftPalette(stops, state.palette?.params?.rangeMax).map(({ stop }) => stop),
+    reverse: false,
+  };
+
+  return {
+    type: 'expression',
+    chain: [
+      {
+        type: 'function',
+        function: GAUGE_FUNCTION,
+        arguments: {
+          title: [attributes?.title ?? ''],
+          description: [attributes?.description ?? ''],
+          metricAccessor: [state.metricAccessor ?? ''],
+          minAccessor: [state.minAccessor ?? ''],
+          maxAccessor: [state.maxAccessor ?? ''],
+          goalAccessor: [state.goalAccessor ?? ''],
+          shape: [state.shape ?? 'horizontalBullet'],
+          colorMode: [state?.colorMode || 'none'],
+          palette:
+            state?.colorMode && state?.colorMode !== 'none'
+              ? [paletteService.get(CUSTOM_PALETTE).toExpression(paletteParams)]
+              : [],
+          appearance: [
+            {
+              type: 'expression',
+              chain: [
+                {
+                  type: 'function',
+                  function: GAUGE_APPEARANCE_FUNCTION,
+                  arguments: {
+                    ticksPosition: state.appearance.ticksPosition
+                      ? [state.appearance.ticksPosition]
+                      : ['auto'],
+                    subtitle: state.appearance.subtitle ? [state.appearance.subtitle] : [],
+                    title: state.appearance.title ? [state.appearance.title] : [],
+                    titleMode: state.appearance.titleMode ? [state.appearance.titleMode] : ['auto'],
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      },
+    ],
+  };
 };
 
 export const getGaugeVisualization = ({
@@ -248,6 +323,8 @@ export const getGaugeVisualization = ({
     }
     if (prevState.metricAccessor === columnId) {
       delete update.metricAccessor;
+      delete update.palette;
+      delete update.colorMode;
     }
 
     return update;
@@ -272,23 +349,12 @@ export const getGaugeVisualization = ({
   },
 
   getSupportedLayers(state, frame) {
-    const metricAccessor = state?.metricAccessor;
+    const row = state?.layerId ? frame?.activeData?.[state?.layerId]?.rows?.[0] : undefined;
 
-    let minAccessorValue = 0;
-    let maxAccessorValue = 100;
-    let goalAccessorValue = 80;
-
-    const metricValue =
-      metricAccessor &&
-      state?.layerId &&
-      frame?.activeData?.[state.layerId].rows[0][metricAccessor];
-    if (metricValue) {
-      maxAccessorValue = metricValue * 1.2 || 1; // do not allow 0 as default max 0
-      goalAccessorValue = Math.max(metricValue, 1);
-      if (metricValue < 0) {
-        minAccessorValue = metricValue - 10; // TO THINK
-      }
-    }
+    const minAccessorValue = getMinValue(row, state);
+    const maxAccessorValue = getMaxValue(row, state);
+    const metricAccessorValue = getMetricValue(row, state);
+    const goalAccessorValue = getGoalValue(row, state);
 
     return [
       {
@@ -303,7 +369,7 @@ export const getGaugeVisualization = ({
                 columnId: generateId(),
                 dataType: 'number',
                 label: 'metricAccessor',
-                staticValue: 60,
+                staticValue: metricAccessorValue,
               },
               {
                 groupId: 'min',
@@ -338,126 +404,10 @@ export const getGaugeVisualization = ({
     }
   },
 
-  toExpression(state, datasourceLayers, attributes): Ast | null {
-    const datasource = datasourceLayers[state.layerId];
-
-    const originalOrder = datasource.getTableSpec().map(({ columnId }) => columnId);
-    // When we add a column it could be empty, and therefore have no order
-    // const operations = state.groups
-    //   .map((columnId) => ({ columnId, operation: datasource.getOperationForColumnId(columnId) }))
-    //   .filter((o): o is { columnId: string; operation: Operation } => !!o.operation);
-
-    if (!originalOrder || !state.metricAccessor) {
-      return null;
-    }
-    const paletteParams = {
-      ...state.palette?.params,
-      // rewrite colors and stops as two distinct arguments
-      colors: (state.palette?.params?.stops || []).map(({ color }) => color),
-      stops:
-        state.palette?.params?.name === 'custom'
-          ? (state.palette?.params?.stops || []).map(({ stop }) => stop)
-          : [],
-      reverse: false, // managed at UI level
-    };
-
-    return {
-      type: 'expression',
-      chain: [
-        {
-          type: 'function',
-          function: GAUGE_FUNCTION,
-          arguments: {
-            title: [attributes?.title ?? ''],
-            description: [attributes?.description ?? ''],
-            metricAccessor: [state.metricAccessor ?? ''],
-            minAccessor: [state.minAccessor ?? ''],
-            maxAccessor: [state.maxAccessor ?? ''],
-            goalAccessor: [state.goalAccessor ?? ''],
-            shape: [state.shape ?? 'horizontalBullet'],
-            palette: [paletteService.get(CUSTOM_PALETTE).toExpression(paletteParams)],
-            appearance: [
-              {
-                type: 'expression',
-                chain: [
-                  {
-                    type: 'function',
-                    function: GAUGE_APPEARANCE_FUNCTION,
-                    arguments: {
-                      ticksPosition: state.appearance.ticksPosition
-                        ? [state.appearance.ticksPosition]
-                        : ['auto'],
-                      subtitle: state.appearance.subtitle ? [state.appearance.subtitle] : [],
-                      title: state.appearance.title ? [state.appearance.title] : [],
-                      titleMode: state.appearance.titleMode
-                        ? [state.appearance.titleMode]
-                        : ['auto'],
-                    },
-                  },
-                ],
-              },
-            ],
-          },
-        },
-      ],
-    };
-  },
-
-  toPreviewExpression(state, datasourceLayers): Ast | null {
-    const datasource = datasourceLayers[state.layerId];
-
-    const originalOrder = datasource.getTableSpec().map(({ columnId }) => columnId);
-    // When we add a column it could be empty, and therefore have no order
-
-    if (!originalOrder) {
-      return null;
-    }
-
-    return {
-      type: 'expression',
-      chain: [
-        {
-          type: 'function',
-          function: GAUGE_FUNCTION,
-          arguments: {
-            title: [''],
-            description: [''],
-            shape: [state.shape],
-            metricAccessor: [state.metricAccessor ?? ''],
-            minAccessor: [state.minAccessor ?? ''],
-            maxAccessor: [state.maxAccessor ?? ''],
-            goalAccessor: [state.goalAccessor ?? ''],
-            palette: state.palette?.params
-              ? [
-                  paletteService
-                    .get(CUSTOM_PALETTE)
-                    .toExpression(
-                      computePaletteParams((state.palette?.params || {}) as CustomPaletteParams)
-                    ),
-                ]
-              : [paletteService.get(DEFAULT_PALETTE_NAME).toExpression()],
-            appearance: [
-              {
-                type: 'expression',
-                chain: [
-                  {
-                    type: 'function',
-                    function: GAUGE_APPEARANCE_FUNCTION,
-                    arguments: {
-                      ticksPosition: [state.appearance?.ticksPosition],
-                      titleMode: [state.appearance?.titleMode],
-                      title: [''],
-                      subtitle: [''],
-                    },
-                  },
-                ],
-              },
-            ],
-          },
-        },
-      ],
-    };
-  },
+  toExpression: (state, datasourceLayers, attributes) =>
+    toExpression(paletteService, state, datasourceLayers, { ...attributes }),
+  toPreviewExpression: (state, datasourceLayers) =>
+    toExpression(paletteService, state, datasourceLayers, { mode: 'reduced' }),
 
   getErrorMessages(state) {
     // not possible to break it?

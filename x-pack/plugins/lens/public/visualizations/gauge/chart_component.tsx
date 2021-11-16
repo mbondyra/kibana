@@ -15,6 +15,7 @@ import './index.scss';
 import { EmptyPlaceholder } from '../../shared_components';
 import { LensIconChartGaugeHorizontal, LensIconChartGaugeVertical } from '../../assets/chart_gauge';
 import { GaugeTitleMode } from '../../../../../../node_modules/x-pack/plugins/lens/common/expressions/gauge_chart';
+import { getMaxValue, getMinValue, getValueFromAccessor } from './utils';
 
 declare global {
   interface Window {
@@ -73,12 +74,6 @@ function getTitle(titleMode: GaugeTitleMode, title?: string, fallbackTitle?: str
   return `${title || fallbackTitle || ''}   `;
 }
 
-const getDefaultMax = (metric: number, goal?: number) => {
-  const FALLBACK_VALUE = 100;
-  const MAX_FACTOR = 1.2;
-  return Math.max(goal || 0, metric) * MAX_FACTOR || FALLBACK_VALUE;
-};
-
 function getTicks(ticksPosition: 'none' | 'auto' | 'bands', range, colorBands) {
   if (ticksPosition === 'none') {
     return [];
@@ -88,6 +83,41 @@ function getTicks(ticksPosition: 'none' | 'auto' | 'bands', range, colorBands) {
   } else {
     return colorBands;
   }
+}
+
+function getColorStyling(
+  value: number,
+  colorMode: ColorMode,
+  palette: PaletteOutput<CustomPaletteState> | undefined
+) {
+  if (colorMode === 'none' || !palette?.params || !palette?.params.colors?.length || isNaN(value)) {
+    return `rgb(255,255,255, 0)`;
+  }
+
+  const { continuity = 'above', rangeMin, stops, colors } = palette.params;
+  const penultimateStop = stops[stops.length - 2];
+
+  if (continuity === 'none' && (value < rangeMin || value > penultimateStop)) {
+    return {};
+  }
+  if (continuity === 'below' && value > penultimateStop) {
+    return {};
+  }
+  if (continuity === 'above' && value < rangeMin) {
+    return {};
+  }
+
+  const rawIndex = stops.findIndex((v) => v > value);
+
+  let colorIndex = rawIndex;
+  if (['all', 'below'].includes(continuity) && value < rangeMin && colorIndex < 0) {
+    colorIndex = 0;
+  }
+  if (['all', 'above'].includes(continuity) && value > penultimateStop && colorIndex < 0) {
+    colorIndex = stops.length - 1;
+  }
+
+  return colors[colorIndex];
 }
 
 export const GaugeComponent: FC<GaugeRenderProps> = ({
@@ -107,6 +137,7 @@ export const GaugeComponent: FC<GaugeRenderProps> = ({
     minAccessor,
     metricAccessor,
     palette,
+    colorMode,
   } = args;
 
   const chartTheme = chartsThemeService.useChartsTheme();
@@ -124,8 +155,12 @@ export const GaugeComponent: FC<GaugeRenderProps> = ({
       />
     );
   }
+  const accessors = { maxAccessor, minAccessor, goalAccessor, metricAccessor };
 
-  if (!chartData || !chartData.length || !metricAccessor) {
+  const row = chartData?.[0];
+  const metricValue = getValueFromAccessor('metricAccessor', row, accessors);
+
+  if (typeof metricValue !== 'number') {
     return (
       <EmptyPlaceholder
         icon={
@@ -135,14 +170,9 @@ export const GaugeComponent: FC<GaugeRenderProps> = ({
     );
   }
 
-  const row = chartData[0];
-  const metric = row[metricAccessor];
-  const goal = goalAccessor && row[goalAccessor];
-  const min = minAccessor && typeof row[minAccessor] === 'number' ? row[minAccessor] : 0;
-  const max =
-    maxAccessor && typeof row[maxAccessor] === 'number'
-      ? row[maxAccessor]
-      : getDefaultMax(metric, goal);
+  const goal = getValueFromAccessor('goalAccessor', row, accessors);
+  const min = getMinValue(row, accessors);
+  const max = getMaxValue(row, accessors);
   const bands = [min, max];
 
   const colors = (palette?.params as CustomPaletteState)?.colors ?? undefined;
@@ -164,13 +194,16 @@ export const GaugeComponent: FC<GaugeRenderProps> = ({
         subtype={subtype}
         base={min}
         target={goal}
-        actual={metric}
+        actual={metricValue}
         bands={bands}
-        ticks={getTicks(ticksPosition, [min, max], ranges)}
         tickValueFormatter={({ value: tickValue }) =>
           formatter ? formatter.convert(tickValue) : String(tickValue)
         }
+        ticks={getTicks(ticksPosition, [min, max], ranges)}
         bandFillColor={(val) => {
+          if (colorMode === 'none') {
+            return `rgb(255,255,255, 0)`;
+          }
           const index = ranges && ranges.indexOf(val.value) - 1;
           return index !== undefined && colors && index >= 0 ? colors[index] : 'rgb(255,255,255)';
         }}
