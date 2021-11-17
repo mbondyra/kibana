@@ -9,7 +9,7 @@ import React from 'react';
 import { EuiFlexGroup, EuiFlexItem, EuiFieldText, EuiSelect } from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
 
-type LabelMode = 'none' | 'custom' | 'auto';
+type LabelMode = 'auto' | 'custom' | 'none';
 
 interface Label {
   mode: LabelMode;

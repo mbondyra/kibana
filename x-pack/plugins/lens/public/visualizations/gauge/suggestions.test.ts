@@ -7,7 +7,6 @@
 
 import { getSuggestions } from './suggestions';
 import type { GaugeVisualizationState } from './types';
-import { GAUGE_APPEARANCE_FUNCTION } from './constants';
 import { layerTypes } from '../../../common';
 
 describe('gauge suggestions', () => {
@@ -100,10 +99,8 @@ describe('gauge suggestions', () => {
             layerId: 'first',
             layerType: layerTypes.DATA,
             minAccessor: 'some-field',
-            appearance: {
-              titleMode: 'auto',
-              ticksPosition: 'auto',
-            },
+            visTitleMode: 'auto',
+            ticksPosition: 'auto',
           } as GaugeVisualizationState,
           keptLayerIds: ['first'],
         })
@@ -133,11 +130,8 @@ describe('gauge suggestions', () => {
             layerId: 'first',
             layerType: layerTypes.DATA,
             shape: 'horizontalBullet',
-            appearance: {
-              type: GAUGE_APPEARANCE_FUNCTION,
-              titleMode: 'auto',
-              ticksPosition: 'auto',
-            },
+            visTitleMode: 'auto',
+            ticksPosition: 'auto',
           },
           title: 'Gauge',
           hide: true,
@@ -178,11 +172,8 @@ describe('gauge suggestions', () => {
             layerType: layerTypes.DATA,
             shape: 'horizontalBullet',
             minAccessor: 'test-column',
-            appearance: {
-              type: GAUGE_APPEARANCE_FUNCTION,
-              titleMode: 'auto',
-              ticksPosition: 'auto',
-            },
+            visTitleMode: 'auto',
+            ticksPosition: 'auto',
           },
           title: 'Gauge',
           hide: true,
@@ -236,11 +227,8 @@ describe('gauge suggestions', () => {
             shape: 'horizontalBullet',
             minAccessor: 'date-column',
             goalAccessor: 'metric-column',
-            appearance: {
-              type: GAUGE_APPEARANCE_FUNCTION,
-              titleMode: 'auto',
-              ticksPosition: 'auto',
-            },
+            visTitleMode: 'auto',
+            ticksPosition: 'auto',
           },
           title: 'Gauge',
           // Temp hide all suggestions while gauge is in beta
@@ -303,11 +291,8 @@ describe('gauge suggestions', () => {
             minAccessor: 'date-column',
             yAccessor: 'group-column',
             goalAccessor: 'metric-column',
-            appearance: {
-              type: GAUGE_APPEARANCE_FUNCTION,
-              titleMode: 'auto',
-              ticksPosition: 'auto',
-            },
+            visTitleMode: 'auto',
+            ticksPosition: 'auto',
           },
           title: 'Gauge',
           // Temp hide all suggestions while gauge is in beta

@@ -5,36 +5,12 @@
  * 2.0.
  */
 
-import type { PaletteRegistry } from 'src/plugins/charts/public';
-import type { Datatable } from 'src/plugins/expressions';
-import { applyPaletteParams, findMinMaxByColumnId } from '../../shared_components';
-import { DEFAULT_PALETTE_NAME } from './constants';
+// import type { PaletteRegistry } from 'src/plugins/charts/public';
+// import type { Datatable } from 'src/plugins/expressions';
+// import { applyPaletteParams, findMinMaxByColumnId } from '../../shared_components';
+// import { DEFAULT_PALETTE_NAME } from './palette_config';
+import { DatatableRow } from 'src/plugins/expressions';
 import type { GaugeVisualizationState } from './types';
-
-export function getSafePaletteParams(
-  paletteService: PaletteRegistry,
-  currentData: Datatable | undefined,
-  accessor: string | undefined,
-  activePalette?: GaugeVisualizationState['palette']
-) {
-  if (currentData == null || accessor == null) {
-    return { displayStops: [], activePalette: {} as GaugeVisualizationState['palette'] };
-  }
-  const finalActivePalette: GaugeVisualizationState['palette'] = activePalette ?? {
-    type: 'palette',
-    name: DEFAULT_PALETTE_NAME,
-    accessor,
-  };
-  const minMaxByColumnId = findMinMaxByColumnId([accessor], currentData);
-  const currentMinMax = minMaxByColumnId[accessor];
-
-  // need to tell the helper that the colorStops are required to display
-  return {
-    displayStops: applyPaletteParams(paletteService, finalActivePalette, currentMinMax),
-    currentMinMax,
-    activePalette: finalActivePalette,
-  };
-}
 
 type GaugeAccessors = 'maxAccessor' | 'minAccessor' | 'goalAccessor' | 'metricAccessor';
 
@@ -42,7 +18,7 @@ type GaugeAccessorsType = Pick<GaugeVisualizationState, GaugeAccessors>;
 
 export const getValueFromAccessor = (
   accessorName: GaugeAccessors,
-  row?: Record<string, any>,
+  row?: DatatableRow,
   state?: GaugeAccessorsType
 ) => {
   if (row && state) {
@@ -54,7 +30,7 @@ export const getValueFromAccessor = (
   }
 };
 
-export const getMaxValue = (row?: Record<string, any>, state?: GaugeAccessorsType) => {
+export const getMaxValue = (row?: DatatableRow, state?: GaugeAccessorsType) => {
   const FALLBACK_VALUE = 100;
   const MAX_FACTOR = 1.66;
   const currentValue = getValueFromAccessor('maxAccessor', row, state);
@@ -72,7 +48,7 @@ export const getMaxValue = (row?: Record<string, any>, state?: GaugeAccessorsTyp
   return FALLBACK_VALUE;
 };
 
-export const getMinValue = (row?: Record<string, any>, state?: GaugeAccessorsType) => {
+export const getMinValue = (row?: DatatableRow, state?: GaugeAccessorsType) => {
   const currentValue = getValueFromAccessor('minAccessor', row, state);
   if (currentValue != null) {
     return currentValue;
@@ -88,7 +64,7 @@ export const getMinValue = (row?: Record<string, any>, state?: GaugeAccessorsTyp
   return FALLBACK_VALUE;
 };
 
-export const getMetricValue = (row?: Record<string, any>, state?: GaugeAccessorsType) => {
+export const getMetricValue = (row?: DatatableRow, state?: GaugeAccessorsType) => {
   const currentValue = getValueFromAccessor('metricAccessor', row, state);
   if (currentValue != null) {
     return currentValue;
@@ -98,7 +74,7 @@ export const getMetricValue = (row?: Record<string, any>, state?: GaugeAccessors
   return Math.round((minValue + maxValue) * 0.6);
 };
 
-export const getGoalValue = (row?: Record<string, any>, state?: GaugeVisualizationState) => {
+export const getGoalValue = (row?: DatatableRow, state?: GaugeVisualizationState) => {
   const currentValue = getValueFromAccessor('goalAccessor', row, state);
   if (currentValue != null) {
     return currentValue;

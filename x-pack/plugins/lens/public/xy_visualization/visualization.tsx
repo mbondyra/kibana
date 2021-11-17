@@ -45,7 +45,7 @@ import { groupAxesByType } from './axes_configuration';
 const defaultIcon = LensIconChartBarStacked;
 const defaultSeriesType = 'bar_stacked';
 const isNumericMetric = (op: OperationMetadata) =>
-  !op.isBucketed && op.dataType === 'number' && op.operationType !== 'static_value';
+  !op.isBucketed && op.dataType === 'number' && !op.isStaticValue;
 const isBucketed = (op: OperationMetadata) => op.isBucketed;
 
 function getVisualizationType(state: State): VisualizationType | 'mixed' {

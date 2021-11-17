@@ -6,21 +6,24 @@
  */
 
 import type {
+  CustomPaletteState,
+  ChartsPluginSetup,
+  PaletteRegistry,
+  PaletteOutput,
+} from 'src/plugins/charts/public';
+import type {
   LensMultiTable,
   FormatFactory,
   CustomPaletteParams,
   LayerType,
 } from '../../../common';
-import type { GaugeAppearanceResult, GaugeColorMode, GaugeShape } from '../../../common/expressions';
-import { GAUGE_CHART_TYPES, LENS_GAUGE_RENDERER } from './constants';
 import type {
-  CustomPaletteState,
-  ChartsPluginSetup,
-  PaletteRegistry,
-  PaletteOutput
-} from 'src/plugins/charts/public';
-
-export type GaugeTypes = typeof GAUGE_CHART_TYPES[keyof typeof GAUGE_CHART_TYPES];
+  GaugeColorMode,
+  GaugeShape,
+  GaugeTicksPosition,
+  GaugeTitleMode,
+} from '../../../common/expressions';
+import { LENS_GAUGE_RENDERER } from './constants';
 
 export interface SharedGaugeLayerState {
   shape: GaugeShape;
@@ -28,8 +31,11 @@ export interface SharedGaugeLayerState {
   minAccessor?: string;
   maxAccessor?: string;
   goalAccessor?: string;
-  appearance: GaugeAppearanceResult;
+  ticksPosition: GaugeTicksPosition;
+  visTitleMode: GaugeTitleMode;
   colorMode?: GaugeColorMode;
+  visTitle?: string;
+  subtitle?: string;
   palette?: PaletteOutput<CustomPaletteParams>;
 }
 
@@ -38,10 +44,7 @@ export type GaugeLayerState = SharedGaugeLayerState & {
   layerType: LayerType;
 };
 
-export type GaugeVisualizationState = GaugeLayerState & {
-  palette?: PaletteOutput<CustomPaletteParams>;
-  shape: 'horizontalBullet' | 'verticalBullet';
-};
+export type GaugeVisualizationState = GaugeLayerState;
 
 export type GaugeExpressionArgs = SharedGaugeLayerState & {
   title?: string;

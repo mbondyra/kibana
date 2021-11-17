@@ -12,12 +12,11 @@ import type { VisualizationToolbarProps } from '../../../types';
 import { ToolbarPopover, useDebouncedValue, VisLabel } from '../../../shared_components';
 import type { GaugeVisualizationState } from '../types';
 import './gauge_config_panel.scss';
-
-type LabelMode = 'none' | 'custom' | 'auto';
+import { GaugeTicksPosition, GaugeTitleMode } from '../../../../common/expressions';
 
 const ticksPositionOptions: Array<{
   id: string;
-  value: 'auto' | 'bands' | 'none';
+  value: GaugeTicksPosition;
   label: string;
 }> = [
   {
@@ -49,8 +48,8 @@ export const GaugeToolbar = memo((props: VisualizationToolbarProps<GaugeVisualiz
     state.layerId &&
     frame.activeData?.[state.layerId]?.columns.find((col) => col.id === state.metricAccessor)?.name;
 
-  const [subtitleMode, setSubtitleMode] = useState<LabelMode>(() =>
-    state.appearance.subtitle ? 'custom' : 'none'
+  const [subtitleMode, setSubtitleMode] = useState<GaugeTitleMode>(() =>
+    state.subtitle ? 'custom' : 'none'
   );
 
   const { inputValue, handleInputChange } = useDebouncedValue({
@@ -64,7 +63,7 @@ export const GaugeToolbar = memo((props: VisualizationToolbarProps<GaugeVisualiz
         <EuiFlexGroup gutterSize="none" responsive={false}>
           <ToolbarPopover
             handleClose={() => {
-              setSubtitleMode(inputValue.appearance.subtitle ? 'custom' : 'none');
+              setSubtitleMode(inputValue.subtitle ? 'custom' : 'none');
             }}
             title={i18n.translate('xpack.lens.gauge.appearanceLabel', {
               defaultMessage: 'Appearance',
@@ -84,18 +83,15 @@ export const GaugeToolbar = memo((props: VisualizationToolbarProps<GaugeVisualiz
                 header={i18n.translate('xpack.lens.label.gauge.title.header', {
                   defaultMessage: 'title',
                 })}
-                label={inputValue.appearance.title || ''}
-                mode={inputValue.appearance.titleMode}
+                label={inputValue.visTitle || ''}
+                mode={inputValue.visTitleMode}
                 placeholder={metricDimensionTitle || ''}
                 hasAutoOption={true}
                 handleChange={(value) => {
                   handleInputChange({
                     ...inputValue,
-                    appearance: {
-                      ...inputValue.appearance,
-                      title: value.label,
-                      titleMode: value.mode,
-                    },
+                    visTitle: value.label,
+                    visTitleMode: value.mode,
                   });
                 }}
               />
@@ -112,15 +108,12 @@ export const GaugeToolbar = memo((props: VisualizationToolbarProps<GaugeVisualiz
                 header={i18n.translate('xpack.lens.label.gauge.subtitle.header', {
                   defaultMessage: 'Subtitle',
                 })}
-                label={inputValue.appearance.subtitle || ''}
+                label={inputValue.subtitle || ''}
                 mode={subtitleMode}
                 handleChange={(value) => {
                   handleInputChange({
                     ...inputValue,
-                    appearance: {
-                      ...inputValue.appearance,
-                      subtitle: value.label,
-                    },
+                    subtitle: value.label,
                   });
                   setSubtitleMode(value.mode);
                 }}
@@ -142,14 +135,11 @@ export const GaugeToolbar = memo((props: VisualizationToolbarProps<GaugeVisualiz
                 name="ticksDisplay"
                 buttonSize="compressed"
                 options={ticksPositionOptions}
-                idSelected={`gauge_ticks_${inputValue.appearance.ticksPosition}`}
+                idSelected={`gauge_ticks_${inputValue.ticksPosition}`}
                 onChange={(value) => {
                   handleInputChange({
                     ...inputValue,
-                    appearance: {
-                      ...inputValue.appearance,
-                      ticksPosition: value.replace(/gauge_ticks_/g, ''),
-                    },
+                    ticksPosition: value.replace(/gauge_ticks_/g, '') as GaugeTicksPosition,
                   });
                 }}
               />

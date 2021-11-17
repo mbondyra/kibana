@@ -229,7 +229,6 @@ export function switchToSuggestion(
   >,
   clearStagedPreview?: boolean
 ) {
-  console.log(suggestion);
   dispatchLens(
     switchVisualization({
       suggestion: {

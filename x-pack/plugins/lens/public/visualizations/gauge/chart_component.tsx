@@ -5,7 +5,7 @@
  * 2.0.
  */
 
-import React, { FC, useEffect, useState } from 'react';
+import React, { FC } from 'react';
 import { Chart, Goal, Settings } from '@elastic/charts';
 import type { CustomPaletteState } from 'src/plugins/charts/public';
 import { scaleLinear } from 'd3-scale';
@@ -14,8 +14,13 @@ import type { GaugeRenderProps } from './types';
 import './index.scss';
 import { EmptyPlaceholder } from '../../shared_components';
 import { LensIconChartGaugeHorizontal, LensIconChartGaugeVertical } from '../../assets/chart_gauge';
-import { GaugeTitleMode } from '../../../../../../node_modules/x-pack/plugins/lens/common/expressions/gauge_chart';
 import { getMaxValue, getMinValue, getValueFromAccessor } from './utils';
+import {
+  GaugeShapes,
+  GaugeTicksPosition,
+  GaugeTitleMode,
+  // GaugeColorMode,
+} from '../../../common/expressions/gauge_chart';
 
 declare global {
   interface Window {
@@ -65,16 +70,20 @@ function shiftAndNormalizeStops(
   return baseStops;
 }
 
-function getTitle(titleMode: GaugeTitleMode, title?: string, fallbackTitle?: string) {
-  if (titleMode === 'none') {
+function getTitle(visTitleMode: GaugeTitleMode, visTitle?: string, fallbackTitle?: string) {
+  if (visTitleMode === 'none') {
     return '';
-  } else if (titleMode === 'auto') {
+  } else if (visTitleMode === 'auto') {
     return `${fallbackTitle || ''}   `;
   }
-  return `${title || fallbackTitle || ''}   `;
+  return `${visTitle || fallbackTitle || ''}   `;
 }
 
-function getTicks(ticksPosition: 'none' | 'auto' | 'bands', range, colorBands) {
+function getTicks(
+  ticksPosition: GaugeTicksPosition,
+  range: [number, number],
+  colorBands?: number[]
+) {
   if (ticksPosition === 'none') {
     return [];
   } else if (ticksPosition === 'auto') {
@@ -85,40 +94,40 @@ function getTicks(ticksPosition: 'none' | 'auto' | 'bands', range, colorBands) {
   }
 }
 
-function getColorStyling(
-  value: number,
-  colorMode: ColorMode,
-  palette: PaletteOutput<CustomPaletteState> | undefined
-) {
-  if (colorMode === 'none' || !palette?.params || !palette?.params.colors?.length || isNaN(value)) {
-    return `rgb(255,255,255, 0)`;
-  }
+// function getColorStyling(
+//   value: number,
+//   colorMode: GaugeColorMode,
+//   palette: PaletteOutput<CustomPaletteState> | undefined
+// ) {
+//   if (colorMode === 'none' || !palette?.params || !palette?.params.colors?.length || isNaN(value)) {
+//     return `rgb(255,255,255, 0)`;
+//   }
 
-  const { continuity = 'above', rangeMin, stops, colors } = palette.params;
-  const penultimateStop = stops[stops.length - 2];
+//   const { continuity = 'above', rangeMin, stops, colors } = palette.params;
+//   const penultimateStop = stops[stops.length - 2];
 
-  if (continuity === 'none' && (value < rangeMin || value > penultimateStop)) {
-    return {};
-  }
-  if (continuity === 'below' && value > penultimateStop) {
-    return {};
-  }
-  if (continuity === 'above' && value < rangeMin) {
-    return {};
-  }
+//   if (continuity === 'none' && (value < rangeMin || value > penultimateStop)) {
+//     return {};
+//   }
+//   if (continuity === 'below' && value > penultimateStop) {
+//     return {};
+//   }
+//   if (continuity === 'above' && value < rangeMin) {
+//     return {};
+//   }
 
-  const rawIndex = stops.findIndex((v) => v > value);
+//   const rawIndex = stops.findIndex((v) => v > value);
 
-  let colorIndex = rawIndex;
-  if (['all', 'below'].includes(continuity) && value < rangeMin && colorIndex < 0) {
-    colorIndex = 0;
-  }
-  if (['all', 'above'].includes(continuity) && value > penultimateStop && colorIndex < 0) {
-    colorIndex = stops.length - 1;
-  }
+//   let colorIndex = rawIndex;
+//   if (['all', 'below'].includes(continuity) && value < rangeMin && colorIndex < 0) {
+//     colorIndex = 0;
+//   }
+//   if (['all', 'above'].includes(continuity) && value > penultimateStop && colorIndex < 0) {
+//     colorIndex = stops.length - 1;
+//   }
 
-  return colors[colorIndex];
-}
+//   return colors[colorIndex];
+// }
 
 export const GaugeComponent: FC<GaugeRenderProps> = ({
   data,
@@ -128,32 +137,25 @@ export const GaugeComponent: FC<GaugeRenderProps> = ({
   paletteService,
 }) => {
   const {
-    appearance: { subtitle, title, titleMode, ticksPosition },
     shape: subtype,
-    title: visTitle,
-    description,
     goalAccessor,
     maxAccessor,
     minAccessor,
     metricAccessor,
     palette,
     colorMode,
+    subtitle,
+    visTitle,
+    visTitleMode,
+    ticksPosition,
   } = args;
 
   const chartTheme = chartsThemeService.useChartsTheme();
-  // const isDarkTheme = chartsThemeService.useDarkMode();
-
   const table = Object.values(data.tables)[0];
   const chartData = table.rows.filter((v) => typeof v[metricAccessor!] === 'number');
 
   if (!metricAccessor) {
-    return (
-      <VisualizationContainer
-        reportTitle={visTitle}
-        reportDescription={description}
-        className="lnsGaugeExpression__container"
-      />
-    );
+    return <VisualizationContainer className="lnsGaugeExpression__container" />;
   }
   const accessors = { maxAccessor, minAccessor, goalAccessor, metricAccessor };
 
@@ -164,7 +166,9 @@ export const GaugeComponent: FC<GaugeRenderProps> = ({
     return (
       <EmptyPlaceholder
         icon={
-          subtype === 'horizontalBullet' ? LensIconChartGaugeHorizontal : LensIconChartGaugeVertical
+          subtype === GaugeShapes.horizontalBullet
+            ? LensIconChartGaugeHorizontal
+            : LensIconChartGaugeVertical
         }
       />
     );
@@ -207,7 +211,7 @@ export const GaugeComponent: FC<GaugeRenderProps> = ({
           const index = ranges && ranges.indexOf(val.value) - 1;
           return index !== undefined && colors && index >= 0 ? colors[index] : 'rgb(255,255,255)';
         }}
-        labelMajor={getTitle(titleMode, title, metricColumn?.name)}
+        labelMajor={getTitle(visTitleMode, visTitle, metricColumn?.name)}
         labelMinor={subtitle ? subtitle + '  ' : ''}
       />
     </Chart>
@@ -215,23 +219,8 @@ export const GaugeComponent: FC<GaugeRenderProps> = ({
 };
 
 export function GaugeChartReportable(props: GaugeRenderProps) {
-  const [state, setState] = useState({
-    isReady: false,
-  });
-
-  // It takes a cycle for the chart to render. This prevents
-  // reporting from printing a blank chart placeholder.
-  useEffect(() => {
-    setState({ isReady: true });
-  }, [setState]);
-
   return (
-    <VisualizationContainer
-      className="lnsGaugeExpression__container"
-      isReady={state.isReady}
-      reportTitle={props.args.title}
-      reportDescription={props.args.description}
-    >
+    <VisualizationContainer className="lnsGaugeExpression__container">
       <GaugeComponent {...props} />
     </VisualizationContainer>
   );

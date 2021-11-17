@@ -5,5 +5,4 @@
  * 2.0.
  */
 
-export * from './gauge_appearance';
 export * from './gauge_chart';

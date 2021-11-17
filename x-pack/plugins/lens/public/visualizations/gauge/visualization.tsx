@@ -15,21 +15,19 @@ import { PaletteRegistry } from '../../../../../../src/plugins/charts/public';
 import type { DatasourcePublicAPI, OperationMetadata, Visualization } from '../../types';
 import type { GaugeVisualizationState } from './types';
 import { getSuggestions } from './suggestions';
-import {
-  DEFAULT_PALETTE_NAME,
-  GAUGE_FUNCTION,
-  GROUP_ID,
-  GAUGE_APPEARANCE_FUNCTION,
-  LENS_GAUGE_ID,
-} from './constants';
+import { GROUP_ID, LENS_GAUGE_ID } from './constants';
 import { GaugeToolbar } from './toolbar_component';
 import { LensIconChartGaugeHorizontal, LensIconChartGaugeVertical } from '../../assets/chart_gauge';
 import { CUSTOM_PALETTE, getStopsForFixedMode, shiftPalette } from '../../shared_components';
 import { GaugeDimensionEditor } from './dimension_editor';
-import type { CustomPaletteParams } from '../../../common';
 import { layerTypes } from '../../../common';
 import { generateId } from '../../id_generator';
 import { getGoalValue, getMaxValue, getMetricValue, getMinValue } from './utils';
+import {
+  GaugeExpressionArgs,
+  GaugeShapes,
+  GAUGE_FUNCTION,
+} from '../../../common/expressions/gauge_chart';
 
 const groupLabelForGauge = i18n.translate('xpack.lens.metric.groupLabel', {
   defaultMessage: 'Goal and single value',
@@ -41,16 +39,6 @@ interface GaugeVisualizationDeps {
 
 export const isNumericMetric = (op: OperationMetadata) =>
   !op.isBucketed && op.dataType === 'number';
-
-function computePaletteParams(params: CustomPaletteParams) {
-  return {
-    ...params,
-    // rewrite colors and stops as two distinct arguments
-    colors: (params?.stops || []).map(({ color }) => color),
-    stops: params?.name === 'custom' ? (params?.stops || []).map(({ stop }) => stop) : [],
-    reverse: false, // managed at UI level
-  };
-}
 
 export const CHART_NAMES = {
   horizontalBullet: {
@@ -73,7 +61,7 @@ const toExpression = (
   paletteService: PaletteRegistry,
   state: GaugeVisualizationState,
   datasourceLayers: Record<string, DatasourcePublicAPI>,
-  attributes?: Partial<Omit<GaugeVisualizationConfig, keyof GaugeVisualizationState>>
+  attributes?: Partial<Omit<GaugeExpressionArgs, keyof GaugeVisualizationState>>
 ): Ast | null => {
   const datasource = datasourceLayers[state.layerId];
 
@@ -112,31 +100,16 @@ const toExpression = (
           minAccessor: [state.minAccessor ?? ''],
           maxAccessor: [state.maxAccessor ?? ''],
           goalAccessor: [state.goalAccessor ?? ''],
-          shape: [state.shape ?? 'horizontalBullet'],
+          shape: [state.shape ?? GaugeShapes.horizontalBullet],
           colorMode: [state?.colorMode || 'none'],
           palette:
             state?.colorMode && state?.colorMode !== 'none'
               ? [paletteService.get(CUSTOM_PALETTE).toExpression(paletteParams)]
               : [],
-          appearance: [
-            {
-              type: 'expression',
-              chain: [
-                {
-                  type: 'function',
-                  function: GAUGE_APPEARANCE_FUNCTION,
-                  arguments: {
-                    ticksPosition: state.appearance.ticksPosition
-                      ? [state.appearance.ticksPosition]
-                      : ['auto'],
-                    subtitle: state.appearance.subtitle ? [state.appearance.subtitle] : [],
-                    title: state.appearance.title ? [state.appearance.title] : [],
-                    titleMode: state.appearance.titleMode ? [state.appearance.titleMode] : ['auto'],
-                  },
-                },
-              ],
-            },
-          ],
+          ticksPosition: state.ticksPosition ? [state.ticksPosition] : ['auto'],
+          subtitle: state.subtitle ? [state.subtitle] : [],
+          visTitle: state.visTitle ? [state.visTitle] : [],
+          visTitleMode: state.visTitleMode ? [state.visTitleMode] : ['auto'],
         },
       },
     ],
@@ -197,17 +170,11 @@ export const getGaugeVisualization = ({
         title: 'Empty Gauge chart',
         shape: GoalSubtype.HorizontalBullet,
         palette: mainPalette,
-
-        appearance: {
-          ticksPosition: 'auto',
-          titleMode: 'auto',
-          type: 'lens_gauge_appearance',
-        },
+        ticksPosition: 'auto',
+        visTitleMode: 'auto',
       }
     );
   },
-
-  getMainPalette: (state) => (state ? state.palette : undefined),
   getSuggestions,
 
   getConfiguration({ state, frame, layerId }) {
@@ -225,6 +192,7 @@ export const getGaugeVisualization = ({
           accessors: state.metricAccessor
             ? [
                 {
+                  triggerIcon: 'colorBy',
                   columnId: state.metricAccessor,
                   palette: hasColoring
                     ? getStopsForFixedMode(
@@ -407,7 +375,7 @@ export const getGaugeVisualization = ({
   toExpression: (state, datasourceLayers, attributes) =>
     toExpression(paletteService, state, datasourceLayers, { ...attributes }),
   toPreviewExpression: (state, datasourceLayers) =>
-    toExpression(paletteService, state, datasourceLayers, { mode: 'reduced' }),
+    toExpression(paletteService, state, datasourceLayers),
 
   getErrorMessages(state) {
     // not possible to break it?

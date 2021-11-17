@@ -6,7 +6,7 @@
  */
 
 import { configureStore, getDefaultMiddleware, PreloadedState } from '@reduxjs/toolkit';
-import { createLogger } from 'redux-logger';
+// import { createLogger } from 'redux-logger';
 import { useDispatch, useSelector, TypedUseSelectorHook } from 'react-redux';
 import { makeLensReducer, lensActions } from './lens_slice';
 import { timeRangeMiddleware } from './time_range_middleware';
@@ -51,13 +51,13 @@ export const makeConfigureStore = (
     optimizingMiddleware(),
     timeRangeMiddleware(storeDeps.lensServices.data),
   ];
-  if (process.env.NODE_ENV === 'development') {
-    middleware.push(
-      createLogger({
-        // @ts-ignore
-      })
-    );
-  }
+  // if (process.env.NODE_ENV === 'development') {
+  //   middleware.push(
+  //     createLogger({
+  //       // @ts-ignore
+  //     })
+  //   );
+  // }
 
   return configureStore({
     reducer: {

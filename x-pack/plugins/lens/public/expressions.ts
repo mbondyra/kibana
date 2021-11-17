@@ -27,7 +27,6 @@ import { heatmapGridConfig } from '../common/expressions/heatmap_chart/heatmap_g
 import { heatmapLegendConfig } from '../common/expressions/heatmap_chart/heatmap_legend';
 
 import { gauge } from '../common/expressions/gauge_chart/gauge_chart';
-import { gaugeAppearanceConfig } from '../common/expressions/gauge_chart/gauge_appearance';
 import { mergeTables } from '../common/expressions/merge_tables';
 import { renameColumns } from '../common/expressions/rename_columns/rename_columns';
 import { pie } from '../common/expressions/pie_chart/pie_chart';
@@ -63,7 +62,6 @@ export const setupExpressions = (
     heatmapLegendConfig,
     heatmapGridConfig,
     gauge,
-    gaugeAppearanceConfig,
     axisExtentConfig,
     labelsOrientationConfig,
     getDatatable(formatFactory),

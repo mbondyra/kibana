@@ -8,10 +8,14 @@
 import { i18n } from '@kbn/i18n';
 import type { Visualization } from '../../types';
 import type { GaugeVisualizationState } from './types';
-import { GAUGE_APPEARANCE_FUNCTION } from './constants';
 import { layerTypes } from '../../../common';
 import { LensIconChartGaugeHorizontal } from '../../assets/chart_gauge';
-import { GoalSubtype } from '@elastic/charts/dist/chart_types/goal_chart/specs/constants';
+import {
+  GaugeShape,
+  GaugeShapes,
+  GaugeTicksPositions,
+  GaugeTitleModes,
+} from '../../../common/expressions/gauge_chart';
 
 export const getSuggestions: Visualization<GaugeVisualizationState>['getSuggestions'] = ({
   table,
@@ -26,60 +30,63 @@ export const getSuggestions: Visualization<GaugeVisualizationState>['getSuggesti
     table.columns.length !== 1 ||
     table.columns?.[0]?.operation.dataType !== 'number' ||
     (state &&
-      (state.minAccessor || state.maxAccessor || state.goalAccessor || state.metricAccessor)  &&
-          table.changeType !== 'extended' &&
-          table.changeType !== 'unchanged')
+      (state.minAccessor || state.maxAccessor || state.goalAccessor || state.metricAccessor) &&
+      table.changeType !== 'extended' &&
+      table.changeType !== 'unchanged')
   ) {
     return [];
   }
 
+  const isSubChange =
+    state?.shape === GaugeShapes.horizontalBullet || state?.shape === GaugeShapes.verticalBullet;
+  const shape: GaugeShape =
+    subVisualizationId === GaugeShapes.verticalBullet
+      ? GaugeShapes.verticalBullet
+      : GaugeShapes.horizontalBullet;
+
   const baseSuggestion = {
     state: {
       ...state,
-      shape: subVisualizationId || GoalSubtype.HorizontalBullet,
+      shape,
       layerId: table.layerId,
       metricAccessor: table.columns[0].columnId,
       layerType: layerTypes.DATA,
-      appearance: {
-        type: GAUGE_APPEARANCE_FUNCTION,
-        ticksPosition: 'auto',
-        titleMode: 'auto',
-      },
+      ticksPosition: GaugeTicksPositions.auto,
+      visTitleMode: GaugeTitleModes.auto,
     },
     title: i18n.translate('xpack.lens.gauge.gaugeLabel', {
       defaultMessage: 'Gauge',
     }),
     previewIcon: LensIconChartGaugeHorizontal,
     score: 0.1,
-    hide: !(state?.shape === 'horizontalBullet' || state?.shape === 'verticalBullet'), // only display for gauges for beta
+    hide: !isSubChange, // only display for gauges for beta
   };
-  const suggestions =
-    state?.shape === 'horizontalBullet' || state?.shape === 'verticalBullet'
-      ? [
-          {
-            ...baseSuggestion,
-            state: {
-              ...baseSuggestion.state,
-              shape: state.shape === 'horizontalBullet' ? 'verticalBullet' : 'horizontalBullet',
-            },
+  const suggestions = isSubChange
+    ? [
+        {
+          ...baseSuggestion,
+          state: {
+            ...baseSuggestion.state,
+            shape,
           },
-        ]
-      : [
-          {
-            ...baseSuggestion,
-            state: {
-              ...baseSuggestion.state,
-              shape: 'horizontalBullet',
-            },
+        },
+      ]
+    : [
+        {
+          ...baseSuggestion,
+          state: {
+            ...baseSuggestion.state,
+            shape: GaugeShapes.horizontalBullet,
           },
-          {
-            ...baseSuggestion,
-            state: {
-              ...baseSuggestion.state,
-              shape: 'verticalBullet',
-            },
+        },
+        {
+          ...baseSuggestion,
+          state: {
+            ...baseSuggestion.state,
+            shape: GaugeShapes.verticalBullet,
           },
-        ];
+        },
+      ];
 
   return suggestions;
 };

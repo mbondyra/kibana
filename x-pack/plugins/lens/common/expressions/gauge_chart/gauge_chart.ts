@@ -9,23 +9,43 @@ import { i18n } from '@kbn/i18n';
 import type { ExpressionFunctionDefinition } from '../../../../../../src/plugins/expressions/common';
 import type { PaletteOutput } from '../../../../../../src/plugins/charts/common';
 import type { LensMultiTable, CustomPaletteParams, LayerType } from '../../types';
-import { GaugeAppearanceResult, GAUGE_APPEARANCE_FUNCTION } from './gauge_appearance';
 
 export const GAUGE_FUNCTION = 'lens_gauge';
-export const GAUGE_FUNCTION_RENDERER = 'lens_gauge_renderer';
+const GAUGE_FUNCTION_RENDERER = 'lens_gauge_renderer';
+
+export const GaugeShapes = {
+  horizontalBullet: 'horizontalBullet',
+  verticalBullet: 'verticalBullet',
+} as const;
+
+export const GaugeTicksPositions = {
+  auto: 'auto',
+  bands: 'bands',
+  none: 'none',
+} as const;
+
+export const GaugeTitleModes = {
+  auto: 'auto',
+  custom: 'custom',
+  none: 'none',
+} as const;
 
 export type GaugeType = 'gauge';
-export type GaugeShape = 'horizontalBullet' | 'verticalBullet';
-export type GaugeColorMode = 'none' | 'palette' | 'single';
-
+export type GaugeColorMode = 'none' | 'palette';
+export type GaugeShape = keyof typeof GaugeShapes;
+export type GaugeTitleMode = keyof typeof GaugeTitleModes;
+export type GaugeTicksPosition = keyof typeof GaugeTicksPositions;
 export interface SharedGaugeLayerState {
   metricAccessor?: string;
   minAccessor?: string;
   maxAccessor?: string;
   goalAccessor?: string;
-  appearance: GaugeAppearanceResult;
   colorMode?: GaugeColorMode;
   palette?: PaletteOutput<CustomPaletteParams>;
+  ticksPosition: GaugeTicksPosition;
+  visTitleMode: GaugeTitleMode;
+  visTitle?: string;
+  subtitle?: string;
 }
 
 export type GaugeLayerState = SharedGaugeLayerState & {
@@ -112,7 +132,7 @@ export const gauge: ExpressionFunctionDefinition<
     colorMode: {
       types: ['string'],
       default: 'none',
-      options: ['none', 'palette', 'single'],
+      options: ['none', 'palette'],
       help: i18n.translate('xpack.lens.gauge.colorMode.help', {
         defaultMessage: 'Which part of gauge to color',
       }),
@@ -123,11 +143,35 @@ export const gauge: ExpressionFunctionDefinition<
         defaultMessage: 'Provides colors for the values',
       }),
     },
-    appearance: {
-      types: [GAUGE_APPEARANCE_FUNCTION],
-      help: i18n.translate('xpack.lens.gaugeChart.appearance.help', {
-        defaultMessage: 'Configure the gauge appearance.',
+    ticksPosition: {
+      types: ['string'],
+      options: ['none', 'auto', 'bands'],
+      help: i18n.translate('xpack.lens.gaugeChart.config.ticksPosition.help', {
+        defaultMessage: 'Specifies the placement of ticks',
       }),
+      required: true,
+    },
+    visTitle: {
+      types: ['string'],
+      help: i18n.translate('xpack.lens.gaugeChart.config.title.help', {
+        defaultMessage: 'Specifies the title of the gauge chart.',
+      }),
+      required: false,
+    },
+    visTitleMode: {
+      types: ['string'],
+      options: ['none', 'auto', 'custom'],
+      help: i18n.translate('xpack.lens.gaugeChart.config.visTitleMode.help', {
+        defaultMessage: 'Specifies the mode of title',
+      }),
+      required: true,
+    },
+    subtitle: {
+      types: ['string'],
+      help: i18n.translate('xpack.lens.gaugeChart.config.subtitle.help', {
+        defaultMessage: 'Specifies the Subtitle of the gauge chart',
+      }),
+      required: false,
     },
   },
   inputTypes: ['lens_multitable'],

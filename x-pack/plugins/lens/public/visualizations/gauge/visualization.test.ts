@@ -7,21 +7,19 @@
 
 import { getGaugeVisualization, isNumericMetric } from './visualization';
 import { createMockDatasource, createMockFramePublicAPI } from '../../mocks';
-import { GAUGE_FUNCTION, GROUP_ID, GAUGE_APPEARANCE_FUNCTION } from './constants';
+import { GROUP_ID } from './constants';
 import type { GaugeVisualizationState } from './types';
 import type { DatasourcePublicAPI, Operation } from '../../types';
 import { chartPluginMock } from 'src/plugins/charts/public/mocks';
 import { layerTypes } from '../../../common';
+import { GAUGE_FUNCTION } from '../../../common/expressions/gauge_chart';
 
 function exampleState(): GaugeVisualizationState {
   return {
     layerId: 'test-layer',
     layerType: layerTypes.DATA,
-    appearance: {
-      type: GAUGE_APPEARANCE_FUNCTION,
-      titleMode: 'auto',
-      ticksPosition: 'auto',
-    },
+    visTitleMode: 'auto',
+    ticksPosition: 'auto',
     shape: 'horizontalBullet',
   };
 }
@@ -42,11 +40,8 @@ describe('gauge', () => {
         layerType: layerTypes.DATA,
         title: 'Empty Gauge chart',
         shape: 'horizontalBullet',
-        appearance: {
-          type: GAUGE_APPEARANCE_FUNCTION,
-          titleMode: 'auto',
-          ticksPosition: 'auto',
-        },
+        visTitleMode: 'auto',
+        ticksPosition: 'auto',
       });
     });
 
@@ -374,21 +369,8 @@ describe('gauge', () => {
                   ],
                 },
               ],
-              appearance: [
-                {
-                  type: 'expression',
-                  chain: [
-                    {
-                      type: 'function',
-                      function: GAUGE_APPEARANCE_FUNCTION,
-                      arguments: {
-                        titleMode: ['auto'],
-                        ticksPosition: ['auto'],
-                      },
-                    },
-                  ],
-                },
-              ],
+              visTitleMode: ['auto'],
+              ticksPosition: ['auto'],
             },
           },
         ],
@@ -466,21 +448,8 @@ describe('gauge', () => {
                   ],
                 },
               ],
-              appearance: [
-                {
-                  type: 'expression',
-                  chain: [
-                    {
-                      type: 'function',
-                      function: GAUGE_APPEARANCE_FUNCTION,
-                      arguments: {
-                        titleMode: ['auto'],
-                        ticksPosition: ['auto'],
-                      },
-                    },
-                  ],
-                },
-              ],
+              visTitleMode: ['auto'],
+              ticksPosition: ['auto'],
             },
           },
         ],

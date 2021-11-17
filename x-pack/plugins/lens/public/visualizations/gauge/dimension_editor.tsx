@@ -70,7 +70,6 @@ export function GaugeDimensionEditor(
   };
 
   const displayStops = applyPaletteParams(props.paletteService, activePalette, currentMinMax);
-  console.log(activePalette, currentMinMax, displayStops);
   return (
     <>
       <EuiFormRow

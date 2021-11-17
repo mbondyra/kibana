@@ -39,7 +39,6 @@ import {
   LENS_TOGGLE_ACTION,
 } from './datatable_visualization/components/constants';
 import type { LensInspector } from './lens_inspector_service';
-import { OperationType } from './async_services';
 
 export type ErrorCallback = (e: { message: string }) => void;
 
@@ -430,8 +429,6 @@ export interface OperationMetadata {
   // TODO currently it's not possible to differentiate between a field from a raw
   // document and an aggregated metric which might be handy in some cases. Once we
   // introduce a raw document datasource, this should be considered here.
-
-  operationType?: OperationType;
 
   isStaticValue?: boolean;
 }
