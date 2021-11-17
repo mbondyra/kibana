@@ -5,8 +5,6 @@
  * 2.0.
  */
 
-import React, { useState } from 'react';
-import { i18n } from '@kbn/i18n';
 import {
   EuiButtonEmpty,
   EuiFlexGroup,
@@ -16,8 +14,10 @@ import {
   EuiSwitchEvent,
   EuiSwitch,
 } from '@elastic/eui';
+import React, { useState } from 'react';
+import { i18n } from '@kbn/i18n';
 import type { PaletteRegistry } from 'src/plugins/charts/public';
-import { isNumericFieldForDatatable } from '../../../common/expressions';
+import { isNumericFieldForDatatable, GaugeVisualizationState } from '../../../common/expressions';
 import {
   applyPaletteParams,
   CustomizablePalette,
@@ -28,7 +28,6 @@ import {
 } from '../../shared_components/';
 import type { VisualizationDimensionEditorProps } from '../../types';
 import { defaultPaletteParams } from './palette_config';
-import type { GaugeVisualizationState } from './types';
 
 import './dimension_editor.scss';
 import { getMaxValue, getMinValue } from './utils';
@@ -78,6 +77,7 @@ export function GaugeDimensionEditor(
         label={i18n.translate('xpack.lens.gauge.dynamicColoring.label', {
           defaultMessage: 'Band colors',
         })}
+        className="lnsDynamicColoringRow"
       >
         <EuiSwitch
           compressed

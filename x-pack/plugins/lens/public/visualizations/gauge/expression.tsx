@@ -12,9 +12,12 @@ import React from 'react';
 import type { IInterpreterRenderHandlers } from '../../../../../../src/plugins/expressions';
 import type { FormatFactory } from '../../../common';
 import { LENS_GAUGE_RENDERER } from './constants';
-import type { ChartsPluginSetup, PaletteRegistry } from '../../../../../../src/plugins/charts/public';
+import type {
+  ChartsPluginSetup,
+  PaletteRegistry,
+} from '../../../../../../src/plugins/charts/public';
 import { GaugeChartReportable } from './chart_component';
-import type { GaugeExpressionProps } from './types';
+import type { GaugeExpressionProps } from '../../../common/expressions';
 
 export const getGaugeRenderer = (dependencies: {
   formatFactory: FormatFactory;

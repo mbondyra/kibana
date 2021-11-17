@@ -10,7 +10,7 @@
 // import { applyPaletteParams, findMinMaxByColumnId } from '../../shared_components';
 // import { DEFAULT_PALETTE_NAME } from './palette_config';
 import { DatatableRow } from 'src/plugins/expressions';
-import type { GaugeVisualizationState } from './types';
+import type { GaugeVisualizationState } from '../../../common/expressions/gauge_chart';
 
 type GaugeAccessors = 'maxAccessor' | 'minAccessor' | 'goalAccessor' | 'metricAccessor';
 

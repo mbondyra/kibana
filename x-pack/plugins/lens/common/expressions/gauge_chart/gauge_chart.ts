@@ -7,71 +7,18 @@
 
 import { i18n } from '@kbn/i18n';
 import type { ExpressionFunctionDefinition } from '../../../../../../src/plugins/expressions/common';
-import type { PaletteOutput } from '../../../../../../src/plugins/charts/common';
-import type { LensMultiTable, CustomPaletteParams, LayerType } from '../../types';
+import type { LensMultiTable } from '../../types';
+import { GaugeExpressionArgs, GAUGE_FUNCTION, GAUGE_FUNCTION_RENDERER } from './types';
 
-export const GAUGE_FUNCTION = 'lens_gauge';
-const GAUGE_FUNCTION_RENDERER = 'lens_gauge_renderer';
-
-export const GaugeShapes = {
-  horizontalBullet: 'horizontalBullet',
-  verticalBullet: 'verticalBullet',
-} as const;
-
-export const GaugeTicksPositions = {
-  auto: 'auto',
-  bands: 'bands',
-  none: 'none',
-} as const;
-
-export const GaugeTitleModes = {
-  auto: 'auto',
-  custom: 'custom',
-  none: 'none',
-} as const;
-
-export type GaugeType = 'gauge';
-export type GaugeColorMode = 'none' | 'palette';
-export type GaugeShape = keyof typeof GaugeShapes;
-export type GaugeTitleMode = keyof typeof GaugeTitleModes;
-export type GaugeTicksPosition = keyof typeof GaugeTicksPositions;
-export interface SharedGaugeLayerState {
-  metricAccessor?: string;
-  minAccessor?: string;
-  maxAccessor?: string;
-  goalAccessor?: string;
-  colorMode?: GaugeColorMode;
-  palette?: PaletteOutput<CustomPaletteParams>;
-  ticksPosition: GaugeTicksPosition;
-  visTitleMode: GaugeTitleMode;
-  visTitle?: string;
-  subtitle?: string;
+export interface GaugeExpressionProps {
+  type: 'render';
+  data: LensMultiTable;
+  args: GaugeExpressionArgs;
 }
-
-export type GaugeLayerState = SharedGaugeLayerState & {
-  layerId: string;
-  layerType: LayerType;
-};
-
-export type GaugeVisualizationState = GaugeLayerState & {
-  shape: GaugeShape;
-};
-
-export type GaugeExpressionArgs = SharedGaugeLayerState & {
-  title?: string;
-  description?: string;
-  shape: GaugeShape;
-};
-
 export interface GaugeRender {
   type: 'render';
   as: typeof GAUGE_FUNCTION_RENDERER;
   value: GaugeExpressionProps;
-}
-
-export interface GaugeExpressionProps {
-  data: LensMultiTable;
-  args: GaugeExpressionArgs;
 }
 
 export const gauge: ExpressionFunctionDefinition<
@@ -154,7 +101,7 @@ export const gauge: ExpressionFunctionDefinition<
     visTitle: {
       types: ['string'],
       help: i18n.translate('xpack.lens.gaugeChart.config.title.help', {
-        defaultMessage: 'Specifies the title of the gauge chart.',
+        defaultMessage: 'Specifies the title of the gauge chart displayed inside the chart.',
       }),
       required: false,
     },

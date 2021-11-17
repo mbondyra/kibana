@@ -10,7 +10,6 @@ import { Chart, Goal, Settings } from '@elastic/charts';
 import type { CustomPaletteState } from 'src/plugins/charts/public';
 import { scaleLinear } from 'd3-scale';
 import { VisualizationContainer } from '../../visualization_container';
-import type { GaugeRenderProps } from './types';
 import './index.scss';
 import { EmptyPlaceholder } from '../../shared_components';
 import { LensIconChartGaugeHorizontal, LensIconChartGaugeVertical } from '../../assets/chart_gauge';
@@ -19,6 +18,7 @@ import {
   GaugeShapes,
   GaugeTicksPosition,
   GaugeTitleMode,
+  GaugeRenderProps,
   // GaugeColorMode,
 } from '../../../common/expressions/gauge_chart';
 

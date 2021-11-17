@@ -10,10 +10,8 @@ import { render } from 'react-dom';
 import { i18n } from '@kbn/i18n';
 import { FormattedMessage, I18nProvider } from '@kbn/i18n/react';
 import { Ast } from '@kbn/interpreter/common';
-import { GoalSubtype } from '@elastic/charts/dist/chart_types/goal_chart/specs/constants';
 import { PaletteRegistry } from '../../../../../../src/plugins/charts/public';
 import type { DatasourcePublicAPI, OperationMetadata, Visualization } from '../../types';
-import type { GaugeVisualizationState } from './types';
 import { getSuggestions } from './suggestions';
 import { GROUP_ID, LENS_GAUGE_ID } from './constants';
 import { GaugeToolbar } from './toolbar_component';
@@ -27,6 +25,7 @@ import {
   GaugeExpressionArgs,
   GaugeShapes,
   GAUGE_FUNCTION,
+  GaugeVisualizationState,
 } from '../../../common/expressions/gauge_chart';
 
 const groupLabelForGauge = i18n.translate('xpack.lens.metric.groupLabel', {
@@ -124,12 +123,12 @@ export const getGaugeVisualization = ({
   visualizationTypes: [
     {
       ...CHART_NAMES.horizontalBullet,
-      id: GoalSubtype.HorizontalBullet,
+      id: GaugeShapes.horizontalBullet,
       showExperimentalBadge: true,
     },
     {
       ...CHART_NAMES.verticalBullet,
-      id: GoalSubtype.VerticalBullet,
+      id: GaugeShapes.verticalBullet,
       showExperimentalBadge: true,
     },
   ],
@@ -149,7 +148,7 @@ export const getGaugeVisualization = ({
   },
 
   getDescription(state) {
-    if (state.shape === GoalSubtype.HorizontalBullet) {
+    if (state.shape === GaugeShapes.horizontalBullet) {
       return CHART_NAMES.horizontalBullet;
     }
     return CHART_NAMES.verticalBullet;
@@ -168,7 +167,7 @@ export const getGaugeVisualization = ({
         layerId: addNewLayer(),
         layerType: layerTypes.DATA,
         title: 'Empty Gauge chart',
-        shape: GoalSubtype.HorizontalBullet,
+        shape: GaugeShapes.horizontalBullet,
         palette: mainPalette,
         ticksPosition: 'auto',
         visTitleMode: 'auto',

@@ -7,7 +7,6 @@
 
 import { i18n } from '@kbn/i18n';
 import type { Visualization } from '../../types';
-import type { GaugeVisualizationState } from './types';
 import { layerTypes } from '../../../common';
 import { LensIconChartGaugeHorizontal } from '../../assets/chart_gauge';
 import {
@@ -15,6 +14,7 @@ import {
   GaugeShapes,
   GaugeTicksPositions,
   GaugeTitleModes,
+  GaugeVisualizationState,
 } from '../../../common/expressions/gauge_chart';
 
 export const getSuggestions: Visualization<GaugeVisualizationState>['getSuggestions'] = ({

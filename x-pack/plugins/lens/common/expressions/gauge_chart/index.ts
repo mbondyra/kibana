@@ -6,3 +6,4 @@
  */
 
 export * from './gauge_chart';
+export * from './types';
