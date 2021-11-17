@@ -69,6 +69,7 @@ export function GaugeDimensionEditor(
   };
 
   const displayStops = applyPaletteParams(props.paletteService, activePalette, currentMinMax);
+  const togglePalette = () => setIsPaletteOpen(!isPaletteOpen);
   return (
     <>
       <EuiFormRow
@@ -138,18 +139,14 @@ export function GaugeDimensionEditor(
                     : displayStops.map(({ color }) => color)
                 }
                 type={FIXED_PROGRESSION}
-                onClick={() => {
-                  setIsPaletteOpen(!isPaletteOpen);
-                }}
+                onClick={togglePalette}
               />
             </EuiFlexItem>
             <EuiFlexItem grow={false}>
               <EuiButtonEmpty
                 data-test-subj="lnsGauge_dynamicColoring_trigger"
                 iconType="controlsHorizontal"
-                onClick={() => {
-                  setIsPaletteOpen(!isPaletteOpen);
-                }}
+                onClick={togglePalette}
                 size="xs"
                 flush="both"
               >
@@ -160,7 +157,7 @@ export function GaugeDimensionEditor(
               <PalettePanelContainer
                 siblingRef={props.panelRef}
                 isOpen={isPaletteOpen}
-                handleClose={() => setIsPaletteOpen(!isPaletteOpen)}
+                handleClose={togglePalette}
               >
                 <CustomizablePalette
                   palettes={props.paletteService}

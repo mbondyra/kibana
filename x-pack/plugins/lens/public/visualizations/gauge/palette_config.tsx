@@ -10,8 +10,13 @@ import { defaultPaletteParams as sharedDefaultParams } from '../../shared_compon
 
 export const DEFAULT_PALETTE_NAME = 'gray';
 export const DEFAULT_COLOR_STEPS = 3;
+export const DEFAULT_MIN_STOP = 0;
+export const DEFAULT_MAX_STOP = 100;
+
 export const defaultPaletteParams: RequiredPaletteParamTypes = {
   ...sharedDefaultParams,
+  rangeMin: DEFAULT_MIN_STOP,
+  rangeMax: DEFAULT_MAX_STOP,
   name: DEFAULT_PALETTE_NAME,
   steps: DEFAULT_COLOR_STEPS,
 };

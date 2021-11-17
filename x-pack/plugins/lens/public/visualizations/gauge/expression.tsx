@@ -15,6 +15,8 @@ import { LENS_GAUGE_RENDERER } from './constants';
 import type {
   ChartsPluginSetup,
   PaletteRegistry,
+  CustomPaletteState,
+  PaletteOutput,
 } from '../../../../../../src/plugins/charts/public';
 import { GaugeChartReportable } from './chart_component';
 import type { GaugeExpressionProps } from '../../../common/expressions';

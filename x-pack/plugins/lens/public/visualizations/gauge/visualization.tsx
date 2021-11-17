@@ -65,11 +65,6 @@ const toExpression = (
   const datasource = datasourceLayers[state.layerId];
 
   const originalOrder = datasource.getTableSpec().map(({ columnId }) => columnId);
-  // When we add a column it could be empty, and therefore have no order
-  // const operations = state.groups
-  //   .map((columnId) => ({ columnId, operation: datasource.getOperationForColumnId(columnId) }))
-  //   .filter((o): o is { columnId: string; operation: Operation } => !!o.operation);
-
   if (!originalOrder || !state.metricAccessor) {
     return null;
   }
@@ -79,12 +74,14 @@ const toExpression = (
   const paletteParams = {
     ...state.palette?.params,
     colors: stops.map(({ color }) => color),
-    stops:
-      isCustomPalette || state.palette?.params?.rangeMax == null
-        ? stops.map(({ stop }) => stop)
-        : shiftPalette(stops, state.palette?.params?.rangeMax).map(({ stop }) => stop),
+    stops: isCustomPalette ? stops.map(({ stop }) => stop) : [],
+    // isCustomPalette || state.palette?.params?.rangeMax == null
+    //   ? stops.map(({ stop }) => stop)
+    //   : shiftPalette(stops, state.palette?.params?.rangeMax).map(({ stop }) => stop),
     reverse: false,
   };
+
+  console.log(state.palette, paletteParams);
 
   return {
     type: 'expression',
@@ -100,7 +97,7 @@ const toExpression = (
           maxAccessor: [state.maxAccessor ?? ''],
           goalAccessor: [state.goalAccessor ?? ''],
           shape: [state.shape ?? GaugeShapes.horizontalBullet],
-          colorMode: [state?.colorMode || 'none'],
+          colorMode: [state?.colorMode ?? 'none'],
           palette:
             state?.colorMode && state?.colorMode !== 'none'
               ? [paletteService.get(CUSTOM_PALETTE).toExpression(paletteParams)]
@@ -177,7 +174,11 @@ export const getGaugeVisualization = ({
   getSuggestions,
 
   getConfiguration({ state, frame, layerId }) {
-    const hasColoring = Boolean(state.palette?.params?.stops);
+    const hasColoring = Boolean(state.colorMode !== 'none' && state.palette?.params?.stops);
+    const palette = hasColoring
+      ? getStopsForFixedMode(state.palette?.params?.stops || [], state.palette?.params?.colorStops)
+      : undefined;
+    console.log('palette', palette);
     return {
       groups: [
         {
@@ -191,14 +192,9 @@ export const getGaugeVisualization = ({
           accessors: state.metricAccessor
             ? [
                 {
-                  triggerIcon: 'colorBy',
                   columnId: state.metricAccessor,
-                  palette: hasColoring
-                    ? getStopsForFixedMode(
-                        state.palette?.params?.stops || [],
-                        state.palette?.params?.colorStops
-                      )
-                    : undefined,
+                  triggerIcon: 'colorBy',
+                  palette,
                 },
               ]
             : [],
