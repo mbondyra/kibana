@@ -15,7 +15,7 @@
 import './dimension_editor.scss';
 import React from 'react';
 import { i18n } from '@kbn/i18n';
-import { EuiTabs, EuiTab, EuiCallOut } from '@elastic/eui';
+import { EuiTab, EuiCallOut, EuiButtonGroup } from '@elastic/eui';
 import { operationDefinitionMap } from '../operations';
 
 export const formulaOperationName = 'formula';
@@ -121,24 +121,30 @@ export interface DimensionEditorTab {
 }
 
 export const DimensionEditorTabs = ({ tabs }: { tabs: DimensionEditorTab[] }) => {
+  const enabledOptions = tabs.filter((o) => o.enabled);
+  const prefixedOptions = enabledOptions.map((o) => ({
+    label: o.label,
+    id: `lens-dimensionTabs-${o.id}`,
+    'data-test-subj': `lens-dimensionTabs-${o.id}`,
+    onClick: o.onClick,
+  }));
+  const idSelected = `lens-dimensionTabs-${
+    (enabledOptions.find((o) => o.state) || enabledOptions[0]).id
+  }`;
   return (
-    <EuiTabs
-      size="s"
-      className="lnsIndexPatternDimensionEditor__header"
-      data-test-subj="lens-dimensionTabs"
-    >
-      {tabs.map(({ id, enabled, state, onClick, label }) => {
-        return enabled ? (
-          <EuiTab
-            key={id}
-            isSelected={state}
-            data-test-subj={`lens-dimensionTabs-${id}`}
-            onClick={onClick}
-          >
-            {label}
-          </EuiTab>
-        ) : null;
+    <EuiButtonGroup
+      legend={i18n.translate('xpack.lens.lens-dimensionTabs', {
+        defaultMessage: 'Placement type',
       })}
-    </EuiTabs>
+      data-test-subj="lens-dimensionTabs"
+      name="lens-dimensionTabs"
+      isFullWidth
+      buttonSize="compressed"
+      options={prefixedOptions}
+      idSelected={idSelected}
+      onChange={(id) => {
+        /* the change is done by individual buttons' onClick props*/
+      }}
+    />
   );
 };
