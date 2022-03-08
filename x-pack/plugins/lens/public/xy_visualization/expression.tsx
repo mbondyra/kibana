@@ -49,11 +49,12 @@ import { i18n } from '@kbn/i18n';
 import { RenderMode } from 'src/plugins/expressions';
 import { ThemeServiceStart } from 'kibana/public';
 import { FieldFormat } from 'src/plugins/field_formats/common';
+import { EventAnnotationService } from '../../../../../src/plugins/event_annotation/public';
 import { EmptyPlaceholder } from '../../../../../src/plugins/charts/public';
 import { KibanaThemeProvider } from '../../../../../src/plugins/kibana_react/public';
 import type { ILensInterpreterRenderHandlers, LensFilterEvent, LensBrushEvent } from '../types';
 import type { LensMultiTable, FormatFactory } from '../../common';
-import type { DataLayerArgs, SeriesType, XYChartProps } from '../../common/expressions';
+import type { DataLayerArgs, SeriesType, XYChartProps, YAxisMode } from '../../common/expressions';
 import { visualizationTypes } from './types';
 import { VisualizationContainer } from '../visualization_container';
 import { isHorizontalChart, getSeriesColor } from './state_helpers';
@@ -73,11 +74,13 @@ import { getXDomain, XyEndzones } from './x_domain';
 import { getLegendAction } from './get_legend_action';
 import {
   computeChartMargins,
-  getReferenceLineRequiredPaddings,
+  getLinesCausedPaddings,
   ReferenceLineAnnotations,
 } from './expression_reference_lines';
+
+import { Annotations } from './annotations/expression';
 import { computeOverallDataDomain } from './reference_line_helpers';
-import { getReferenceLayers, isDataLayer } from './visualization_helpers';
+import { getReferenceLayers, isDataLayer, getAnnotationsLayer } from './visualization_helpers';
 
 declare global {
   interface Window {
@@ -103,6 +106,7 @@ export type XYChartRenderProps = XYChartProps & {
   onSelectRange: (data: LensBrushEvent['data']) => void;
   renderMode: RenderMode;
   syncColors: boolean;
+  eventAnnotationService: EventAnnotationService;
 };
 
 export function calculateMinInterval({ args: { layers }, data }: XYChartProps) {
@@ -139,6 +143,7 @@ export const getXyChartRenderer = (dependencies: {
   timeZone: string;
   useLegacyTimeAxis: boolean;
   kibanaTheme: ThemeServiceStart;
+  eventAnnotationService: EventAnnotationService;
 }): ExpressionRenderDefinition<XYChartProps> => ({
   name: 'lens_xy_chart_renderer',
   displayName: 'XY chart',
@@ -169,6 +174,7 @@ export const getXyChartRenderer = (dependencies: {
             chartsActiveCursorService={dependencies.chartsActiveCursorService}
             chartsThemeService={dependencies.chartsThemeService}
             paletteService={dependencies.paletteService}
+            eventAnnotationService={dependencies.eventAnnotationService}
             timeZone={dependencies.timeZone}
             useLegacyTimeAxis={dependencies.useLegacyTimeAxis}
             minInterval={calculateMinInterval(config)}
@@ -251,6 +257,7 @@ export function XYChart({
   const chartTheme = chartsThemeService.useChartsTheme();
   const chartBaseTheme = chartsThemeService.useChartsBaseTheme();
   const darkMode = chartsThemeService.useDarkMode();
+
   const filteredLayers = getFilteredLayers(layers, data);
   const layersById = filteredLayers.reduce((memo, layer) => {
     memo[layer.layerId] = layer;
@@ -350,7 +357,15 @@ export function XYChart({
   };
 
   const referenceLineLayers = getReferenceLayers(layers);
-  const referenceLinePaddings = getReferenceLineRequiredPaddings(referenceLineLayers, yAxesMap);
+  const annotationsLayers = getAnnotationsLayer(layers);
+  const visualConfigs = [
+    ...referenceLineLayers.flatMap(({ yConfig }) => yConfig),
+    ...annotationsLayers.flatMap(({ config }) =>
+      config.map((c) => ({ ...c, axisMode: 'bottom' as YAxisMode }))
+    ),
+  ].filter(Boolean);
+
+  const linesPaddings = getLinesCausedPaddings(visualConfigs, yAxesMap);
 
   const getYAxesStyle = (groupId: 'left' | 'right') => {
     const tickVisible =
@@ -366,9 +381,9 @@ export function XYChart({
             ? args.labelsOrientation?.yRight || 0
             : args.labelsOrientation?.yLeft || 0,
         padding:
-          referenceLinePaddings[groupId] != null
+          linesPaddings[groupId] != null
             ? {
-                inner: referenceLinePaddings[groupId],
+                inner: linesPaddings[groupId],
               }
             : undefined,
       },
@@ -379,9 +394,9 @@ export function XYChart({
             : axisTitlesVisibilitySettings?.yLeft,
         // if labels are not visible add the padding to the title
         padding:
-          !tickVisible && referenceLinePaddings[groupId] != null
+          !tickVisible && linesPaddings[groupId] != null
             ? {
-                inner: referenceLinePaddings[groupId],
+                inner: linesPaddings[groupId],
               }
             : undefined,
       },
@@ -588,16 +603,13 @@ export function XYChart({
         tickLabel: {
           visible: tickLabelsVisibilitySettings?.x,
           rotation: labelsOrientation?.x,
-          padding:
-            referenceLinePaddings.bottom != null
-              ? { inner: referenceLinePaddings.bottom }
-              : undefined,
+          padding: linesPaddings.bottom != null ? { inner: linesPaddings.bottom } : undefined,
         },
         axisTitle: {
           visible: axisTitlesVisibilitySettings.x,
           padding:
-            !tickLabelsVisibilitySettings?.x && referenceLinePaddings.bottom != null
-              ? { inner: referenceLinePaddings.bottom }
+            !tickLabelsVisibilitySettings?.x && linesPaddings.bottom != null
+              ? { inner: linesPaddings.bottom }
               : undefined,
         },
       };
@@ -629,7 +641,7 @@ export function XYChart({
           chartMargins: {
             ...chartTheme.chartPaddings,
             ...computeChartMargins(
-              referenceLinePaddings,
+              linesPaddings,
               tickLabelsVisibilitySettings,
               axisTitlesVisibilitySettings,
               yAxesMap,
@@ -978,7 +990,15 @@ export function XYChart({
             right: Boolean(yAxesMap.right),
           }}
           isHorizontal={shouldRotate}
-          paddingMap={referenceLinePaddings}
+          paddingMap={linesPaddings}
+        />
+      ) : null}
+      {annotationsLayers.length ? (
+        <Annotations
+          layers={annotationsLayers}
+          formatter={xAxisFormatter}
+          isHorizontal={shouldRotate}
+          paddingMap={linesPaddings}
         />
       ) : null}
     </Chart>

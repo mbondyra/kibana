@@ -12,6 +12,7 @@ import { State, visualizationTypes, XYState } from './types';
 import { isHorizontalChart } from './state_helpers';
 import {
   SeriesType,
+  XYAnnotationLayerConfig,
   XYDataLayerConfig,
   XYLayerConfig,
   XYReferenceLineLayerConfig,
@@ -143,6 +144,28 @@ export const isReferenceLayer = (
 export const getReferenceLayers = (layers: XYLayerConfig[]) =>
   (layers || []).filter((layer): layer is XYReferenceLineLayerConfig => isReferenceLayer(layer));
 
+export const isAnnotationsLayer = (
+  layer: Pick<XYLayerConfig, 'layerType'>
+): layer is XYAnnotationLayerConfig => layer.layerType === layerTypes.ANNOTATIONS;
+
+export const getAnnotationsLayer = (layers: XYLayerConfig[]) =>
+  (layers || []).filter((layer): layer is XYAnnotationLayerConfig => isAnnotationsLayer(layer));
+
+export interface LayerTypeToLayer {
+  [layerTypes.DATA]: (layer: XYDataLayerConfig) => XYDataLayerConfig;
+  [layerTypes.REFERENCELINE]: (layer: XYReferenceLineLayerConfig) => XYReferenceLineLayerConfig;
+  [layerTypes.ANNOTATIONS]: (layer: XYAnnotationLayerConfig) => XYAnnotationLayerConfig;
+}
+
+export const getLayerTypeOptions = (layer: XYLayerConfig, options: LayerTypeToLayer) => {
+  if (isDataLayer(layer)) {
+    return options[layerTypes.DATA](layer);
+  } else if (isReferenceLayer(layer)) {
+    return options[layerTypes.REFERENCELINE](layer);
+  }
+  return options[layerTypes.ANNOTATIONS](layer);
+};
+
 export function getVisualizationType(state: State): VisualizationType | 'mixed' {
   if (!state.layers.length) {
     return (
@@ -254,6 +277,12 @@ const newLayerFn = {
     layerId,
     layerType: layerTypes.REFERENCELINE,
     accessors: [],
+  }),
+  [layerTypes.ANNOTATIONS]: ({ layerId }: { layerId: string }): XYAnnotationLayerConfig => ({
+    layerId,
+    layerType: layerTypes.ANNOTATIONS,
+    accessors: [],
+    config: [],
   }),
 };
 
