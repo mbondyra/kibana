@@ -8,20 +8,23 @@
 import { Ast } from '@kbn/interpreter';
 import { ScaleType } from '@elastic/charts';
 import { PaletteRegistry } from 'src/plugins/charts/public';
+import { EventAnnotationService } from 'src/plugins/event_annotation/public';
+import { AnnotationConfig } from 'src/plugins/event_annotation/common/types';
 import { State } from './types';
 import { OperationMetadata, DatasourcePublicAPI } from '../types';
 import { getColumnToLabelMap } from './state_helpers';
 import type {
   ValidLayer,
-  XYDataLayerConfig,
+  XYAnnotationLayerConfig,
   XYReferenceLineLayerConfig,
   YConfig,
+  XYDataLayerConfig,
 } from '../../common/expressions';
 import { layerTypes } from '../../common';
 import { hasIcon } from './xy_config_panel/shared/icon_select';
 import { defaultReferenceLineColor } from './color_assignment';
 import { getDefaultVisualValuesForLayer } from '../shared_components/datasource_default_values';
-import { isDataLayer } from './visualization_helpers';
+import { isDataLayer, isAnnotationsLayer, getLayerTypeOptions } from './visualization_helpers';
 
 export const getSortedAccessors = (
   datasource: DatasourcePublicAPI,
@@ -39,7 +42,8 @@ export const toExpression = (
   state: State,
   datasourceLayers: Record<string, DatasourcePublicAPI>,
   paletteService: PaletteRegistry,
-  attributes: Partial<{ title: string; description: string }> = {}
+  attributes: Partial<{ title: string; description: string }> = {},
+  eventAnnotationService: EventAnnotationService
 ): Ast | null => {
   if (!state || !state.layers.length) {
     return null;
@@ -55,32 +59,50 @@ export const toExpression = (
     });
   });
 
-  return buildExpression(state, metadata, datasourceLayers, paletteService, attributes);
+  return buildExpression(
+    state,
+    metadata,
+    datasourceLayers,
+    paletteService,
+    attributes,
+    eventAnnotationService
+  );
+};
+
+const simplifiedLayerExpression = {
+  [layerTypes.DATA]: (layer: XYDataLayerConfig) => ({ ...layer, hide: true }),
+  [layerTypes.REFERENCELINE]: (layer: XYReferenceLineLayerConfig) => ({
+    ...layer,
+    hide: true,
+    yConfig: layer.yConfig?.map(({ lineWidth, ...config }) => ({
+      ...config,
+      lineWidth: 1,
+      icon: undefined,
+      textVisibility: false,
+    })),
+  }),
+  [layerTypes.ANNOTATIONS]: (layer: XYAnnotationLayerConfig) => ({
+    ...layer,
+    hide: true,
+    config: layer.config?.map(({ lineWidth, ...config }) => ({
+      ...config,
+      lineWidth: 1,
+      icon: undefined,
+      textVisibility: false,
+    })),
+  }),
 };
 
 export function toPreviewExpression(
   state: State,
   datasourceLayers: Record<string, DatasourcePublicAPI>,
-  paletteService: PaletteRegistry
+  paletteService: PaletteRegistry,
+  eventAnnotationService: EventAnnotationService
 ) {
   return toExpression(
     {
       ...state,
-      layers: state.layers.map((layer) =>
-        isDataLayer(layer)
-          ? { ...layer, hide: true }
-          : // cap the reference line to 1px
-            {
-              ...layer,
-              hide: true,
-              yConfig: layer.yConfig?.map(({ lineWidth, ...config }) => ({
-                ...config,
-                lineWidth: 1,
-                icon: undefined,
-                textVisibility: false,
-              })),
-            }
-      ),
+      layers: state.layers.map((layer) => getLayerTypeOptions(layer, simplifiedLayerExpression)),
       // hide legend for preview
       legend: {
         ...state.legend,
@@ -90,7 +112,8 @@ export function toPreviewExpression(
     },
     datasourceLayers,
     paletteService,
-    {}
+    {},
+    eventAnnotationService
   );
 }
 
@@ -125,7 +148,8 @@ export const buildExpression = (
   metadata: Record<string, Record<string, OperationMetadata | null>>,
   datasourceLayers: Record<string, DatasourcePublicAPI>,
   paletteService: PaletteRegistry,
-  attributes: Partial<{ title: string; description: string }> = {}
+  attributes: Partial<{ title: string; description: string }> = {},
+  eventAnnotationService: EventAnnotationService
 ): Ast | null => {
   const validLayers = state.layers
     .filter((layer): layer is ValidLayer => Boolean(layer.accessors.length))
@@ -315,6 +339,9 @@ export const buildExpression = (
                 paletteService
               );
             }
+            if (isAnnotationsLayer(layer)) {
+              return annotationLayerToExpression(layer, eventAnnotationService);
+            }
             return referenceLineLayerToExpression(
               layer,
               datasourceLayers[(layer as XYReferenceLineLayerConfig).layerId]
@@ -352,6 +379,43 @@ const referenceLineLayerToExpression = (
   };
 };
 
+const annotationLayerToExpression = (
+  layer: XYAnnotationLayerConfig,
+  eventAnnotationService: EventAnnotationService
+): Ast => {
+  return {
+    type: 'expression',
+    chain: [
+      {
+        type: 'function',
+        function: 'lens_xy_annotation_layer',
+        arguments: {
+          layerId: [layer.layerId],
+          layerType: [layerTypes.ANNOTATIONS],
+          accessors: layer.accessors,
+          config: layer.config
+            ? layer.config.map(
+                (config: AnnotationConfig): Ast =>
+                  eventAnnotationService.toExpression({
+                    label: config.label,
+                    id: config.id,
+                    color: config.color,
+                    lineStyle: config.lineStyle,
+                    lineWidth: config.lineWidth,
+                    icon: config.icon,
+                    iconPosition: config.iconPosition,
+                    textVisibility: config.textVisibility,
+                    timestamp: config?.key?.timestamp,
+                    isHidden: Boolean(config.isHidden),
+                  })
+              )
+            : [],
+        },
+      },
+    ],
+  };
+};
+
 const dataLayerToExpression = (
   layer: ValidLayer,
   datasourceLayer: DatasourcePublicAPI,
@@ -368,7 +432,6 @@ const dataLayerToExpression = (
       xAxisOperation.scale &&
       xAxisOperation.scale !== 'ordinal'
   );
-
   return {
     type: 'expression',
     chain: [
@@ -378,6 +441,7 @@ const dataLayerToExpression = (
         arguments: {
           layerId: [layer.layerId],
           hide: [Boolean(layer.hide)],
+
           xAccessor: layer.xAccessor ? [layer.xAccessor] : [],
           yScaleType: [
             getScaleType(metadata[layer.layerId][layer.accessors[0]], ScaleType.Ordinal),
@@ -390,6 +454,7 @@ const dataLayerToExpression = (
             : [],
           seriesType: [layer.seriesType],
           layerType: [layerTypes.DATA],
+
           accessors: layer.accessors,
           columnToLabel: [JSON.stringify(columnToLabel)],
           ...(layer.palette

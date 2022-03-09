@@ -13,6 +13,7 @@ import { i18n } from '@kbn/i18n';
 import { PaletteRegistry } from 'src/plugins/charts/public';
 import { FieldFormatsStart } from 'src/plugins/field_formats/public';
 import { ThemeServiceStart } from 'kibana/public';
+import { EventAnnotationService } from '../../../../../src/plugins/event_annotation/public';
 import { KibanaThemeProvider } from '../../../../../src/plugins/kibana_react/public';
 import { VIS_EVENT_TO_TRIGGER } from '../../../../../src/plugins/visualizations/public';
 import { getSuggestions } from './xy_suggestions';
@@ -28,11 +29,16 @@ import { toExpression, toPreviewExpression, getSortedAccessors } from './to_expr
 import { getAccessorColorConfig, getColorAssignments } from './color_assignment';
 import { getColumnToLabelMap } from './state_helpers';
 import {
-  getGroupsAvailableInData,
+  getGroupsAvailableInData, // TODO - see how we should handle this in annotations
   getReferenceConfiguration,
   getReferenceSupportedLayer,
   setReferenceDimension,
 } from './reference_line_helpers';
+import {
+  getAnnotationsConfiguration,
+  getAnnotationsSupportedLayer,
+  setAnnotationsDimension,
+} from './annotations/helpers';
 import {
   checkXAccessorCompatibility,
   defaultSeriesType,
@@ -42,6 +48,7 @@ import {
   getFirstDataLayer,
   getLayersByType,
   getVisualizationType,
+  isAnnotationsLayer,
   isBucketed,
   isDataLayer,
   isNumericDynamicMetric,
@@ -53,14 +60,18 @@ import {
 import { groupAxesByType } from './axes_configuration';
 import { XYState } from '..';
 import { ReferenceLinePanel } from './xy_config_panel/reference_line_panel';
+import { DimensionTrigger } from '../shared_components/dimension_trigger';
+import { AnnotationsPanel } from './annotations/config_panel';
 
 export const getXyVisualization = ({
   paletteService,
   fieldFormats,
   useLegacyTimeAxis,
   kibanaTheme,
+  eventAnnotationService,
 }: {
   paletteService: PaletteRegistry;
+  eventAnnotationService: EventAnnotationService;
   fieldFormats: FieldFormatsStart;
   useLegacyTimeAxis: boolean;
   kibanaTheme: ThemeServiceStart;
@@ -154,7 +165,11 @@ export const getXyVisualization = ({
   },
 
   getSupportedLayers(state, frame) {
-    return [supportedDataLayer, getReferenceSupportedLayer(state, frame)];
+    return [
+      supportedDataLayer,
+      getReferenceSupportedLayer(state, frame),
+      getAnnotationsSupportedLayer(state, frame),
+    ];
   },
 
   getConfiguration({ state, frame, layerId }) {
@@ -179,8 +194,12 @@ export const getXyVisualization = ({
     if (isReferenceLayer(layer)) {
       return getReferenceConfiguration({ state, frame, layer, sortedAccessors, mappedAccessors });
     }
-    const dataLayers = getDataLayers(state.layers);
 
+    if (isAnnotationsLayer(layer)) {
+      return getAnnotationsConfiguration({ state, frame, layer, mappedAccessors });
+    }
+
+    const dataLayers = getDataLayers(state.layers);
     const isHorizontal = isHorizontalChart(state.layers);
     const { left, right } = groupAxesByType([layer], frame.activeData);
     // Check locally if it has one accessor OR one accessor per axis
@@ -273,6 +292,9 @@ export const getXyVisualization = ({
 
     if (isReferenceLayer(foundLayer)) {
       return setReferenceDimension(props);
+    }
+    if (isAnnotationsLayer(foundLayer)) {
+      return setAnnotationsDimension(props);
     }
 
     const newLayer = { ...foundLayer };
@@ -368,6 +390,7 @@ export const getXyVisualization = ({
     return suggestion;
   },
 
+  // todo: layer types diff
   removeDimension({ prevState, layerId, columnId, frame }) {
     const foundLayer = prevState.layers.find((l) => l.layerId === layerId);
     if (!foundLayer) {
@@ -388,8 +411,12 @@ export const getXyVisualization = ({
       newLayer.accessors = newLayer.accessors.filter((a) => a !== columnId);
     }
 
-    if (newLayer.yConfig) {
-      newLayer.yConfig = newLayer.yConfig.filter(({ forAccessor }) => forAccessor !== columnId);
+    if ('yConfig' in newLayer) {
+      newLayer.yConfig = newLayer.yConfig?.filter(({ forAccessor }) => forAccessor !== columnId);
+    }
+
+    if ('config' in newLayer) {
+      newLayer.config = newLayer.config.filter(({ id }) => id !== columnId);
     }
 
     let newLayers = prevState.layers.map((l) => (l.layerId === layerId ? newLayer : l));
@@ -446,9 +473,12 @@ export const getXyVisualization = ({
     const layer = props.state.layers.find((l) => l.layerId === props.layerId)!;
     const dimensionEditor = isReferenceLayer(layer) ? (
       <ReferenceLinePanel {...allProps} layer={layer} />
+    ) : isAnnotationsLayer(layer) ? (
+      <AnnotationsPanel {...allProps} layer={layer} />
     ) : (
       <DimensionEditor {...allProps} layer={layer} />
     );
+
     render(
       <KibanaThemeProvider theme$={kibanaTheme.theme$}>
         <I18nProvider>{dimensionEditor}</I18nProvider>
@@ -458,8 +488,9 @@ export const getXyVisualization = ({
   },
 
   toExpression: (state, layers, attributes) =>
-    toExpression(state, layers, paletteService, attributes),
-  toPreviewExpression: (state, layers) => toPreviewExpression(state, layers, paletteService),
+    toExpression(state, layers, paletteService, attributes, eventAnnotationService),
+  toPreviewExpression: (state, layers) =>
+    toPreviewExpression(state, layers, paletteService, eventAnnotationService),
 
   getErrorMessages(state, datasourceLayers) {
     // Data error handling below here
@@ -564,6 +595,32 @@ export const getXyVisualization = ({
         }}
       />
     ));
+  },
+  renderDimensionTrigger({
+    columnId,
+    layerId,
+    state,
+  }: {
+    columnId: string;
+    layerId: string;
+    state: XYState;
+  }) {
+    const layer = state.layers.find((l) => l.layerId === layerId);
+    if (layer && isAnnotationsLayer(layer)) {
+      const config = layer?.config.find((l) => l.id === columnId);
+      return (
+        <DimensionTrigger
+          id={columnId}
+          label={
+            config?.label ||
+            i18n.translate('xpack.lens.xyChart.defaultAnnotationLabel', {
+              defaultMessage: 'Static Annotation',
+            })
+          }
+        />
+      );
+    }
+    return null;
   },
 });
 

@@ -123,11 +123,10 @@ export function LayerPanel(
   const layerDatasourceConfigProps = {
     ...layerDatasourceDropProps,
     frame: props.framePublicAPI,
-    activeData: props.framePublicAPI.activeData,
     dateRange,
   };
 
-  const { groups } = useMemo(
+  const { groups, noDatasource } = useMemo(
     () => activeVisualization.getConfiguration(layerVisualizationConfigProps),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
@@ -180,16 +179,18 @@ export function LayerPanel(
 
       const filterOperations = group?.filterOperations || (() => false);
 
-      const dropResult = layerDatasourceOnDrop({
-        ...layerDatasourceDropProps,
-        droppedItem,
-        columnId,
-        layerId: targetLayerId,
-        filterOperations,
-        dimensionGroups: groups,
-        groupId,
-        dropType,
-      });
+      const dropResult = !noDatasource
+        ? layerDatasourceOnDrop({
+            ...layerDatasourceDropProps,
+            droppedItem,
+            columnId,
+            layerId: targetLayerId,
+            filterOperations,
+            dimensionGroups: groups,
+            groupId,
+            dropType,
+          })
+        : true;
       if (dropResult) {
         let previousColumn =
           typeof droppedItem.column === 'string' ? droppedItem.column : undefined;
@@ -241,6 +242,7 @@ export function LayerPanel(
     removeDimension,
     layerDatasourceDropProps,
     setNextFocusedButtonId,
+    noDatasource,
   ]);
 
   const isDimensionPanelOpen = Boolean(activeId);
@@ -341,7 +343,7 @@ export function LayerPanel(
               </EuiFlexItem>
             </EuiFlexGroup>
             <EuiSpacer size="s" />
-            {layerDatasource && (
+            {layerDatasource && !noDatasource && (
               <NativeRenderer
                 render={layerDatasource.renderLayerPanel}
                 nativeProps={{
@@ -502,18 +504,28 @@ export function LayerPanel(
                                   )
                                 }
                               >
-                                <NativeRenderer
-                                  render={layerDatasource.renderDimensionTrigger}
-                                  nativeProps={{
-                                    ...layerDatasourceConfigProps,
-                                    columnId: accessorConfig.columnId,
-                                    groupId: group.groupId,
-                                    filterOperations: group.filterOperations,
-                                    hideTooltip,
-                                    invalid: group.invalid,
-                                    invalidMessage: group.invalidMessage,
-                                  }}
-                                />
+                                {noDatasource ? (
+                                  <>
+                                    {activeVisualization?.renderDimensionTrigger?.({
+                                      columnId,
+                                      layerId,
+                                      state: props.visualizationState,
+                                    })}
+                                  </>
+                                ) : (
+                                  <NativeRenderer
+                                    render={layerDatasource.renderDimensionTrigger}
+                                    nativeProps={{
+                                      ...layerDatasourceConfigProps,
+                                      columnId: accessorConfig.columnId,
+                                      groupId: group.groupId,
+                                      filterOperations: group.filterOperations,
+                                      hideTooltip,
+                                      invalid: group.invalid,
+                                      invalidMessage: group.invalidMessage,
+                                    }}
+                                  />
+                                )}
                               </DimensionButton>
                             </div>
                           </DraggableDimensionButton>
@@ -579,7 +591,7 @@ export function LayerPanel(
         }}
         panel={
           <div>
-            {activeGroup && activeId && (
+            {activeGroup && activeId && !noDatasource && (
               <NativeRenderer
                 render={layerDatasource.renderDimensionEditor}
                 nativeProps={{

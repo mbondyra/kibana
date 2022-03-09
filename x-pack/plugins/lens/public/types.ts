@@ -419,6 +419,7 @@ export type DatasourceDimensionEditorProps<T = unknown> = DatasourceDimensionPro
   isFullscreen: boolean;
   layerType: LayerType | undefined;
   supportStaticValue: boolean;
+  noDatasource?: boolean;
   paramEditorCustomProps?: ParamEditorCustomProps;
   supportFieldFormat?: boolean;
 };
@@ -562,6 +563,7 @@ export type VisualizationDimensionGroupConfig = SharedDimensionProps & {
   // need a special flag to know when to pass the previous column on duplicating
   requiresPreviousColumnOnDuplicate?: boolean;
   supportStaticValue?: boolean;
+  noDatasource?: boolean;
   paramEditorCustomProps?: ParamEditorCustomProps;
   supportFieldFormat?: boolean;
 };
@@ -766,11 +768,11 @@ export interface Visualization<T = unknown> {
     disabled?: boolean;
     toolTipContent?: string;
     initialDimensions?: Array<{
-      groupId: string;
       columnId: string;
-      dataType: string;
-      label: string;
-      staticValue: unknown;
+      groupId: string;
+      dataType?: string;
+      label?: string;
+      staticValue?: unknown;
     }>;
   }>;
   getLayerType: (layerId: string, state?: T) => LayerType | undefined;
@@ -781,6 +783,7 @@ export interface Visualization<T = unknown> {
    * For consistency across different visualizations, the dimension configuration UI is standardized
    */
   getConfiguration: (props: VisualizationConfigProps<T>) => {
+    noDatasource?: boolean;
     groups: VisualizationDimensionGroupConfig[];
   };
 
@@ -835,7 +838,14 @@ export interface Visualization<T = unknown> {
     domElement: Element,
     props: VisualizationDimensionEditorProps<T>
   ) => ((cleanupElement: Element) => void) | void;
-
+  /**
+   * TODO: used only for vis-only annotations
+   */
+  renderDimensionTrigger?: (props: {
+    layerId: string;
+    columnId: string;
+    state: T;
+  }) => JSX.Element | null;
   /**
    * The frame will call this function on all visualizations at different times. The
    * main use cases where visualization suggestions are requested are:
