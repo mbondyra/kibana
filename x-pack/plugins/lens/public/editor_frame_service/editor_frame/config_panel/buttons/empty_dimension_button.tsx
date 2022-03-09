@@ -116,6 +116,7 @@ export function EmptyDimensionButton({
     ...layerDatasourceDropProps,
     dragging,
     columnId: newColumnId,
+    isNew: true,
     filterOperations: group.filterOperations,
     groupId: group.groupId,
     dimensionGroups: groups,

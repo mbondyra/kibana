@@ -864,6 +864,9 @@ export interface Visualization<T = unknown> {
     layerId: string;
     columnId: string;
     state: T;
+    hideTooltip?: boolean;
+    invalid?: boolean;
+    invalidMessage?: string;
   }) => JSX.Element | null;
   /**
    * The frame will call this function on all visualizations at different times. The

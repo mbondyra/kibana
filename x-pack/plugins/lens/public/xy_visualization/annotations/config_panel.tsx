@@ -28,12 +28,11 @@ const defaultLabel = i18n.translate('xpack.lens.xyChart.defaultAnnotationLabel',
 
 export const AnnotationsPanel = (
   props: VisualizationDimensionEditorProps<State> & {
-    layer: XYAnnotationLayerConfig;
     formatFactory: FormatFactory;
     paletteService: PaletteRegistry;
   }
 ) => {
-  const { state, setState, layerId, accessor, layer } = props;
+  const { state, setState, layerId, accessor } = props;
   const isHorizontal = isHorizontalChart(state.layers);
 
   const { inputValue: localState, handleInputChange: setLocalState } = useDebouncedValue<XYState>({
@@ -42,24 +41,29 @@ export const AnnotationsPanel = (
   });
 
   const index = localState.layers.findIndex((l) => l.layerId === layerId);
+  const localLayer = localState.layers.find(
+    (l) => l.layerId === layerId
+  ) as XYAnnotationLayerConfig;
+
+  const currentConfig = localLayer.config?.find((c) => c.id === accessor);
 
   const setConfig = useCallback(
     (config: Partial<AnnotationConfig> | undefined) => {
       if (config == null) {
         return;
       }
-      const newConfigs = [...(layer.config || [])];
+      const newConfigs = [...(localLayer.config || [])];
       const existingIndex = newConfigs.findIndex((c) => c.id === accessor);
       if (existingIndex !== -1) {
         newConfigs[existingIndex] = { ...newConfigs[existingIndex], ...config };
       } else {
-        newConfigs.push({ id: accessor, ...config });
+        // that should never happen
+        return;
       }
-      setLocalState(updateLayer(localState, { ...layer, config: newConfigs }, index));
+      setLocalState(updateLayer(localState, { ...localLayer, config: newConfigs }, index));
     },
-    [accessor, index, localState, layer, setLocalState]
+    [accessor, index, localState, localLayer, setLocalState]
   );
-  const currentConfig = layer.config?.find((c) => c.id === accessor);
   return (
     <>
       <EuiFormRow

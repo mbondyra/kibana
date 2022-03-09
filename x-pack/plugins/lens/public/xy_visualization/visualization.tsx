@@ -23,7 +23,7 @@ import { DimensionEditor } from './xy_config_panel/dimension_editor';
 import { LayerHeader } from './xy_config_panel/layer_header';
 import type { Visualization, AccessorConfig, FramePublicAPI } from '../types';
 import { State, visualizationTypes, XYSuggestion } from './types';
-import { SeriesType, XYDataLayerConfig, XYLayerConfig, YAxisMode } from '../../common/expressions';
+import { SeriesType, XYDataLayerConfig, YAxisMode } from '../../common/expressions';
 import { layerTypes } from '../../common';
 import { isHorizontalChart } from './state_helpers';
 import { toExpression, toPreviewExpression, getSortedAccessors } from './to_expression';
@@ -48,6 +48,7 @@ import {
   getDescription,
   getFirstDataLayer,
   getLayersByType,
+  getReferenceLayers,
   getVisualizationType,
   isAnnotationsLayer,
   isBucketed,
@@ -179,10 +180,18 @@ export const getXyVisualization = ({
       return { groups: [] };
     }
 
+    if (isAnnotationsLayer(layer)) {
+      return getAnnotationsConfiguration({ state, frame, layer });
+    }
+
     const sortedAccessors: string[] = getSortedAccessors(
       frame.datasourceLayers[layer.layerId],
       layer
     );
+    if (isReferenceLayer(layer)) {
+      return getReferenceConfiguration({ state, frame, layer, sortedAccessors });
+    }
+
     const mappedAccessors = getMappedAccessors({
       state,
       frame,
@@ -191,14 +200,6 @@ export const getXyVisualization = ({
       paletteService,
       accessors: sortedAccessors,
     });
-
-    if (isReferenceLayer(layer)) {
-      return getReferenceConfiguration({ state, frame, layer, sortedAccessors, mappedAccessors });
-    }
-
-    if (isAnnotationsLayer(layer)) {
-      return getAnnotationsConfiguration({ state, frame, layer, mappedAccessors });
-    }
 
     const dataLayers = getDataLayers(state.layers);
     const isHorizontal = isHorizontalChart(state.layers);
@@ -317,7 +318,7 @@ export const getXyVisualization = ({
   updateLayersConfigurationFromContext({ prevState, layerId, context }) {
     const { chartType, axisPosition, palette, metrics } = context;
     const foundLayer = prevState?.layers.find((l) => l.layerId === layerId);
-    if (!foundLayer) {
+    if (!foundLayer || !isDataLayer(foundLayer)) {
       return prevState;
     }
     const isReferenceLine = metrics.some((metric) => metric.agg === 'static_value');
@@ -394,13 +395,23 @@ export const getXyVisualization = ({
     return suggestion;
   },
 
-  // todo: layer types diff
+  // todo: annotation layer types diff
   removeDimension({ prevState, layerId, columnId, frame }) {
     const foundLayer = prevState.layers.find((l) => l.layerId === layerId);
     if (!foundLayer) {
       return prevState;
     }
-    const dataLayers = getDataLayers(prevState.layers);
+    if (isAnnotationsLayer(foundLayer)) {
+      const newLayer = { ...foundLayer };
+      if ('config' in newLayer) {
+        newLayer.config = newLayer.config.filter(({ id }) => id !== columnId);
+      }
+      const newLayers = prevState.layers.map((l) => (l.layerId === layerId ? newLayer : l));
+      return {
+        ...prevState,
+        layers: newLayers,
+      };
+    }
     const newLayer = { ...foundLayer };
     if (isDataLayer(newLayer)) {
       if (newLayer.xAccessor === columnId) {
@@ -419,15 +430,11 @@ export const getXyVisualization = ({
       newLayer.yConfig = newLayer.yConfig?.filter(({ forAccessor }) => forAccessor !== columnId);
     }
 
-    if ('config' in newLayer) {
-      newLayer.config = newLayer.config.filter(({ id }) => id !== columnId);
-    }
-
     let newLayers = prevState.layers.map((l) => (l.layerId === layerId ? newLayer : l));
     // check if there's any reference layer and pull it off if all data layers have no dimensions set
     // check for data layers if they all still have xAccessors
     const groupsAvailable = getGroupsAvailableInData(
-      dataLayers,
+      getDataLayers(prevState.layers),
       frame.datasourceLayers,
       frame?.activeData
     );
@@ -437,7 +444,9 @@ export const getXyVisualization = ({
         (id) => !groupsAvailable[id]
       )
     ) {
-      newLayers = newLayers.filter((layer) => isDataLayer(layer) || layer.accessors.length);
+      newLayers = newLayers.filter(
+        (layer) => isDataLayer(layer) || ('accessors' in layer && layer.accessors.length)
+      );
     }
 
     return {
@@ -535,7 +544,7 @@ export const getXyVisualization = ({
       // temporary fix for #87068
       errors.push(...checkXAccessorCompatibility(state, datasourceLayers));
 
-      for (const layer of state.layers) {
+      for (const layer of getDataLayers(state.layers)) {
         const datasourceAPI = datasourceLayers[layer.layerId];
         if (datasourceAPI) {
           for (const accessor of layer.accessors) {
@@ -571,9 +580,10 @@ export const getXyVisualization = ({
       return;
     }
 
-    const layers = state.layers;
-
-    const filteredLayers = layers.filter(({ accessors }: XYLayerConfig) => accessors.length > 0);
+    const filteredLayers = [
+      ...getDataLayers(state.layers),
+      ...getReferenceLayers(state.layers),
+    ].filter(({ accessors }) => accessors.length > 0);
     const accessorsWithArrayValues = [];
     for (const layer of filteredLayers) {
       const { layerId, accessors } = layer;
@@ -604,17 +614,26 @@ export const getXyVisualization = ({
     columnId,
     layerId,
     state,
+    hideTooltip,
+    invalid,
+    invalidMessage,
   }: {
     columnId: string;
     layerId: string;
     state: XYState;
+    hideTooltip?: boolean;
+    invalid?: boolean;
+    invalidMessage?: string;
   }) {
     const layer = state.layers.find((l) => l.layerId === layerId);
-    if (layer && isAnnotationLayer(layer)) {
+    if (layer && isAnnotationsLayer(layer)) {
       const config = layer?.config.find((l) => l.id === columnId);
       return (
         <DimensionTrigger
           id={columnId}
+          hideTooltip={hideTooltip}
+          isInvalid={invalid}
+          invalidMessage={invalidMessage}
           label={
             config?.label ||
             i18n.translate('xpack.lens.xyChart.defaultAnnotationLabel', {
@@ -641,7 +660,7 @@ const getMappedAccessors = ({
   paletteService: PaletteRegistry;
   fieldFormats: FieldFormatsStart;
   state: XYState;
-  layer: XYLayerConfig;
+  layer: XYDataLayerConfig;
 }) => {
   let mappedAccessors: AccessorConfig[] = accessors.map((accessor) => ({
     columnId: accessor,
@@ -649,7 +668,7 @@ const getMappedAccessors = ({
 
   if (frame.activeData) {
     const colorAssignments = getColorAssignments(
-      state.layers,
+      getDataLayers(state.layers),
       { tables: frame.activeData },
       fieldFormats.deserialize
     );
