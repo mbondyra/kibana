@@ -13,6 +13,8 @@ export type KeyType = 'point_in_time';
 
 export interface AnnotationConfig {
   key: AnnotationKeyResult;
+  id: string;
+  annotationType: AnnotationType;
   label?: string;
   message?: string;
   color?: string;
@@ -22,8 +24,6 @@ export interface AnnotationConfig {
   iconPosition?: IconPosition;
   textVisibility?: boolean;
   isHidden?: boolean;
-  id: string;
-  annotationType: AnnotationType;
 }
 
 export type AnnotationResult = AnnotationConfig & { type: 'annotation_config' };

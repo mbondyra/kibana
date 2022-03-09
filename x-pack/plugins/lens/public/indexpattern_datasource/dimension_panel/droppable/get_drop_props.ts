@@ -73,6 +73,7 @@ export function getField(
 }
 
 export function getDropProps(props: GetDropProps) {
+  // console.log('datasource get drop props');
   const { state, columnId, layerId, dragging, groupId, filterOperations, isNew } = props;
   if (!dragging) {
     return;

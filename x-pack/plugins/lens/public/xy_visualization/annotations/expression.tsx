@@ -16,7 +16,7 @@ import { hasIcon } from '../xy_config_panel/shared/icon_select';
 
 export const ANNOTATIONS_MARKER_SIZE = 20;
 
-function getBaseIconPlacement(iconPosition: IconPosition) {
+function getBaseIconPlacement(iconPosition?: IconPosition) {
   return iconPosition === 'below' ? Position.Bottom : Position.Top;
 }
 

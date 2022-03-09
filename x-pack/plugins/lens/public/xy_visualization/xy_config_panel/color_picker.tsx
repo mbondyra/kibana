@@ -21,7 +21,7 @@ import {
 } from '../color_assignment';
 import { getSortedAccessors } from '../to_expression';
 import { TooltipWrapper } from '../../shared_components';
-import { isReferenceLayer, isAnnotationsLayer } from '../visualization_helpers';
+import { isReferenceLayer, isAnnotationsLayer, getDataLayers } from '../visualization_helpers';
 
 const tooltipContent = {
   auto: i18n.translate('xpack.lens.configPanel.color.tooltip.auto', {
@@ -73,7 +73,7 @@ export const ColorPicker = ({
     );
 
     const colorAssignments = getColorAssignments(
-      state.layers,
+      getDataLayers(state.layers),
       { tables: frame.activeData },
       formatFactory
     );

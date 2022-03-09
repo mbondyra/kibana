@@ -53,10 +53,12 @@ export const toExpression = (
   state.layers.forEach((layer) => {
     metadata[layer.layerId] = {};
     const datasource = datasourceLayers[layer.layerId];
-    datasource.getTableSpec().forEach((column) => {
-      const operation = datasourceLayers[layer.layerId].getOperationForColumnId(column.columnId);
-      metadata[layer.layerId][column.columnId] = operation;
-    });
+    if (datasource) {
+      datasource.getTableSpec().forEach((column) => {
+        const operation = datasourceLayers[layer.layerId].getOperationForColumnId(column.columnId);
+        metadata[layer.layerId][column.columnId] = operation;
+      });
+    }
   });
 
   return buildExpression(
@@ -152,9 +154,11 @@ export const buildExpression = (
   eventAnnotationService: EventAnnotationService
 ): Ast | null => {
   const validLayers = state.layers
-    .filter((layer): layer is ValidLayer => Boolean(layer.accessors.length))
+    .filter((layer): layer is ValidLayer =>
+      isAnnotationsLayer(layer) ? Boolean(layer.config.length) : Boolean(layer.accessors.length)
+    )
     .map((layer) => {
-      if (!datasourceLayers) {
+      if (!datasourceLayers?.[layer.layerId]) {
         return layer;
       }
       const sortedAccessors = getSortedAccessors(datasourceLayers[layer.layerId], layer);
@@ -392,7 +396,6 @@ const annotationLayerToExpression = (
         arguments: {
           layerId: [layer.layerId],
           layerType: [layerTypes.ANNOTATIONS],
-          accessors: layer.accessors,
           config: layer.config
             ? layer.config.map(
                 (config: AnnotationConfig): Ast =>

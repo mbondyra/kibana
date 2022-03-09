@@ -14,7 +14,11 @@ import { DragDrop, DragDropIdentifier, DragContext } from '../../../../drag_drop
 
 import { Datasource, VisualizationDimensionGroupConfig, DropType } from '../../../../types';
 import { LayerDatasourceDropProps } from '../types';
-import { getCustomDropTarget, getAdditionalClassesOnDroppable } from './drop_targets_utils';
+import {
+  getCustomDropTarget,
+  getAdditionalClassesOnDroppable,
+  getDropProps,
+} from './drop_targets_utils';
 
 const label = i18n.translate('xpack.lens.indexPattern.emptyDimensionButton', {
   defaultMessage: 'Empty dimension',
@@ -112,8 +116,8 @@ export function EmptyDimensionButton({
     setNewColumnId(generateId());
   }, [itemIndex]);
 
-  const dropProps = layerDatasource.getDropProps({
-    ...layerDatasourceDropProps,
+  const dropProps = getDropProps(layerDatasource, {
+    ...(layerDatasourceDropProps || {}),
     dragging,
     columnId: newColumnId,
     isNew: true,
@@ -122,6 +126,7 @@ export function EmptyDimensionButton({
     dimensionGroups: groups,
   });
 
+  // console.log(dropProps);
   const dropTypes = dropProps?.dropTypes;
   const nextLabel = dropProps?.nextLabel;
 

@@ -53,7 +53,8 @@ export const AnnotationsPanel = (
       if (existingIndex !== -1) {
         newConfigs[existingIndex] = { ...newConfigs[existingIndex], ...config };
       } else {
-        newConfigs.push({ id: accessor, ...config });
+        // that should never happen
+        return;
       }
       setLocalState(updateLayer(localState, { ...layer, config: newConfigs }, index));
     },

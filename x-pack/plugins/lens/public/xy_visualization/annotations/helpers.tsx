@@ -8,7 +8,7 @@
 import { i18n } from '@kbn/i18n';
 import { layerTypes } from '../../../common';
 import type { XYDataLayerConfig, XYAnnotationLayerConfig } from '../../../common/expressions';
-import type { AccessorConfig, FramePublicAPI, Visualization } from '../../types';
+import type { FramePublicAPI, Visualization } from '../../types';
 import { isHorizontalChart } from '../state_helpers';
 import type { XYState } from '../types';
 import {
@@ -19,6 +19,7 @@ import {
 } from '../visualization_helpers';
 import { LensIconChartBarAnnotations } from '../../assets/chart_bar_annotations';
 import { generateId } from '../../id_generator';
+import { defaultAnnotationColor } from '../../../../../../src/plugins/event_annotation/public';
 
 const MAX_DATE = Number(new Date(8640000000000000));
 const MIN_DATE = Number(new Date(-8640000000000000));
@@ -93,6 +94,7 @@ export const getAnnotationsSupportedLayer = (
     initialDimensions,
   };
 };
+
 export const setAnnotationsDimension: Visualization<XYState>['setDimension'] = ({
   prevState,
   layerId,
@@ -107,7 +109,6 @@ export const setAnnotationsDimension: Visualization<XYState>['setDimension'] = (
   const dataLayers = getDataLayers(prevState.layers);
   const newLayer = { ...foundLayer } as XYAnnotationLayerConfig;
 
-  newLayer.accessors = [...newLayer.accessors.filter((a) => a !== columnId), columnId];
   const hasConfig = newLayer.config?.some(({ id }) => id === columnId);
   const previousConfig = previousColumn
     ? newLayer.config?.find(({ id }) => id === previousColumn)
@@ -119,6 +120,7 @@ export const setAnnotationsDimension: Visualization<XYState>['setDimension'] = (
         label: i18n.translate('xpack.lens.xyChart.defaultAnnotationLabel', {
           defaultMessage: 'Static Annotation',
         }),
+        annotationType: 'manual',
         key: {
           type: 'annotation_key',
           keyType: 'point_in_time',
@@ -126,7 +128,6 @@ export const setAnnotationsDimension: Visualization<XYState>['setDimension'] = (
         },
         ...previousConfig,
         id: columnId,
-        axisMode: 'bottom',
       },
     ];
   }
@@ -134,6 +135,16 @@ export const setAnnotationsDimension: Visualization<XYState>['setDimension'] = (
     ...prevState,
     layers: prevState.layers.map((l) => (l.layerId === layerId ? newLayer : l)),
   };
+};
+
+export const getAnnotationsAccessorColorConfig = (layer: XYAnnotationLayerConfig) => {
+  return layer.config.map((config) => {
+    return {
+      columnId: config.id,
+      triggerIcon: 'color' as const,
+      color: config?.color || defaultAnnotationColor,
+    };
+  });
 };
 
 export const getAnnotationsConfiguration = ({
@@ -153,11 +164,7 @@ export const getAnnotationsConfiguration = ({
       {
         groupId: 'xAnnotations',
         groupLabel: getAxisName('x', { isHorizontal: isHorizontalChart(state.layers) }),
-        accessors: layer.config.map(({ id, color }) => ({
-          columnId: id,
-          color,
-          triggerIcon: 'color' as const,
-        })),
+        accessors: getAnnotationsAccessorColorConfig(layer),
         dataTestSubj: 'lnsXY_xAnnotationsPanel',
         invalid: !dataLayers.some(({ xAccessor }) => xAccessor != null),
         invalidMessage: i18n.translate('xpack.lens.xyChart.addAnnotationsLayerLabelDisabledHelp', {

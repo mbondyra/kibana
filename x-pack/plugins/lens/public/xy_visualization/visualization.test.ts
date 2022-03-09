@@ -150,7 +150,7 @@ describe('xy_visualization', () => {
 
       expect(initialState.layers).toHaveLength(1);
       expect((initialState.layers[0] as XYDataLayerConfig).xAccessor).not.toBeDefined();
-      expect(initialState.layers[0].accessors).toHaveLength(0);
+      expect((initialState.layers[0] as XYDataLayerConfig).accessors).toHaveLength(0);
 
       expect(initialState).toMatchInlineSnapshot(`
         Object {
@@ -1027,7 +1027,7 @@ describe('xy_visualization', () => {
 
       it('should support static value', () => {
         const state = getStateWithBaseReferenceLine();
-        state.layers[0].accessors = [];
+        (state.layers[1] as XYDataLayerConfig).accessors = [];
         (state.layers[1] as XYReferenceLineLayerConfig).yConfig = undefined;
         expect(
           xyVisualization.getConfiguration({
@@ -1040,7 +1040,7 @@ describe('xy_visualization', () => {
 
       it('should return no referenceLine groups for a empty data layer', () => {
         const state = getStateWithBaseReferenceLine();
-        state.layers[0].accessors = [];
+        (state.layers[1] as XYDataLayerConfig).accessors = [];
         (state.layers[1] as XYReferenceLineLayerConfig).yConfig = undefined;
 
         const options = xyVisualization.getConfiguration({

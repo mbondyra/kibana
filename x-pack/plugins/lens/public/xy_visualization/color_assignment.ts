@@ -9,21 +9,13 @@ import { uniq, mapValues } from 'lodash';
 import type { PaletteOutput, PaletteRegistry } from 'src/plugins/charts/public';
 import type { Datatable } from 'src/plugins/expressions';
 import { euiLightVars } from '@kbn/ui-theme';
-import { defaultAnnotationColor } from '../../../../../src/plugins/event_annotation/public';
 import type { AccessorConfig, FramePublicAPI } from '../types';
 import { getColumnToLabelMap } from './state_helpers';
 import { FormatFactory, LayerType } from '../../common';
-import type {
-  XYAnnotationLayerConfig,
-  XYLayerConfig,
-  XYReferenceLineLayerConfig,
-} from '../../common/expressions';
-import {
-  isDataLayer,
-  isReferenceLayer,
-  isAnnotationsLayer,
-  getDataLayers,
-} from './visualization_helpers';
+import type { XYLayerConfig } from '../../common/expressions';
+import { isReferenceLayer, isAnnotationsLayer, getDataLayers } from './visualization_helpers';
+import { getAnnotationsAccessorColorConfig } from './annotations/helpers';
+import { getReferenceLineAccessorColorConfig } from './reference_line_helpers';
 
 const isPrimitive = (value: unknown): boolean => value != null && typeof value !== 'object';
 
@@ -109,28 +101,6 @@ export function getColorAssignments(
     };
   });
 }
-
-const getReferenceLineAccessorColorConfig = (layer: XYReferenceLineLayerConfig) => {
-  return layer.accessors.map((accessor) => {
-    const currentYConfig = layer.yConfig?.find((yConfig) => yConfig.forAccessor === accessor);
-    return {
-      columnId: accessor,
-      triggerIcon: 'color' as const,
-      color: currentYConfig?.color || defaultReferenceLineColor,
-    };
-  });
-};
-
-const getAnnotationsAccessorColorConfig = (layer: XYAnnotationLayerConfig) => {
-  return layer.accessors.map((accessor) => {
-    const config = layer.config?.find((c) => c.id === accessor);
-    return {
-      columnId: accessor,
-      triggerIcon: 'color' as const,
-      color: config?.color || defaultAnnotationColor,
-    };
-  });
-};
 
 export function getAccessorColorConfig(
   colorAssignments: ColorAssignments,
