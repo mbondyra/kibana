@@ -18,7 +18,12 @@ import type {
   XYLayerConfig,
   XYReferenceLineLayerConfig,
 } from '../../common/expressions';
-import { isDataLayer, isReferenceLayer, isAnnotationsLayer } from './visualization_helpers';
+import {
+  isDataLayer,
+  isReferenceLayer,
+  isAnnotationsLayer,
+  getDataLayers,
+} from './visualization_helpers';
 
 const isPrimitive = (value: unknown): boolean => value != null && typeof value !== 'object';
 
@@ -47,15 +52,13 @@ export function getColorAssignments(
 ): ColorAssignments {
   const layersPerPalette: Record<string, LayerColorConfig[]> = {};
 
-  layers
-    .filter((layer) => isDataLayer(layer))
-    .forEach((layer) => {
-      const palette = layer.palette?.name || 'default';
-      if (!layersPerPalette[palette]) {
-        layersPerPalette[palette] = [];
-      }
-      layersPerPalette[palette].push(layer);
-    });
+  getDataLayers(layers).forEach((layer) => {
+    const palette = layer.palette?.name || 'default';
+    if (!layersPerPalette[palette]) {
+      layersPerPalette[palette] = [];
+    }
+    layersPerPalette[palette].push(layer);
+  });
 
   return mapValues(layersPerPalette, (paletteLayers) => {
     const seriesPerLayer = paletteLayers.map((layer, layerIndex) => {

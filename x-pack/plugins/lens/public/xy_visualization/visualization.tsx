@@ -178,6 +178,10 @@ export const getXyVisualization = ({
       return { groups: [] };
     }
 
+    if (isAnnotationsLayer(layer)) {
+      return getAnnotationsConfiguration({ state, frame, layer });
+    }
+
     const sortedAccessors: string[] = getSortedAccessors(
       frame.datasourceLayers[layer.layerId],
       layer
@@ -193,10 +197,6 @@ export const getXyVisualization = ({
 
     if (isReferenceLayer(layer)) {
       return getReferenceConfiguration({ state, frame, layer, sortedAccessors, mappedAccessors });
-    }
-
-    if (isAnnotationsLayer(layer)) {
-      return getAnnotationsConfiguration({ state, frame, layer, mappedAccessors });
     }
 
     const dataLayers = getDataLayers(state.layers);

@@ -131,7 +131,7 @@ export function checkScaleOperation(
 export const isDataLayer = (layer: Pick<XYLayerConfig, 'layerType'>): layer is XYDataLayerConfig =>
   layer.layerType === layerTypes.DATA || !layer.layerType;
 
-export const getDataLayers = (layers: XYLayerConfig[]) =>
+export const getDataLayers = (layers: Array<Pick<XYLayerConfig, 'layerType'>>) =>
   (layers || []).filter((layer): layer is XYDataLayerConfig => isDataLayer(layer));
 
 export const getFirstDataLayer = (layers: XYLayerConfig[]) =>

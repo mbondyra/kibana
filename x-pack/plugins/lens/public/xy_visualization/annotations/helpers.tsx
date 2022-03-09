@@ -140,12 +140,10 @@ export const getAnnotationsConfiguration = ({
   state,
   frame,
   layer,
-  mappedAccessors,
 }: {
   state: XYState;
   frame: FramePublicAPI;
   layer: XYAnnotationLayerConfig;
-  mappedAccessors: AccessorConfig[];
 }) => {
   const dataLayers = getDataLayers(state.layers);
 
@@ -157,7 +155,7 @@ export const getAnnotationsConfiguration = ({
         groupLabel: getAxisName('x', { isHorizontal: isHorizontalChart(state.layers) }),
         accessors: layer.config.map(({ id, color }) => ({
           columnId: id,
-          color: color || mappedAccessors.find(({ columnId }) => columnId === id)?.color,
+          color,
           triggerIcon: 'color' as const,
         })),
         dataTestSubj: 'lnsXY_xAnnotationsPanel',
