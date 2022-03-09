@@ -498,6 +498,7 @@ export function LayerPanel(
                                   removeButtonRef(id);
                                 }}
                                 invalid={
+                                  !noDatasource &&
                                   !layerDatasource?.isValidColumn(
                                     layerDatasourceState,
                                     layerId,
@@ -511,6 +512,9 @@ export function LayerPanel(
                                       columnId,
                                       layerId,
                                       state: props.visualizationState,
+                                      hideTooltip,
+                                      invalid: group.invalid,
+                                      invalidMessage: group.invalidMessage,
                                     })}
                                   </>
                                 ) : (
@@ -568,22 +572,25 @@ export function LayerPanel(
         isFullscreen={isFullscreen}
         groupLabel={activeGroup?.groupLabel || ''}
         handleClose={() => {
-          if (
-            layerDatasource.canCloseDimensionEditor &&
-            !layerDatasource.canCloseDimensionEditor(layerDatasourceState)
-          ) {
-            return false;
-          }
-          if (layerDatasource.updateStateOnCloseDimension) {
-            const newState = layerDatasource.updateStateOnCloseDimension({
-              state: layerDatasourceState,
-              layerId,
-              columnId: activeId!,
-            });
-            if (newState) {
-              props.updateDatasource(datasourceId, newState);
+          if (layerDatasource) {
+            if (
+              layerDatasource.canCloseDimensionEditor &&
+              !layerDatasource.canCloseDimensionEditor(layerDatasourceState)
+            ) {
+              return false;
+            }
+            if (layerDatasource.updateStateOnCloseDimension) {
+              const newState = layerDatasource.updateStateOnCloseDimension({
+                state: layerDatasourceState,
+                layerId,
+                columnId: activeId!,
+              });
+              if (newState) {
+                props.updateDatasource(datasourceId, newState);
+              }
             }
           }
+
           setActiveDimension(initialActiveDimensionState);
           if (isFullscreen) {
             toggleFullscreen();

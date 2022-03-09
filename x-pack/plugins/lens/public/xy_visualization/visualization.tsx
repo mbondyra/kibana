@@ -610,10 +610,16 @@ export const getXyVisualization = ({
     columnId,
     layerId,
     state,
+    hideTooltip,
+    invalid,
+    invalidMessage,
   }: {
     columnId: string;
     layerId: string;
     state: XYState;
+    hideTooltip?: boolean;
+    invalid?: boolean;
+    invalidMessage?: string;
   }) {
     const layer = state.layers.find((l) => l.layerId === layerId);
     if (layer && isAnnotationsLayer(layer)) {
@@ -621,6 +627,9 @@ export const getXyVisualization = ({
       return (
         <DimensionTrigger
           id={columnId}
+          hideTooltip={hideTooltip}
+          isInvalid={invalid}
+          invalidMessage={invalidMessage}
           label={
             config?.label ||
             i18n.translate('xpack.lens.xyChart.defaultAnnotationLabel', {
