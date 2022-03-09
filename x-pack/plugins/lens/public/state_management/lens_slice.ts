@@ -721,7 +721,11 @@ function addInitialValueIfAvailable({
     .getSupportedLayers(visualizationState, framePublicAPI)
     .find(({ type }) => type === layerType);
 
-  if (layerInfo?.initialDimensions && activeDatasource?.initializeDimension) {
+  if (
+    layerType !== 'annotations' &&
+    layerInfo?.initialDimensions &&
+    activeDatasource?.initializeDimension
+  ) {
     const info = groupId
       ? layerInfo.initialDimensions.find(({ groupId: id }) => id === groupId)
       : // pick the first available one if not passed
@@ -733,6 +737,25 @@ function addInitialValueIfAvailable({
           ...info,
           columnId: columnId || info.columnId,
         }),
+        activeVisualizationState: activeVisualization.setDimension({
+          groupId: info.groupId,
+          layerId,
+          columnId: columnId || info.columnId,
+          prevState: visualizationState,
+          frame: framePublicAPI,
+        }),
+      };
+    }
+  }
+  if (layerType === 'annotations' && layerInfo?.initialDimensions) {
+    const info = groupId
+      ? layerInfo.initialDimensions.find(({ groupId: id }) => id === groupId)
+      : // pick the first available one if not passed
+        layerInfo.initialDimensions[0];
+
+    if (info) {
+      return {
+        activeDatasourceState: datasourceState,
         activeVisualizationState: activeVisualization.setDimension({
           groupId: info.groupId,
           layerId,

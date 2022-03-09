@@ -9,11 +9,16 @@ import { uniq, mapValues } from 'lodash';
 import type { PaletteOutput, PaletteRegistry } from 'src/plugins/charts/public';
 import type { Datatable } from 'src/plugins/expressions';
 import { euiLightVars } from '@kbn/ui-theme';
+import { defaultAnnotationColor } from '../../../../../src/plugins/event_annotation/public';
 import type { AccessorConfig, FramePublicAPI } from '../types';
 import { getColumnToLabelMap } from './state_helpers';
 import { FormatFactory, LayerType } from '../../common';
-import type { XYLayerConfig } from '../../common/expressions';
-import { isDataLayer, isReferenceLayer } from './visualization_helpers';
+import type {
+  XYAnnotationLayerConfig,
+  XYLayerConfig,
+  XYReferenceLineLayerConfig,
+} from '../../common/expressions';
+import { isDataLayer, isReferenceLayer, isAnnotationsLayer } from './visualization_helpers';
 
 const isPrimitive = (value: unknown): boolean => value != null && typeof value !== 'object';
 
@@ -102,13 +107,24 @@ export function getColorAssignments(
   });
 }
 
-const getReferenceLineAccessorColorConfig = (layer: XYLayerConfig) => {
+const getReferenceLineAccessorColorConfig = (layer: XYReferenceLineLayerConfig) => {
   return layer.accessors.map((accessor) => {
     const currentYConfig = layer.yConfig?.find((yConfig) => yConfig.forAccessor === accessor);
     return {
       columnId: accessor,
       triggerIcon: 'color' as const,
       color: currentYConfig?.color || defaultReferenceLineColor,
+    };
+  });
+};
+
+const getAnnotationsAccessorColorConfig = (layer: XYAnnotationLayerConfig) => {
+  return layer.accessors.map((accessor) => {
+    const config = layer.config?.find((c) => c.id === accessor);
+    return {
+      columnId: accessor,
+      triggerIcon: 'color' as const,
+      color: config?.color || defaultAnnotationColor,
     };
   });
 };
@@ -122,7 +138,9 @@ export function getAccessorColorConfig(
   if (isReferenceLayer(layer)) {
     return getReferenceLineAccessorColorConfig(layer);
   }
-
+  if (isAnnotationsLayer(layer)) {
+    return getAnnotationsAccessorColorConfig(layer);
+  }
   const layerContainsSplits = Boolean(layer.splitAccessor);
   const currentPalette: PaletteOutput = layer.palette || { type: 'palette', name: 'default' };
   const totalSeriesCount = colorAssignments[currentPalette.name]?.totalSeriesCount;

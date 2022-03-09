@@ -49,6 +49,7 @@ const xyVisualization = getXyVisualization({
   fieldFormats: fieldFormatsMock,
   useLegacyTimeAxis: false,
   kibanaTheme: themeServiceMock.createStartContract(),
+  // eventAnnotationService: ,
 });
 
 describe('xy_visualization', () => {
@@ -227,7 +228,7 @@ describe('xy_visualization', () => {
 
   describe('#getSupportedLayers', () => {
     it('should return a double layer types', () => {
-      expect(xyVisualization.getSupportedLayers()).toHaveLength(2);
+      expect(xyVisualization.getSupportedLayers()).toHaveLength(3);
     });
 
     it('should return the icon for the visualization type', () => {
