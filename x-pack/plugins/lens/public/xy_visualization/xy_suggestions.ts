@@ -238,7 +238,6 @@ function getSuggestionsForLayer({
   const title = getSuggestionTitle(yValues, xValue, tableLabel);
   const seriesType: SeriesType =
     requestedSeriesType || getSeriesType(currentState, layerId, xValue);
-
   const options = {
     currentState,
     seriesType,
@@ -521,7 +520,9 @@ function buildSuggestion({
   const keptLayers = currentState
     ? currentState.layers
         // Remove layers that aren't being suggested
-        .filter((layer) => keptLayerIds.includes(layer.layerId))
+        .filter(
+          (layer) => keptLayerIds.includes(layer.layerId) || layer.layerType === 'annotations'
+        )
         // Update in place
         .map((layer) => (layer.layerId === layerId ? newLayer : layer))
         // Replace the seriesType on all previous layers

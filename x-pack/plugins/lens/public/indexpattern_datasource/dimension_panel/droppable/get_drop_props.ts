@@ -73,7 +73,7 @@ export function getField(
 }
 
 export function getDropProps(props: GetDropProps) {
-  const { state, columnId, layerId, dragging, groupId, filterOperations, isNew } = props;
+  const { state, columnId, layerId, dragging, groupId, filterOperations } = props;
   if (!dragging) {
     return;
   }
@@ -87,12 +87,12 @@ export function getDropProps(props: GetDropProps) {
     dragging.layerId === layerId &&
     columnId !== dragging.columnId
   ) {
-    const isSameGroup = groupId === dragging.groupId;
-    if (isSameGroup) {
-      return getDropPropsForSameGroup(isNew);
-    }
     const sourceColumn = state.layers[dragging.layerId].columns[dragging.columnId];
     const targetColumn = state.layers[layerId].columns[columnId];
+    const isSameGroup = groupId === dragging.groupId;
+    if (isSameGroup) {
+      return getDropPropsForSameGroup(!targetColumn);
+    }
     const layerIndexPattern = state.indexPatterns[state.layers[layerId].indexPatternId];
 
     if (filterOperations(sourceColumn)) {

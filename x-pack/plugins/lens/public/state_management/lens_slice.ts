@@ -617,7 +617,7 @@ export const makeLensReducer = (storeDeps: LensStoreDeps) => {
         };
       }
     ) => {
-      if ((!noDatasource && !state.activeDatasourceId) || !state.visualization.activeId) {
+      if (!state.activeDatasourceId || !state.visualization.activeId) {
         return state;
       }
 
@@ -628,10 +628,10 @@ export const makeLensReducer = (storeDeps: LensStoreDeps) => {
         layerType
       );
 
-      const activeDatasource = !noDatasource && datasourceMap[state.activeDatasourceId];
+      const activeDatasource = !noDatasource ? undefined : datasourceMap[state.activeDatasourceId];
 
       const { activeDatasourceState, activeVisualizationState } = addInitialValueIfAvailable({
-        datasourceState: !noDatasource
+        datasourceState: activeDatasource
           ? activeDatasource.insertLayer(
               state.datasourceStates[state.activeDatasourceId].state,
               layerId
@@ -712,7 +712,7 @@ function addInitialValueIfAvailable({
   framePublicAPI: FramePublicAPI;
   visualizationState: unknown;
   datasourceState: unknown;
-  activeDatasource: Datasource;
+  activeDatasource?: Datasource;
   activeVisualization: Visualization;
   layerId: string;
   layerType: string;

@@ -33,6 +33,7 @@ export function buildAnnotation(): EventAnnotationService {
       timestamp,
       annotationType,
       keyType,
+      axisMode,
     }) => {
       return {
         type: 'expression',
@@ -66,6 +67,7 @@ export function buildAnnotation(): EventAnnotationService {
               iconPosition: hasIcon(icon) || textVisibility ? [iconPosition || 'auto'] : ['auto'],
               textVisibility: [textVisibility || false],
               isHidden: [Boolean(isHidden)],
+              axisMode: [axisMode || 'bottom'],
             },
           },
         ],

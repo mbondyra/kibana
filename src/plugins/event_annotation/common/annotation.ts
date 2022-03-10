@@ -71,6 +71,11 @@ export const annotationConfig: ExpressionFunctionDefinition<
       types: ['string'],
       help: 'The tooltip message',
     },
+    axisMode: {
+      types: ['string'],
+      options: ['bottom', 'auto', 'right', 'left'],
+      help: 'Axis mode',
+    },
   },
   fn: function fn(input: unknown, args: AnnotationConfig) {
     return {

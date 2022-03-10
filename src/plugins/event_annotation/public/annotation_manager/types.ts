@@ -20,6 +20,8 @@ import { IconPosition, LineStyle } from '../../common/types';
  */
 
 interface ToExpressionProps {
+  keyType: 'point_in_time';
+  annotationType: 'manual';
   label: string;
   color: string;
   lineWidth: number;
@@ -30,8 +32,7 @@ interface ToExpressionProps {
   textVisibility: boolean;
   isHidden?: boolean;
   timestamp: string;
-  annotationType: 'manual';
-  keyType: 'point_in_time';
+  axisMode?: string;
 }
 export interface EventAnnotationService {
   /**
