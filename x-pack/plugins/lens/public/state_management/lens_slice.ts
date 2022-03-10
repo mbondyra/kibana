@@ -154,6 +154,7 @@ export const removeOrClearLayer = createAction<{
 export const addLayer = createAction<{
   layerId: string;
   layerType: LayerType;
+  noDatasource?: boolean;
 }>('lens/addLayer');
 
 export const setLayerDefaultDimension = createAction<{
@@ -607,34 +608,35 @@ export const makeLensReducer = (storeDeps: LensStoreDeps) => {
     [addLayer.type]: (
       state,
       {
-        payload: { layerId, layerType },
+        payload: { layerId, layerType, noDatasource },
       }: {
         payload: {
           layerId: string;
           layerType: LayerType;
+          noDatasource?: boolean;
         };
       }
     ) => {
-      if (!state.activeDatasourceId || !state.visualization.activeId) {
+      if ((!noDatasource && !state.activeDatasourceId) || !state.visualization.activeId) {
         return state;
       }
 
-      const activeDatasource = datasourceMap[state.activeDatasourceId];
       const activeVisualization = visualizationMap[state.visualization.activeId];
-
-      const datasourceState = activeDatasource.insertLayer(
-        state.datasourceStates[state.activeDatasourceId].state,
-        layerId
-      );
-
       const visualizationState = activeVisualization.appendLayer!(
         state.visualization.state,
         layerId,
         layerType
       );
 
+      const activeDatasource = !noDatasource && datasourceMap[state.activeDatasourceId];
+
       const { activeDatasourceState, activeVisualizationState } = addInitialValueIfAvailable({
-        datasourceState,
+        datasourceState: !noDatasource
+          ? activeDatasource.insertLayer(
+              state.datasourceStates[state.activeDatasourceId].state,
+              layerId
+            )
+          : state.datasourceStates[state.activeDatasourceId].state,
         visualizationState,
         framePublicAPI: {
           // any better idea to avoid `as`?

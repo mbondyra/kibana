@@ -81,10 +81,10 @@ export function LayerPanel(
     updateDatasourceAsync,
     visualizationState,
   } = props;
-  const datasourcePublicAPI = framePublicAPI.datasourceLayers[layerId];
-  const dateRange = useLensSelector(selectResolvedDateRange);
+  const datasourcePublicAPI = framePublicAPI.datasourceLayers?.[layerId];
   const datasourceStates = useLensSelector(selectDatasourceStates);
   const isFullscreen = useLensSelector(selectIsFullscreenDatasource);
+  const dateRange = useLensSelector(selectResolvedDateRange);
 
   useEffect(() => {
     setActiveDimension(initialActiveDimensionState);
@@ -104,8 +104,8 @@ export function LayerPanel(
     activeData: props.framePublicAPI.activeData,
   };
 
-  const datasourceId = datasourcePublicAPI.datasourceId;
-  const layerDatasourceState = datasourceStates[datasourceId].state;
+  const datasourceId = datasourcePublicAPI?.datasourceId;
+  const layerDatasourceState = datasourceStates?.[datasourceId]?.state;
 
   const layerDatasourceDropProps = useMemo(
     () => ({
@@ -139,7 +139,7 @@ export function LayerPanel(
   const isEmptyLayer = !groups.some((d) => d.accessors.length > 0);
   const { activeId, activeGroup } = activeDimension;
 
-  const columnLabelMap = layerDatasource.uniqueLabels(layerDatasourceConfigProps.state);
+  const columnLabelMap = layerDatasource?.uniqueLabels?.(layerDatasourceConfigProps?.state);
 
   const { setDimension, removeDimension } = activeVisualization;
 
@@ -153,7 +153,7 @@ export function LayerPanel(
     registerNewRef: registerNewButtonRef,
   } = useFocusUpdate(allAccessors);
 
-  const layerDatasourceOnDrop = layerDatasource.onDrop;
+  const layerDatasourceOnDrop = layerDatasource?.onDrop;
 
   const onDrop = useMemo(() => {
     return (
@@ -458,7 +458,7 @@ export function LayerPanel(
                             groupIndex={groupIndex}
                             key={columnId}
                             layerDatasourceDropProps={layerDatasourceDropProps}
-                            label={columnLabelMap[columnId]}
+                            label={columnLabelMap?.[columnId]}
                             layerDatasource={layerDatasource}
                             layerIndex={layerIndex}
                             layerId={layerId}
@@ -469,7 +469,7 @@ export function LayerPanel(
                             <div className="lnsLayerPanel__dimension">
                               <DimensionButton
                                 accessorConfig={accessorConfig}
-                                label={columnLabelMap[accessorConfig.columnId]}
+                                label={columnLabelMap?.[accessorConfig.columnId]}
                                 group={group}
                                 onClick={(id: string) => {
                                   setActiveDimension({
@@ -480,24 +480,36 @@ export function LayerPanel(
                                 }}
                                 onRemoveClick={(id: string) => {
                                   trackUiEvent('indexpattern_dimension_removed');
-                                  props.updateAll(
-                                    datasourceId,
-                                    layerDatasource.removeColumn({
-                                      layerId,
-                                      columnId: id,
-                                      prevState: layerDatasourceState,
-                                    }),
-                                    activeVisualization.removeDimension({
-                                      layerId,
-                                      columnId: id,
-                                      prevState: props.visualizationState,
-                                      frame: framePublicAPI,
-                                    })
-                                  );
+                                  if (datasourceId && layerDatasource) {
+                                    props.updateAll(
+                                      datasourceId,
+                                      layerDatasource.removeColumn({
+                                        layerId,
+                                        columnId: id,
+                                        prevState: layerDatasourceState,
+                                      }),
+                                      activeVisualization.removeDimension({
+                                        layerId,
+                                        columnId: id,
+                                        prevState: props.visualizationState,
+                                        frame: framePublicAPI,
+                                      })
+                                    );
+                                  } else {
+                                    props.updateVisualization(
+                                      activeVisualization.removeDimension({
+                                        layerId,
+                                        columnId: id,
+                                        prevState: props.visualizationState,
+                                        frame: framePublicAPI,
+                                      })
+                                    );
+                                  }
                                   removeButtonRef(id);
                                 }}
                                 invalid={
-                                  !layerDatasource.isValidColumn(
+                                  !noDatasource &&
+                                  !layerDatasource?.isValidColumn(
                                     layerDatasourceState,
                                     layerId,
                                     columnId
@@ -510,6 +522,9 @@ export function LayerPanel(
                                       columnId,
                                       layerId,
                                       state: props.visualizationState,
+                                      hideTooltip,
+                                      invalid: group.invalid,
+                                      invalidMessage: group.invalidMessage,
                                     })}
                                   </>
                                 ) : (
@@ -548,7 +563,7 @@ export function LayerPanel(
                         setActiveDimension({
                           activeGroup: group,
                           activeId: id,
-                          isNew: !group.supportStaticValue,
+                          isNew: !group.supportStaticValue && !noDatasource,
                         });
                       }}
                       onDrop={onDrop}
@@ -567,22 +582,25 @@ export function LayerPanel(
         isFullscreen={isFullscreen}
         groupLabel={activeGroup?.groupLabel || ''}
         handleClose={() => {
-          if (
-            layerDatasource.canCloseDimensionEditor &&
-            !layerDatasource.canCloseDimensionEditor(layerDatasourceState)
-          ) {
-            return false;
-          }
-          if (layerDatasource.updateStateOnCloseDimension) {
-            const newState = layerDatasource.updateStateOnCloseDimension({
-              state: layerDatasourceState,
-              layerId,
-              columnId: activeId!,
-            });
-            if (newState) {
-              props.updateDatasource(datasourceId, newState);
+          if (layerDatasource) {
+            if (
+              layerDatasource.canCloseDimensionEditor &&
+              !layerDatasource.canCloseDimensionEditor(layerDatasourceState)
+            ) {
+              return false;
+            }
+            if (layerDatasource.updateStateOnCloseDimension) {
+              const newState = layerDatasource.updateStateOnCloseDimension({
+                state: layerDatasourceState,
+                layerId,
+                columnId: activeId!,
+              });
+              if (newState) {
+                props.updateDatasource(datasourceId, newState);
+              }
             }
           }
+
           setActiveDimension(initialActiveDimensionState);
           if (isFullscreen) {
             toggleFullscreen();
@@ -615,7 +633,7 @@ export function LayerPanel(
             {activeGroup &&
               activeId &&
               !isFullscreen &&
-              !activeDimension.isNew &&
+              (!activeDimension.isNew || noDatasource) &&
               activeVisualization.renderDimensionEditor &&
               activeGroup?.enableDimensionEditor && (
                 <div className="lnsLayerPanel__styleEditor">
