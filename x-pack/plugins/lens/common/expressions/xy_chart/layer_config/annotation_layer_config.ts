@@ -12,7 +12,6 @@ import { layerTypes } from '../../../constants';
 export interface XYAnnotationLayerConfig {
   layerId: string;
   layerType: typeof layerTypes.ANNOTATIONS;
-  accessors: string[];
   config: AnnotationConfig[];
 }
 
@@ -37,11 +36,6 @@ export const annotationLayerConfig: ExpressionFunctionDefinition<
       help: '',
     },
     layerType: { types: ['string'], options: [layerTypes.ANNOTATIONS], help: '' },
-    accessors: {
-      types: ['string'],
-      help: 'The columns to display on the y axis.',
-      multi: true,
-    },
     config: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       types: ['annotation_config' as any],
