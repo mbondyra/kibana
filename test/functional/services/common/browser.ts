@@ -258,7 +258,7 @@ class BrowserService extends FtrService {
    * @param {string} to html selector
    * @return {Promise<void>}
    */
-  public async html5DragAndDrop(from: string, to: string) {
+  public async html5DragAndDrop(from: string, to: string, through?: string) {
     await this.execute(
       `
         function createEvent(typeOfEvent) {
@@ -291,6 +291,15 @@ class BrowserService extends FtrService {
         const dragStartEvent = createEvent('dragstart');
         dispatchEvent(origin, dragStartEvent);
 
+        const through = arguments[2] && document.querySelector(arguments[2]);
+        if (through){
+          setTimeout(() => {
+            const dragOverEvent = createEvent('dragover');
+            dispatchEvent(through, dragOverEvent, dragStartEvent.dataTransfer);
+          }, 50);
+        }
+       
+
         setTimeout(() => {
           const dropEvent = createEvent('drop');
           const target = document.querySelector(arguments[1]);
@@ -300,7 +309,8 @@ class BrowserService extends FtrService {
         }, 100);
     `,
       from,
-      to
+      to,
+      through
     );
     // wait for 150ms to make sure the script has run
     await setTimeoutAsync(150);
