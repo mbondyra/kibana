@@ -380,6 +380,8 @@ const referenceLineLayerToExpression = (
   datasourceLayer: DatasourcePublicAPI | undefined,
   datasourceExpression: Ast
 ): Ast => {
+  // there's a table here!!! How does it work? Where is input coming from???
+  console.log('table', datasourceExpression);
   return {
     type: 'expression',
     chain: [
