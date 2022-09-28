@@ -5,7 +5,7 @@
  * 2.0.
  */
 
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { htmlIdGenerator } from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
 import { ExistingFieldsMap, IndexPattern } from '../../../../types';
@@ -53,6 +53,7 @@ export function FieldInputs({
   operationSupportMatrix,
   invalidFields,
 }: FieldInputsProps) {
+  const [isDragging, setIsDragging] = useState(false);
   const onChangeWrapped = useCallback(
     (values: WrappedValue[]) =>
       onChange(values.filter(removeNewEmptyField).map(({ value }) => value)),
@@ -93,10 +94,12 @@ export function FieldInputs({
       <DragDropBuckets
         onDragEnd={(updatedValues: WrappedValue[]) => {
           handleInputChange(updatedValues);
+          setIsDragging(false);
         }}
+        onDragStart={() => setIsDragging(true)}
         droppableId="TOP_TERMS_DROPPABLE_AREA"
         items={localValues}
-        color="subdued"
+        color={isDragging ? 'transparent' : 'subdued'}
       >
         {localValues.map(({ id, value, isNew }, index, arrayRef) => {
           // need to filter the available fields for multiple terms
