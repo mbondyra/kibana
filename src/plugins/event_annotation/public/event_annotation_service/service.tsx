@@ -9,6 +9,7 @@
 import { partition } from 'lodash';
 import { queryToAst } from '@kbn/data-plugin/common';
 import { ExpressionAstExpression } from '@kbn/expressions-plugin/common';
+import { CoreStart } from '@kbn/core/public';
 import { EventAnnotationConfig } from '../../common';
 import { EventAnnotationServiceType } from './types';
 import {
@@ -18,12 +19,19 @@ import {
   isRangeAnnotationConfig,
   isQueryAnnotationConfig,
 } from './helpers';
+import { SavedObjectEventAnnotationGroupStore } from '../persistence';
 
 export function hasIcon(icon: string | undefined): icon is string {
   return icon != null && icon !== 'empty';
 }
 
-export function getEventAnnotationService(): EventAnnotationServiceType {
+export function getEventAnnotationService(core: CoreStart): EventAnnotationServiceType {
+  console.log('core', core.savedObjects.client);
+  // save function
+  // load function
+
+  const store = new SavedObjectEventAnnotationGroupStore(core.savedObjects.client);
+
   const annotationsToExpression = (annotations: EventAnnotationConfig[]) => {
     const [queryBasedAnnotations, manualBasedAnnotations] = partition(
       annotations,
@@ -122,6 +130,7 @@ export function getEventAnnotationService(): EventAnnotationServiceType {
     return expressions;
   };
   return {
+    saveGroup: store.save,
     toExpression: annotationsToExpression,
     toFetchExpression: ({ interval, groups }) => {
       if (groups.length === 0) {

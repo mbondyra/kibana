@@ -20,16 +20,20 @@ export const createAnnotationActions = ({
   layerIndex: number;
   setState: StateSetter<XYState, unknown>;
 }): LayerAction[] => {
-  const label = !layer.ignoreGlobalFilters
+  const ignoreGlobalFilters = !layer.ignoreGlobalFilters
     ? i18n.translate('xpack.lens.xyChart.annotations.ignoreGlobalFiltersLabel', {
         defaultMessage: 'Ignore global filters',
       })
     : i18n.translate('xpack.lens.xyChart.annotations.keepGlobalFiltersLabel', {
         defaultMessage: 'Keep global filters',
       });
+  // todo
+  const savingToLibraryPermitted = true;
+  // const savingToLibraryPermitted = Boolean(isSaveable && application.capabilities.visualize.save);
+
   return [
     {
-      displayName: label,
+      displayName: ignoreGlobalFilters,
       description: !layer.ignoreGlobalFilters
         ? i18n.translate('xpack.lens.xyChart.annotations.ignoreGlobalFiltersDescription', {
             defaultMessage:
@@ -49,6 +53,22 @@ export const createAnnotationActions = ({
       'data-test-subj': !layer.ignoreGlobalFilters
         ? 'lnsXY_annotationLayer_ignoreFilters'
         : 'lnsXY_annotationLayer_keepFilters',
+    },
+    {
+      displayName: i18n.translate('xpack.lens.xyChart.annotations.saveToLibrary', {
+        defaultMessage: 'Save to library',
+      }),
+      description: i18n.translate('xpack.lens.xyChart.annotations.saveToLibraryDescription', {
+        defaultMessage: 'Saves the annotation group as a separate object',
+      }),
+      execute: () => {
+        const newLayers = [...state.layers];
+        newLayers[layerIndex] = { ...layer, ignoreGlobalFilters: !layer.ignoreGlobalFilters };
+        return setState({ ...state, layers: newLayers });
+      },
+      icon: 'save',
+      isCompatible: true,
+      'data-test-subj': 'lnsXY_annotationLayer_saveToLibrary',
     },
   ];
 };

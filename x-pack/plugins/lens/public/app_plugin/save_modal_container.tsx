@@ -237,6 +237,7 @@ export const runSaveLensVisualization = async (
   }
 
   const docToSave = getDocToSave(lastKnownDoc, saveProps, references);
+  console.log(lastKnownDoc, 'docToSave', docToSave);
 
   // Required to serialize filters in by value mode until
   // https://github.com/elastic/kibana/issues/77588 is fixed

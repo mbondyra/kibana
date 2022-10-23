@@ -1,0 +1,143 @@
+{
+    "attributes": {
+        "description": "",
+        "state": {
+            "adHocDataViews": {},
+            "datasourceStates": {
+                "indexpattern": {
+                    "layers": {
+                        "bd843c2c-1864-42d8-b9cc-e144f9254213": {
+                            "columnOrder": [
+                                "dcc93344-306c-4515-ac0c-73dfb1f8c84b",
+                                "dd398c55-3506-4376-a15c-6ae6cf658c35"
+                            ],
+                            "columns": {
+                                "dcc93344-306c-4515-ac0c-73dfb1f8c84b": {
+                                    "dataType": "date",
+                                    "isBucketed": true,
+                                    "label": "order_date",
+                                    "operationType": "date_histogram",
+                                    "params": {
+                                        "dropPartials": false,
+                                        "includeEmptyRows": true,
+                                        "interval": "auto"
+                                    },
+                                    "scale": "interval",
+                                    "sourceField": "order_date"
+                                },
+                                "dd398c55-3506-4376-a15c-6ae6cf658c35": {
+                                    "customLabel": true,
+                                    "dataType": "number",
+                                    "isBucketed": false,
+                                    "label": "Count of records",
+                                    "operationType": "count",
+                                    "params": {
+                                        "emptyAsNull": true
+                                    },
+                                    "scale": "ratio",
+                                    "sourceField": "___records___"
+                                }
+                            },
+                            "incompleteColumns": {}
+                        }
+                    }
+                },
+                "textBasedLanguages": {
+                    "layers": {}
+                }
+            },
+            "filters": [],
+            "internalReferences": [],
+            "query": {
+                "language": "kuery",
+                "query": ""
+            },
+            "visualization": {
+                "axisTitlesVisibilitySettings": {
+                    "x": true,
+                    "yLeft": true,
+                    "yRight": true
+                },
+                "fittingFunction": "None",
+                "gridlinesVisibilitySettings": {
+                    "x": true,
+                    "yLeft": true,
+                    "yRight": true
+                },
+                "labelsOrientation": {
+                    "x": 0,
+                    "yLeft": 0,
+                    "yRight": 0
+                },
+                "layers": [
+                    {
+                        "accessors": [
+                            "dd398c55-3506-4376-a15c-6ae6cf658c35"
+                        ],
+                        "layerId": "bd843c2c-1864-42d8-b9cc-e144f9254213",
+                        "layerType": "data",
+                        "position": "top",
+                        "seriesType": "bar_stacked",
+                        "showGridlines": false,
+                        "xAccessor": "dcc93344-306c-4515-ac0c-73dfb1f8c84b"
+                    },
+                    {
+                        "annotations": [
+                            {
+                                "filter": {
+                                    "language": "kuery",
+                                    "query": "category.keyword : \"Men's Clothing\" ",
+                                    "type": "kibana_query"
+                                },
+                                "icon": "triangle",
+                                "id": "dd883fb5-f3b1-4180-8ae9-a535750508b5",
+                                "key": {
+                                    "type": "point_in_time"
+                                },
+                                "label": "Event",
+                                "timeField": "order_date",
+                                "type": "query"
+                            }
+                        ],
+                        "ignoreGlobalFilters": true,
+                        "layerId": "4c7b13d3-ee6e-4db1-afe6-35ffa494ed50",
+                        "layerType": "annotations"
+                    }
+                ],
+                "legend": {
+                    "isVisible": true,
+                    "position": "right"
+                },
+                "preferredSeriesType": "bar_stacked",
+                "tickLabelsVisibilitySettings": {
+                    "x": true,
+                    "yLeft": true,
+                    "yRight": true
+                },
+                "valueLabels": "hide"
+            }
+        },
+        "title": "hello",
+        "visualizationType": "lnsXY"
+    },
+    "coreMigrationVersion": "8.6.0",
+    "id": "bbe72520-495c-11ed-bac4-3333c3684df1",
+    "migrationVersion": {
+        "lens": "8.5.0"
+    },
+    "references": [
+        {
+            "id": "ff959d40-b880-11e8-a6d9-e546fe2bba5f",
+            "name": "indexpattern-datasource-layer-bd843c2c-1864-42d8-b9cc-e144f9254213",
+            "type": "index-pattern"
+        },
+        {
+            "id": "ff959d40-b880-11e8-a6d9-e546fe2bba5f",
+            "name": "xy-visualization-layer-4c7b13d3-ee6e-4db1-afe6-35ffa494ed50",
+            "type": "index-pattern"
+        },
+    ],
+    "type": "lens",
+    "updated_at": "2022-10-11T12:03:35.668Z",
+    "version": "WzkwNDcsMV0="
+}

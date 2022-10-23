@@ -6,24 +6,25 @@
  * Side Public License, v 1.
  */
 
-import { EventAnnotationGroupConfig } from '../../common';
+import { CoreStart } from '@kbn/core/public';
+// import { EventAnnotationGroupConfig } from '../../common';
 import { EventAnnotationServiceType } from './types';
 
 export class EventAnnotationService {
   private eventAnnotationService?: EventAnnotationServiceType;
-  public async getService() {
+  public async getService(core: CoreStart) {
     if (!this.eventAnnotationService) {
       const { getEventAnnotationService } = await import('./service');
-      this.eventAnnotationService = getEventAnnotationService();
+      this.eventAnnotationService = getEventAnnotationService(core);
     }
     return this.eventAnnotationService;
   }
-  public async loadAnnotationGroup(groupId: string): Promise<EventAnnotationGroupConfig> {
-    return {} as EventAnnotationGroupConfig;
-  }
-  public async deleteAnnotationGroups(groupIds: string[]): Promise<void> {}
-  public async createAnnotationGroup(group: EventAnnotationGroupConfig): Promise<{ id: string }> {
-    return { id: '' };
-  }
-  public async updateAnnotationGroup(group: EventAnnotationGroupConfig): Promise<void> {}
+  // public async loadAnnotationGroup(groupId: string): Promise<EventAnnotationGroupConfig> {
+  //   return {} as EventAnnotationGroupConfig;
+  // }
+  // public async deleteAnnotationGroups(groupIds: string[]): Promise<void> {}
+  // public async createAnnotationGroup(group: EventAnnotationGroupConfig): Promise<{ id: string }> {
+  //   return { id: '' };
+  // }
+  // public async updateAnnotationGroup(group: EventAnnotationGroupConfig): Promise<void> {}
 }
