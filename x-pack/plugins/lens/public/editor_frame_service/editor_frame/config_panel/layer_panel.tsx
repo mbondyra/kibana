@@ -43,6 +43,9 @@ import {
   selectIsFullscreenDatasource,
   selectResolvedDateRange,
   selectDatasourceStates,
+  selectIsLoadLibraryVisible,
+  setIsLoadLibraryVisible,
+  useLensDispatch,
 } from '../../../state_management';
 import { onDropForVisualization, shouldRemoveSource } from './buttons/drop_targets_utils';
 import { getSharedActions } from './layer_actions/layer_actions';
@@ -118,12 +121,24 @@ export function LayerPanel(
   const isFullscreen = useLensSelector(selectIsFullscreenDatasource);
   const dateRange = useLensSelector(selectResolvedDateRange);
 
+  const dispatchLens = useLensDispatch();
+  const setLibraryVisible = useCallback(
+    (visible: boolean) => {
+      dispatchLens(setIsLoadLibraryVisible(false));
+    },
+    [dispatchLens]
+  );
+
+
+  const isLoadLibraryVisible = useLensSelector(selectIsLoadLibraryVisible)
+
   useEffect(() => {
     setActiveDimension(initialActiveDimensionState);
   }, [activeVisualization.id]);
 
   const panelRef = useRef<HTMLDivElement | null>(null);
   const settingsPanelRef = useRef<HTMLDivElement | null>(null);
+  const annotationsPanelRef = useRef<HTMLDivElement | null>(null);
   const registerLayerRef = useCallback(
     (el) => registerNewLayerRef(layerId, el),
     [layerId, registerNewLayerRef]
@@ -510,9 +525,9 @@ export function LayerPanel(
                               indexPatternId: layerDatasource
                                 ? layerDatasource.getUsedDataView(layerDatasourceState, layerId)
                                 : activeVisualization.getUsedDataView?.(
-                                    visualizationState,
-                                    layerId
-                                  ),
+                                  visualizationState,
+                                  layerId
+                                ),
                               humanData: {
                                 label: columnLabelMap?.[columnId] ?? '',
                                 groupLabel: group.groupLabel,
@@ -643,7 +658,6 @@ export function LayerPanel(
         <FlyoutContainer
           panelRef={(el) => (settingsPanelRef.current = el)}
           isOpen={isPanelSettingsOpen}
-          isFullscreen={false}
           groupLabel={i18n.translate('xpack.lens.editorFrame.layerSettingsTitle', {
             defaultMessage: 'Layer settings',
           })}
@@ -668,6 +682,34 @@ export function LayerPanel(
                     ...layerVisualizationConfigProps,
                     setState: props.updateVisualization,
                     panelRef: settingsPanelRef,
+                  }}
+                />
+              )}
+            </div>
+          </div>
+        </FlyoutContainer>
+      )}
+      {activeVisualization && (
+        <FlyoutContainer
+          panelRef={(el) => (annotationsPanelRef.current = el)}
+          isOpen={isLoadLibraryVisible}
+          groupLabel={i18n.translate('xpack.lens.editorFrame.loadFromLibrary', {
+            defaultMessage: 'Select annotations from library',
+          })}
+          handleClose={() => {
+            setLibraryVisible(false);
+            return true;
+          }}
+        >
+          <div id={layerId}>
+            <div className="lnsIndexPatternDimensionEditor--padded lnsIndexPatternDimensionEditor--collapseNext">
+              {activeVisualization?.renderLayerSettings && (
+                <NativeRenderer
+                  render={activeVisualization?.renderLayerSettings}
+                  nativeProps={{
+                    ...layerVisualizationConfigProps,
+                    setState: props.updateVisualization,
+                    panelRef: annotationsPanelRef,
                   }}
                 />
               )}

@@ -50,7 +50,7 @@ export function FlyoutContainer({
   handleClose: () => boolean;
   children: React.ReactElement | null;
   groupLabel: string;
-  isFullscreen: boolean;
+  isFullscreen?: boolean;
   panelRef: (el: HTMLDivElement) => void;
 }) {
   const [focusTrapIsEnabled, setFocusTrapIsEnabled] = useState(false);

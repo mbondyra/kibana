@@ -319,7 +319,8 @@ export function LayerPanels(
           visualization={activeVisualization}
           visualizationState={visualization.state}
           layersMeta={props.framePublicAPI}
-          onAddLayerClick={(layerType) => addLayer(layerType)}
+          onAddLayerClick={addLayer}
+          onLoadFromLibrary={() => console.log('load from library')}
         />
       )}
     </EuiForm>
