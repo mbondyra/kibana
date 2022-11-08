@@ -5,6 +5,7 @@
  * 2.0.
  */
 
+import { IUiSettingsClient } from '@kbn/core-ui-settings-browser';
 import { UiActionsStart } from '@kbn/ui-actions-plugin/public';
 import { IndexPatternServiceAPI } from '../../../data_views_service/service';
 
@@ -23,6 +24,7 @@ export interface ConfigPanelWrapperProps {
   core: DatasourceDimensionEditorProps['core'];
   indexPatternService: IndexPatternServiceAPI;
   uiActions: UiActionsStart;
+  uiSettings: IUiSettingsClient;
 }
 
 export interface LayerPanelProps {

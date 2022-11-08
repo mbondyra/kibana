@@ -18,6 +18,8 @@ import {
   EuiIconTip,
 } from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
+import { SavedObjectsStart } from '@kbn/core/public';
+import { IUiSettingsClient } from '@kbn/core-ui-settings-browser';
 import { LayerType } from '../../../../common';
 import { LayerActions } from './layer_actions';
 import { IndexPatternServiceAPI } from '../../../data_views_service/service';
@@ -43,13 +45,11 @@ import {
   selectIsFullscreenDatasource,
   selectResolvedDateRange,
   selectDatasourceStates,
-  selectIsLoadLibraryVisible,
-  setIsLoadLibraryVisible,
-  useLensDispatch,
 } from '../../../state_management';
 import { onDropForVisualization, shouldRemoveSource } from './buttons/drop_targets_utils';
 import { getSharedActions } from './layer_actions/layer_actions';
 import { FlyoutContainer } from './flyout_container';
+import { LoadAnnotationLibraryFlyout } from './load_annotation_library_flyout';
 
 const initialActiveDimensionState = {
   isNew: false,
@@ -81,6 +81,8 @@ export function LayerPanel(
     registerNewLayerRef: (layerId: string, instance: HTMLDivElement | null) => void;
     toggleFullscreen: () => void;
     onEmptyDimensionAdd: (columnId: string, group: { groupId: string }) => void;
+    uiSettings: IUiSettingsClient;
+    savedObjects: SavedObjectsStart;
     onChangeIndexPattern: (args: {
       indexPatternId: string;
       layerId: string;
@@ -121,24 +123,13 @@ export function LayerPanel(
   const isFullscreen = useLensSelector(selectIsFullscreenDatasource);
   const dateRange = useLensSelector(selectResolvedDateRange);
 
-  const dispatchLens = useLensDispatch();
-  const setLibraryVisible = useCallback(
-    (visible: boolean) => {
-      dispatchLens(setIsLoadLibraryVisible(false));
-    },
-    [dispatchLens]
-  );
-
-
-  const isLoadLibraryVisible = useLensSelector(selectIsLoadLibraryVisible)
-
   useEffect(() => {
     setActiveDimension(initialActiveDimensionState);
   }, [activeVisualization.id]);
 
   const panelRef = useRef<HTMLDivElement | null>(null);
   const settingsPanelRef = useRef<HTMLDivElement | null>(null);
-  const annotationsPanelRef = useRef<HTMLDivElement | null>(null);
+
   const registerLayerRef = useCallback(
     (el) => registerNewLayerRef(layerId, el),
     [layerId, registerNewLayerRef]
@@ -525,9 +516,9 @@ export function LayerPanel(
                               indexPatternId: layerDatasource
                                 ? layerDatasource.getUsedDataView(layerDatasourceState, layerId)
                                 : activeVisualization.getUsedDataView?.(
-                                  visualizationState,
-                                  layerId
-                                ),
+                                    visualizationState,
+                                    layerId
+                                  ),
                               humanData: {
                                 label: columnLabelMap?.[columnId] ?? '',
                                 groupLabel: group.groupLabel,
@@ -690,32 +681,12 @@ export function LayerPanel(
         </FlyoutContainer>
       )}
       {activeVisualization && (
-        <FlyoutContainer
-          panelRef={(el) => (annotationsPanelRef.current = el)}
-          isOpen={isLoadLibraryVisible}
-          groupLabel={i18n.translate('xpack.lens.editorFrame.loadFromLibrary', {
-            defaultMessage: 'Select annotations from library',
-          })}
-          handleClose={() => {
-            setLibraryVisible(false);
-            return true;
-          }}
-        >
-          <div id={layerId}>
-            <div className="lnsIndexPatternDimensionEditor--padded lnsIndexPatternDimensionEditor--collapseNext">
-              {activeVisualization?.renderLayerSettings && (
-                <NativeRenderer
-                  render={activeVisualization?.renderLayerSettings}
-                  nativeProps={{
-                    ...layerVisualizationConfigProps,
-                    setState: props.updateVisualization,
-                    panelRef: annotationsPanelRef,
-                  }}
-                />
-              )}
-            </div>
-          </div>
-        </FlyoutContainer>
+        <LoadAnnotationLibraryFlyout
+          activeVisualization={activeVisualization}
+          layerId={layerId}
+          uiSettings={props.uiSettings}
+          savedObjects={props.savedObjects}
+        />
       )}
       <DimensionContainer
         panelRef={(el) => (panelRef.current = el)}

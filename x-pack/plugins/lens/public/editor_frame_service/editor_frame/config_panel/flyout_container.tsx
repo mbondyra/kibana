@@ -44,14 +44,20 @@ export function FlyoutContainer({
   handleClose,
   isFullscreen,
   panelRef,
+  panelContainerRef,
   children,
+  customFooter,
+  onClickInside,
 }: {
   isOpen: boolean;
   handleClose: () => boolean;
   children: React.ReactElement | null;
   groupLabel: string;
   isFullscreen?: boolean;
-  panelRef: (el: HTMLDivElement) => void;
+  panelRef?: (el: HTMLDivElement) => void;
+  panelContainerRef?: (el: HTMLDivElement) => void;
+  customFooter?: React.ReactElement;
+  onClickInside?: () => void;
 }) {
   const [focusTrapIsEnabled, setFocusTrapIsEnabled] = useState(false);
 
@@ -91,6 +97,8 @@ export function FlyoutContainer({
         onEscapeKey={closeFlyout}
       >
         <div
+          onClick={() => onClickInside?.()}
+          ref={panelContainerRef}
           role="dialog"
           aria-labelledby="lnsDimensionContainerTitle"
           className="lnsDimensionContainer euiFlyout"
@@ -137,19 +145,21 @@ export function FlyoutContainer({
 
           <div className="lnsDimensionContainer__content">{children}</div>
 
-          <EuiFlyoutFooter className="lnsDimensionContainer__footer">
-            <EuiButtonEmpty
-              flush="left"
-              size="s"
-              iconType="cross"
-              onClick={closeFlyout}
-              data-test-subj="lns-indexPattern-dimensionContainerClose"
-            >
-              {i18n.translate('xpack.lens.dimensionContainer.close', {
-                defaultMessage: 'Close',
-              })}
-            </EuiButtonEmpty>
-          </EuiFlyoutFooter>
+          {customFooter || (
+            <EuiFlyoutFooter className="lnsDimensionContainer__footer">
+              <EuiButtonEmpty
+                flush="left"
+                size="s"
+                iconType="cross"
+                onClick={closeFlyout}
+                data-test-subj="lns-indexPattern-dimensionContainerClose"
+              >
+                {i18n.translate('xpack.lens.dimensionContainer.close', {
+                  defaultMessage: 'Close',
+                })}
+              </EuiButtonEmpty>
+            </EuiFlyoutFooter>
+          )}
         </div>
       </EuiFocusTrap>
     </div>

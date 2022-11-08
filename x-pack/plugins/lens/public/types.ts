@@ -630,7 +630,10 @@ export type DatasourceDimensionEditorProps<T = unknown> = DatasourceDimensionPro
       forceRender?: boolean;
     }
   >;
-  core: Pick<CoreStart, 'http' | 'notifications' | 'uiSettings' | 'overlays' | 'theme'>;
+  core: Pick<
+    CoreStart,
+    'http' | 'notifications' | 'uiSettings' | 'overlays' | 'theme' | 'savedObjects'
+  >;
   dateRange: DateRange;
   dimensionGroups: VisualizationDimensionGroupConfig[];
   toggleFullscreen: () => void;

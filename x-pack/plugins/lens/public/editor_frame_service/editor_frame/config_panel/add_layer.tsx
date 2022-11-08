@@ -20,10 +20,7 @@ import { i18n } from '@kbn/i18n';
 import { LayerTypes } from '@kbn/expression-xy-plugin/public';
 import type { LayerType } from '../../../../common';
 import type { FramePublicAPI, Visualization } from '../../../types';
-import {
-  setIsLoadLibraryVisible,
-  useLensDispatch,
-} from '../../../state_management';
+import { setIsLoadLibraryVisible, useLensDispatch } from '../../../state_management';
 
 interface AddLayerButtonProps {
   visualization: Visualization;
@@ -46,12 +43,9 @@ export function AddLayerButton({
   const [showLayersChoice, toggleLayersChoice] = useState(false);
   const dispatchLens = useLensDispatch();
 
-  const setLibraryVisible = useCallback(
-    () => {
-      dispatchLens(setIsLoadLibraryVisible(true));
-    },
-    [dispatchLens]
-  );
+  const setLibraryVisible = useCallback(() => {
+    dispatchLens(setIsLoadLibraryVisible(true));
+  }, [dispatchLens]);
 
   const supportedLayers = useMemo(() => {
     if (!visualization.appendLayer || !visualizationState) {
@@ -65,34 +59,37 @@ export function AddLayerButton({
   if (supportedLayers == null || !supportedLayers.length) {
     return null;
   }
-  const annotationPanel = ({ type, label, icon, disabled, toolTipContent }: typeof supportedLayers[0]) => {
+  const annotationPanel = ({
+    type,
+    label,
+    icon,
+    disabled,
+    toolTipContent,
+  }: typeof supportedLayers[0]) => {
     return {
       panel: 1,
       toolTipContent,
       disabled,
-      name:
+      name: (
         <EuiFlexGroup gutterSize="m">
           <EuiFlexItem>
             <span className="lnsLayerAddButton__label">{label}</span>
           </EuiFlexItem>
 
           <EuiFlexItem grow={false}>
-            <EuiBadge
-              className="lnsLayerAddButton__techBadge"
-              color="hollow"
-              isDisabled={disabled}
-            >
+            <EuiBadge className="lnsLayerAddButton__techBadge" color="hollow" isDisabled={disabled}>
               {i18n.translate('xpack.lens.configPanel.experimentalLabel', {
                 defaultMessage: 'Technical preview',
               })}
             </EuiBadge>
           </EuiFlexItem>
-        </EuiFlexGroup>,
+        </EuiFlexGroup>
+      ),
       className: 'lnsLayerAddButton',
       icon: icon && <EuiIcon size="m" type={icon} />,
       ['data-test-subj']: `lnsLayerAddButton-${type}`,
-    }
-  }
+    };
+  };
   if (supportedLayers.length === 1) {
     return (
       <EuiToolTip
@@ -159,9 +156,9 @@ export function AddLayerButton({
             }),
             width: 300,
             items: supportedLayers.map((props) => {
-              const { type, label, icon, disabled, toolTipContent } = props
+              const { type, label, icon, disabled, toolTipContent } = props;
               if (type === LayerTypes.ANNOTATIONS) {
-                return annotationPanel(props)
+                return annotationPanel(props);
               }
               return {
                 toolTipContent,
@@ -192,7 +189,7 @@ export function AddLayerButton({
                 onClick: () => {
                   onAddLayerClick(LayerTypes.ANNOTATIONS);
                   toggleLayersChoice(false);
-                }
+                },
               },
               {
                 name: i18n.translate('xpack.lens.configPanel.loadFromLibrary', {
@@ -202,7 +199,7 @@ export function AddLayerButton({
                 onClick: () => {
                   setLibraryVisible();
                   toggleLayersChoice(false);
-                }
+                },
               },
             ],
           },
