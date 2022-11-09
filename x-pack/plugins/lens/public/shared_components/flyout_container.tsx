@@ -19,7 +19,7 @@ import {
   EuiFocusTrap,
 } from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
-import { DONT_CLOSE_DIMENSION_CONTAINER_ON_CLICK_CLASS } from '../../../utils';
+import { DONT_CLOSE_DIMENSION_CONTAINER_ON_CLICK_CLASS } from '../utils';
 
 function fromExcludedClickTarget(event: Event) {
   for (

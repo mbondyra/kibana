@@ -140,6 +140,7 @@ export function loadInitial(
       }
     )
       .then(({ datasourceStates, indexPatterns, indexPatternRefs }) => {
+        console.log('emptyState', emptyState);
         store.dispatch(
           initEmpty({
             newState: {
@@ -231,9 +232,9 @@ export function loadInitial(
                   query: doc.state.query,
                   searchSessionId:
                     dashboardFeatureFlag.allowByValueEmbeddables &&
-                    Boolean(embeddableEditorIncomingState?.originatingApp) &&
-                    !(initialInput as LensByReferenceInput)?.savedObjectId &&
-                    currentSessionId
+                      Boolean(embeddableEditorIncomingState?.originatingApp) &&
+                      !(initialInput as LensByReferenceInput)?.savedObjectId &&
+                      currentSessionId
                       ? currentSessionId
                       : data.search.session.start(),
                   persistedDoc: doc,

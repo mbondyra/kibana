@@ -20,14 +20,18 @@ import { SavedObjectFinderUi } from '@kbn/saved-objects-plugin/public';
 import { SavedObjectsStart } from '@kbn/core/public';
 import { FormattedMessage } from '@kbn/i18n-react';
 import { IUiSettingsClient } from '@kbn/core-ui-settings-browser';
-import { FlyoutContainer } from './flyout_container';
+import { FlyoutContainer } from '../../../shared_components/flyout_container';
+import { LayerTypes } from '@kbn/expression-xy-plugin/public';
 import {
     useLensSelector,
     selectIsLoadLibraryVisible,
     setIsLoadLibraryVisible,
     useLensDispatch,
+    addLayer as addLayerAction,
 } from '../../../state_management';
+
 import { Visualization } from '../../../types';
+import { generateId } from '@kbn/lens-plugin/public/id_generator';
 
 // TODO: change to display the proper things
 const savedObjectMetaData = [
@@ -68,6 +72,11 @@ export function LoadAnnotationLibraryFlyout({
         },
         [dispatchLens]
     );
+
+    const addLayer = () => {
+        const layerId = generateId();
+        dispatchLens(addLayerAction({ layerId, layerType: LayerTypes.ANNOTATIONS }));
+    };
 
     const euiFormRowProps = useMemo(
         () => ({
@@ -156,6 +165,7 @@ export function LoadAnnotationLibraryFlyout({
                                 <EuiButton
                                     onClick={() => {
                                         setLibraryVisible(false);
+                                        addLayer();
                                     }}
                                     iconType="folderOpen"
                                     fill
@@ -189,6 +199,7 @@ export function LoadAnnotationLibraryFlyout({
                             onChoose={(id, type, fullName, savedObject) => {
                                 hasBeenClicked.current = true;
                                 setSelectedItem({ id, type, fullName, savedObject });
+
                             }}
                             showFilter={false}
                             noItemsMessage={

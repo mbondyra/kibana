@@ -48,7 +48,7 @@ import {
 } from '../../../state_management';
 import { onDropForVisualization, shouldRemoveSource } from './buttons/drop_targets_utils';
 import { getSharedActions } from './layer_actions/layer_actions';
-import { FlyoutContainer } from './flyout_container';
+import { FlyoutContainer } from '../../../shared_components/flyout_container';
 import { LoadAnnotationLibraryFlyout } from './load_annotation_library_flyout';
 
 const initialActiveDimensionState = {
@@ -516,9 +516,9 @@ export function LayerPanel(
                               indexPatternId: layerDatasource
                                 ? layerDatasource.getUsedDataView(layerDatasourceState, layerId)
                                 : activeVisualization.getUsedDataView?.(
-                                    visualizationState,
-                                    layerId
-                                  ),
+                                  visualizationState,
+                                  layerId
+                                ),
                               humanData: {
                                 label: columnLabelMap?.[columnId] ?? '',
                                 groupLabel: group.groupLabel,
