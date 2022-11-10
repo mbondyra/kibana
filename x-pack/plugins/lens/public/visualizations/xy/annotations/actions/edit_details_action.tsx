@@ -9,6 +9,7 @@ import React from 'react';
 import { CoreStart } from '@kbn/core/public';
 import { i18n } from '@kbn/i18n';
 import { toMountPoint } from '@kbn/kibana-react-plugin/public';
+import { render } from 'react-dom';
 import type { LayerAction, StateSetter } from '../../../../types';
 import { FlyoutContainer } from '../../../../shared_components/flyout_container';
 import type { XYState, XYAnnotationLayerConfig } from '../../types';
@@ -16,7 +17,7 @@ import type { XYState, XYAnnotationLayerConfig } from '../../types';
 const EditDetailsFlyout = () => {
   return (
     <FlyoutContainer
-      isOpen={true}
+      // isOpen={true}
       groupLabel={i18n.translate('xpack.lens.editorFrame.layerSettingsTitle', {
         defaultMessage: 'Layer settings',
       })}
@@ -53,7 +54,7 @@ export const getEditDetailsAction = ({
       'xpack.lens.xyChart.annotations.editAnnotationGroupDetailsDescription',
       { defaultMessage: 'Edit title, description and tags of the annotation group' }
     ),
-    execute: async () => {
+    execute: async (domElement) => {
       // TODO: open flyout
       console.log('TODO: edit details action!, title, description, tags');
       // const modal = core.overlays.openModal(
@@ -70,12 +71,16 @@ export const getEditDetailsAction = ({
           closeButtonAriaLabel: 'jobSelectorFlyout',
           onClose: () => {
             console.log('close');
+            modal.close();
           },
           size: 's',
+          ownFocus: true,
           maskProps: { style: 'background: transparent' },
         }
       );
+      console.log(modal.closeSubject);
       await modal.onClose;
+      // render(<EditDetailsFlyout />, toMountPoint(<div />));
     },
     icon: 'pencil',
     isCompatible: true,

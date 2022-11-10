@@ -389,7 +389,7 @@ export function LayerPanel(
                   activeVisualization={activeVisualization}
                 />
               </EuiFlexItem>
-              <EuiFlexItem grow={false} direction="row">
+              <EuiFlexItem grow={false}>
                 <LayerActions actions={compatibleActions} layerIndex={layerIndex} />
               </EuiFlexItem>
             </EuiFlexGroup>
