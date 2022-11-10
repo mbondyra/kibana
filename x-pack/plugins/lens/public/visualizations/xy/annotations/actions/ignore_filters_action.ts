@@ -5,7 +5,6 @@
  * 2.0.
  */
 
-;
 import { i18n } from '@kbn/i18n';
 import type { LayerAction, StateSetter } from '../../../../types';
 import type { XYState, XYAnnotationLayerConfig } from '../../types';
@@ -23,23 +22,23 @@ export const getIgnoreFilterAction = ({
 }): LayerAction => {
   const ignoreGlobalFilters = !layer.ignoreGlobalFilters
     ? i18n.translate('xpack.lens.xyChart.annotations.ignoreGlobalFiltersLabel', {
-      defaultMessage: 'Ignore global filters',
-    })
+        defaultMessage: 'Ignore global filters',
+      })
     : i18n.translate('xpack.lens.xyChart.annotations.keepGlobalFiltersLabel', {
-      defaultMessage: 'Keep global filters',
-    });
+        defaultMessage: 'Keep global filters',
+      });
 
   return {
     displayName: ignoreGlobalFilters,
     description: !layer.ignoreGlobalFilters
       ? i18n.translate('xpack.lens.xyChart.annotations.ignoreGlobalFiltersDescription', {
-        defaultMessage:
-          'All the dimensions configured in this layer ignore filters defined at kibana level.',
-      })
+          defaultMessage:
+            'All the dimensions configured in this layer ignore filters defined at kibana level.',
+        })
       : i18n.translate('xpack.lens.xyChart.annotations.keepGlobalFiltersDescription', {
-        defaultMessage:
-          'All the dimensions configured in this layer respect filters defined at kibana level.',
-      }),
+          defaultMessage:
+            'All the dimensions configured in this layer respect filters defined at kibana level.',
+        }),
     execute: () => {
       const newLayers = [...state.layers];
       newLayers[layerIndex] = { ...layer, ignoreGlobalFilters: !layer.ignoreGlobalFilters };
@@ -50,6 +49,5 @@ export const getIgnoreFilterAction = ({
     'data-test-subj': !layer.ignoreGlobalFilters
       ? 'lnsXY_annotationLayer_ignoreFilters'
       : 'lnsXY_annotationLayer_keepFilters',
-  }
-
+  };
 };

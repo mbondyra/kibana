@@ -41,7 +41,7 @@ export const createAnnotationActions = ({
     const isAnnotationGroupSO = true;
 
     if (isAnnotationGroupSO) {
-      // TODO: can revert & can save
+      // TODO: check if hasUnsavedChanges to know if can revert & can save
       const hasUnsavedChanges = true;
 
       if (hasUnsavedChanges) {
@@ -51,10 +51,11 @@ export const createAnnotationActions = ({
           layerIndex,
           setState,
           core,
-          execute: () => {},
+          execute: () => {
+            console.log('Save to library');
+          },
         });
-        const revertAction = getRevertAction({ state, layer, layerIndex, setState });
-        actions.push(saveAction, revertAction);
+        actions.push(saveAction);
       }
 
       const editDetailsAction = getEditDetailsAction({ state, layer, layerIndex, setState, core });
@@ -72,6 +73,10 @@ export const createAnnotationActions = ({
         },
         core,
       });
+      if (hasUnsavedChanges) {
+        const revertAction = getRevertAction({ state, layer, layerIndex, setState });
+        actions.push(revertAction);
+      }
       actions.push(editDetailsAction, unlinkAction);
     } else {
       actions.push(
@@ -82,7 +87,9 @@ export const createAnnotationActions = ({
           layerIndex,
           setState,
           core,
-          execute: () => {},
+          execute: () => {
+            console.log('Add to library');
+          },
         })
       );
     }

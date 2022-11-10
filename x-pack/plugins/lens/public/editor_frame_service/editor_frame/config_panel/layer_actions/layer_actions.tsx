@@ -26,6 +26,7 @@ import { getRemoveLayerAction } from './remove_layer_action';
 export interface LayerActionsProps {
   layerIndex: number;
   actions: LayerAction[];
+  domElement: Element;
 }
 
 /** @internal **/
@@ -118,7 +119,7 @@ const InContextMenuActions = (props: LayerActionsProps) => {
               title={i.displayName}
               onClick={() => {
                 closePopover();
-                i.execute();
+                i.execute(props.domElement);
               }}
             >
               <EuiText size={'s'} color={i.color}>
@@ -150,7 +151,7 @@ export const LayerActions = (props: LayerActionsProps) => {
       data-test-subj={dataTestSubj}
       aria-label={displayName}
       title={displayName}
-      onClick={execute}
+      onClick={() => execute(props.domElement)}
     />
   );
 };

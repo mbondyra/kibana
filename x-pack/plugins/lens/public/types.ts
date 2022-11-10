@@ -583,7 +583,7 @@ export interface DatasourceDataPanelProps<T = unknown> {
 export interface LayerAction {
   displayName: string;
   description?: string;
-  execute: () => void | Promise<void>;
+  execute: (domElement?: Element) => void | Promise<void>;
   icon: IconType;
   color?: EuiButtonIconProps['color'];
   isCompatible: boolean;

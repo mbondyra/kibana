@@ -121,6 +121,7 @@ export function LoadAnnotationLibraryFlyout({
 
   const [selectedItem, setSelectedItem] = React.useState<{ id: string } | null>(null);
 
+  // needed to clean the state when clicking not on the item on the list
   const hasBeenClicked = useRef(false);
 
   React.useEffect(() => {
@@ -189,7 +190,7 @@ export function LoadAnnotationLibraryFlyout({
         }}
       >
         <div id={layerId}>
-          <div className="lnsIndexPatternDimensionEditor--padded lnsIndexPatternDimensionEditor--collapseNext">
+          <div className="lnsIndexPatternDimensionEditor--padded">
             <SavedObjectFinderUi
               key={'searchSavedObjectFinder'}
               fixedPageSize={numberOfElements}

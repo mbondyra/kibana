@@ -367,6 +367,10 @@ export function LayerPanel(
       visualizationState,
     ]
   );
+  const domElementRef = useRef<Element>();
+
+  // const comboBoxRef = useRef<HTMLInputElement>(null);
+  console.log(domElementRef.current);
 
   return (
     <>
@@ -390,7 +394,11 @@ export function LayerPanel(
                 />
               </EuiFlexItem>
               <EuiFlexItem grow={false}>
-                <LayerActions actions={compatibleActions} layerIndex={layerIndex} />
+                <LayerActions
+                  actions={compatibleActions}
+                  layerIndex={layerIndex}
+                  domElement={domElementRef.current}
+                />
               </EuiFlexItem>
             </EuiFlexGroup>
             {(layerDatasource || activeVisualization.renderLayerPanel) && <EuiSpacer size="s" />}
@@ -649,6 +657,7 @@ export function LayerPanel(
           })}
         </EuiPanel>
       </section>
+      <div ref={(el) => (domElementRef.current = el)} />
       {(layerDatasource?.renderLayerSettings || activeVisualization?.renderLayerSettings) && (
         <FlyoutContainer
           panelRef={(el) => (settingsPanelRef.current = el)}

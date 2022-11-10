@@ -8,25 +8,115 @@
 import React from 'react';
 import { CoreStart } from '@kbn/core/public';
 import { i18n } from '@kbn/i18n';
-import { toMountPoint } from '@kbn/kibana-react-plugin/public';
-import { render } from 'react-dom';
+import { render, unmountComponentAtNode } from 'react-dom';
+import {
+  EuiButton,
+  EuiButtonEmpty,
+  EuiFieldText,
+  EuiFlexGroup,
+  EuiFlexItem,
+  EuiFlyoutFooter,
+  EuiForm,
+  EuiFormRow,
+} from '@elastic/eui';
+import { FormattedMessage } from '@kbn/i18n-react';
 import type { LayerAction, StateSetter } from '../../../../types';
 import { FlyoutContainer } from '../../../../shared_components/flyout_container';
 import type { XYState, XYAnnotationLayerConfig } from '../../types';
 
-const EditDetailsFlyout = () => {
+export const EditDetailsFlyout = ({
+  domElement,
+  groupLabel,
+  title,
+  isNew,
+  onConfirm,
+}: {
+  domElement: Element;
+  groupLabel: string;
+  title?: string;
+  isNew?: boolean;
+  onConfirm: () => void;
+}) => {
+  const [newTitle, setNewTitle] = React.useState(title);
+  // TODO: debounce title change to set in higher level state to persist when closing the flyout
   return (
     <FlyoutContainer
-      // isOpen={true}
-      groupLabel={i18n.translate('xpack.lens.editorFrame.layerSettingsTitle', {
-        defaultMessage: 'Layer settings',
-      })}
+      isOpen={true}
+      customFooter={
+        isNew ? (
+          <EuiFlyoutFooter className="lnsDimensionContainer__footer">
+            <EuiFlexGroup
+              responsive={false}
+              gutterSize="s"
+              alignItems="center"
+              justifyContent="spaceBetween"
+            >
+              <EuiFlexItem grow={false}>
+                <EuiButtonEmpty
+                  flush="left"
+                  size="s"
+                  iconType="cross"
+                  onClick={() => unmountComponentAtNode(domElement)}
+                  data-test-subj="lns-indexPattern-loadLibraryCancel"
+                >
+                  {i18n.translate('xpack.lens.annotations.cancel', {
+                    defaultMessage: 'Cancel',
+                  })}
+                </EuiButtonEmpty>
+              </EuiFlexItem>
+              <EuiFlexItem grow={false}>
+                <EuiButton
+                  onClick={() => {
+                    onConfirm();
+                    // todo: notification?
+                    unmountComponentAtNode(domElement);
+                  }}
+                  iconType="plusInCircleFilled"
+                  fill
+                  color="success"
+                  // disabled={!selectedItem} // TODO: disable if no title
+                >
+                  {i18n.translate('xpack.lens.annotations.addToLibrary', {
+                    defaultMessage: 'Add to library',
+                  })}
+                </EuiButton>
+              </EuiFlexItem>
+            </EuiFlexGroup>
+          </EuiFlyoutFooter>
+        ) : undefined
+      }
+      groupLabel={groupLabel}
       handleClose={() => {
         console.log('TODO: close flyout');
+        unmountComponentAtNode(domElement);
         return true;
       }}
     >
-      <div>WHAT</div>
+      <div>
+        <div className="lnsIndexPatternDimensionEditor--padded">
+          <EuiForm data-test-subj="editDetails">
+            <EuiFormRow
+              fullWidth
+              label={
+                <FormattedMessage
+                  id="xpack.lens.xyChart.annotations.titleLabel"
+                  defaultMessage="Title"
+                />
+              }
+            >
+              <EuiFieldText
+                fullWidth
+                data-test-subj="savedObjectTitle"
+                value={newTitle}
+                onChange={(e) => {
+                  setNewTitle(e.target.value);
+                }}
+                isInvalid={!'isDuplicate' || newTitle?.length === 0}
+              />
+            </EuiFormRow>
+          </EuiForm>
+        </div>
+      </div>
     </FlyoutContainer>
   );
 };
@@ -46,41 +136,22 @@ export const getEditDetailsAction = ({
   core: CoreStart;
   isNew?: boolean;
 }): LayerAction => {
+  const displayName = i18n.translate('xpack.lens.xyChart.annotations.editAnnotationGroupDetails', {
+    defaultMessage: 'Edit annotation group details',
+  });
   return {
-    displayName: i18n.translate('xpack.lens.xyChart.annotations.editAnnotationGroupDetails', {
-      defaultMessage: 'Edit annotation group details',
-    }),
+    displayName,
     description: i18n.translate(
       'xpack.lens.xyChart.annotations.editAnnotationGroupDetailsDescription',
       { defaultMessage: 'Edit title, description and tags of the annotation group' }
     ),
     execute: async (domElement) => {
-      // TODO: open flyout
-      console.log('TODO: edit details action!, title, description, tags');
-      // const modal = core.overlays.openModal(
-      //   toMountPoint(<div/>,{ theme$: props.core.theme.theme$ }),
-      //   {
-      //     'data-test-subj': 'lnsLayerUnlinkModal',
-      //   }
-      // );
-
-      const modal = core.overlays.openFlyout(
-        toMountPoint(<EditDetailsFlyout />, { theme$: core.theme.theme$ }),
-        {
-          'data-test-subj': 'lnsLayerEditDetailsFlyout',
-          closeButtonAriaLabel: 'jobSelectorFlyout',
-          onClose: () => {
-            console.log('close');
-            modal.close();
-          },
-          size: 's',
-          ownFocus: true,
-          maskProps: { style: 'background: transparent' },
-        }
-      );
-      console.log(modal.closeSubject);
-      await modal.onClose;
-      // render(<EditDetailsFlyout />, toMountPoint(<div />));
+      if (domElement) {
+        render(
+          <EditDetailsFlyout domElement={domElement} groupLabel={displayName} title="Hello" />,
+          domElement
+        );
+      }
     },
     icon: 'pencil',
     isCompatible: true,
