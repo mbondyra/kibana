@@ -6,6 +6,7 @@
  */
 
 import { IUiSettingsClient } from '@kbn/core-ui-settings-browser';
+import { CoreStart } from '@kbn/core/public';
 import { UiActionsStart } from '@kbn/ui-actions-plugin/public';
 import { IndexPatternServiceAPI } from '../../../data_views_service/service';
 
@@ -32,7 +33,7 @@ export interface LayerPanelProps {
   datasourceMap: DatasourceMap;
   activeVisualization: Visualization;
   framePublicAPI: FramePublicAPI;
-  core: DatasourceDimensionEditorProps['core'];
+  core: CoreStart;
 }
 
 export interface LayerDatasourceDropProps {

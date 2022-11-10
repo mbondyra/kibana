@@ -249,12 +249,14 @@ export const getXyVisualization = ({
     ];
   },
 
-  getSupportedActionsForLayer(layerId, state, setState) {
+  getSupportedActionsForLayer(layerId, state, setState, core, openLayerSettings, isSaveable) {
     const layerIndex = state.layers.findIndex((l) => l.layerId === layerId);
     const layer = state.layers[layerIndex];
     const actions = [];
     if (isAnnotationsLayer(layer)) {
-      actions.push(...createAnnotationActions({ state, layerIndex, layer, setState }));
+      actions.push(
+        ...createAnnotationActions({ state, layerIndex, layer, setState, core, isSaveable })
+      );
     }
     return actions;
   },

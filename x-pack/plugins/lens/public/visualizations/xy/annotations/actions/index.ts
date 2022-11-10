@@ -6,93 +6,90 @@
  */
 
 import { i18n } from '@kbn/i18n';
+import type { CoreStart } from '@kbn/core/public';
 import type { LayerAction, StateSetter } from '../../../../types';
 import type { XYState, XYAnnotationLayerConfig } from '../../types';
+import { getUnlinkLayerAction } from './unlink_action';
+import { getIgnoreFilterAction } from './ignore_filters_action';
+import { getEditDetailsAction } from './edit_details_action';
+import { getRevertAction } from './revert_changes_action';
+import { getSaveLayerAction } from './save_action';
 
 export const createAnnotationActions = ({
   state,
   layer,
   layerIndex,
   setState,
+  core,
+  isSaveable,
 }: {
   state: XYState;
   layer: XYAnnotationLayerConfig;
   layerIndex: number;
   setState: StateSetter<XYState, unknown>;
+  core: CoreStart;
+  isSaveable: boolean;
 }): LayerAction[] => {
-  const ignoreGlobalFilters = !layer.ignoreGlobalFilters
-    ? i18n.translate('xpack.lens.xyChart.annotations.ignoreGlobalFiltersLabel', {
-      defaultMessage: 'Ignore global filters',
-    })
-    : i18n.translate('xpack.lens.xyChart.annotations.keepGlobalFiltersLabel', {
-      defaultMessage: 'Keep global filters',
-    });
+  const actions = [];
 
-  const actions = [{
-    displayName: ignoreGlobalFilters,
-    description: !layer.ignoreGlobalFilters
-      ? i18n.translate('xpack.lens.xyChart.annotations.ignoreGlobalFiltersDescription', {
-        defaultMessage:
-          'All the dimensions configured in this layer ignore filters defined at kibana level.',
-      })
-      : i18n.translate('xpack.lens.xyChart.annotations.keepGlobalFiltersDescription', {
-        defaultMessage:
-          'All the dimensions configured in this layer respect filters defined at kibana level.',
-      }),
-    execute: () => {
-      const newLayers = [...state.layers];
-      newLayers[layerIndex] = { ...layer, ignoreGlobalFilters: !layer.ignoreGlobalFilters };
-      return setState({ ...state, layers: newLayers });
-    },
-    icon: !layer.ignoreGlobalFilters ? 'eyeClosed' : 'eye',
-    isCompatible: true,
-    'data-test-subj': !layer.ignoreGlobalFilters
-      ? 'lnsXY_annotationLayer_ignoreFilters'
-      : 'lnsXY_annotationLayer_keepFilters',
-  }]
-
-  // todo
-  const savingToLibraryPermitted = true;
-  // const savingToLibraryPermitted = Boolean(isSaveable && application.capabilities.visualize.save);
-
-  // check if the annotation is saved as a saved object or in inline - how do we check it for save modal for visualization?
-
-  const isAnnotationGroupSO = false
+  const savingToLibraryPermitted = Boolean(
+    core.application.capabilities.visualize.save && isSaveable
+  );
 
   if (savingToLibraryPermitted) {
-    const libraryAction = isAnnotationGroupSO ?
-      {
-        displayName: i18n.translate('xpack.lens.xyChart.annotations.unlinkFromLibrary', {
-          defaultMessage: 'Unlink from library',
-        }),
-        description: i18n.translate('xpack.lens.xyChart.annotations.unlinksFromLibrary', {
-          defaultMessage: 'Saves the annotation group as a part of the Lens Saved Object',
-        }),
-        execute: () => {
-          return state;
-        },
-        icon: 'unlink',
-        isCompatible: true,
-        'data-test-subj': 'lnsXY_annotationLayer_unlinkFromLibrary',
+    // check if the annotation is saved as a saved object or in inline - how do we check it for save modal for visualization?
+    const isAnnotationGroupSO = true;
+
+    if (isAnnotationGroupSO) {
+      // TODO: can revert & can save
+      const hasUnsavedChanges = true;
+
+      if (hasUnsavedChanges) {
+        const saveAction = getSaveLayerAction({
+          state,
+          layer,
+          layerIndex,
+          setState,
+          core,
+          execute: () => {},
+        });
+        const revertAction = getRevertAction({ state, layer, layerIndex, setState });
+        actions.push(saveAction, revertAction);
       }
-      : {
-        displayName: i18n.translate('xpack.lens.xyChart.annotations.addToLibrary', {
-          defaultMessage: 'Add to library',
-        }),
-        description: i18n.translate('xpack.lens.xyChart.annotations.saveToLibraryDescription', {
-          defaultMessage: 'Saves the annotation group as a separate object',
-        }),
+
+      const editDetailsAction = getEditDetailsAction({ state, layer, layerIndex, setState, core });
+
+      const unlinkAction = getUnlinkLayerAction({
         execute: () => {
-          const newLayers = [...state.layers];
-          newLayers[layerIndex] = { ...layer, ignoreGlobalFilters: !layer.ignoreGlobalFilters };
-          return setState({ ...state, layers: newLayers });
+          console.log('TODO: unlink action!');
+          const title = 'Annotation group name';
+          core.notifications.toasts.addSuccess(
+            i18n.translate('xpack.lens.xyChart.annotations.notificationUnlinked', {
+              defaultMessage: `Unlinked “{title}“ from library`,
+              values: { title },
+            })
+          );
         },
-        icon: 'save',
-        isCompatible: true,
-        'data-test-subj': 'lnsXY_annotationLayer_saveToLibrary',
-      }
-    actions.push(libraryAction)
+        core,
+      });
+      actions.push(editDetailsAction, unlinkAction);
+    } else {
+      actions.push(
+        getSaveLayerAction({
+          isNew: true,
+          state,
+          layer,
+          layerIndex,
+          setState,
+          core,
+          execute: () => {},
+        })
+      );
+    }
   }
 
-  return actions
+  const ignoreGlobalFiltersAction = getIgnoreFilterAction({ state, layer, layerIndex, setState });
+  actions.push(ignoreGlobalFiltersAction);
+
+  return actions;
 };

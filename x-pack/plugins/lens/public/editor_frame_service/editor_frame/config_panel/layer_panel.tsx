@@ -119,6 +119,8 @@ export function LayerPanel(
     core,
   } = props;
 
+  const isSaveable = useLensSelector((state) => state.lens.isSaveable);
+
   const datasourceStates = useLensSelector(selectDatasourceStates);
   const isFullscreen = useLensSelector(selectIsFullscreenDatasource);
   const dateRange = useLensSelector(selectResolvedDateRange);
@@ -327,7 +329,9 @@ export function LayerPanel(
           layerId,
           visualizationState,
           updateVisualization,
-          () => setPanelSettingsOpen(true)
+          core,
+          () => setPanelSettingsOpen(true),
+          isSaveable
         ) || []),
         ...(layerDatasource?.getSupportedActionsForLayer?.(
           layerId,
@@ -385,7 +389,7 @@ export function LayerPanel(
                   activeVisualization={activeVisualization}
                 />
               </EuiFlexItem>
-              <EuiFlexItem grow={false}>
+              <EuiFlexItem grow={false} direction="row">
                 <LayerActions actions={compatibleActions} layerIndex={layerIndex} />
               </EuiFlexItem>
             </EuiFlexGroup>
@@ -516,9 +520,9 @@ export function LayerPanel(
                               indexPatternId: layerDatasource
                                 ? layerDatasource.getUsedDataView(layerDatasourceState, layerId)
                                 : activeVisualization.getUsedDataView?.(
-                                  visualizationState,
-                                  layerId
-                                ),
+                                    visualizationState,
+                                    layerId
+                                  ),
                               humanData: {
                                 label: columnLabelMap?.[columnId] ?? '',
                                 groupLabel: group.groupLabel,

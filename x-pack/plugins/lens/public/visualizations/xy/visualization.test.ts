@@ -73,13 +73,15 @@ function exampleState(): XYState {
 const paletteServiceMock = chartPluginMock.createPaletteRegistry();
 const fieldFormatsMock = fieldFormatsServiceMock.createStartContract();
 
+const core = coreMock.createStart();
+
 const xyVisualization = getXyVisualization({
   paletteService: paletteServiceMock,
   fieldFormats: fieldFormatsMock,
   useLegacyTimeAxis: false,
   kibanaTheme: themeServiceMock.createStartContract(),
   eventAnnotationService: eventAnnotationServiceMock,
-  core: coreMock.createStart(),
+  core,
   storage: {} as IStorageWrapper,
   data: dataPluginMock.createStartContract(),
   unifiedSearch: unifiedSearchPluginMock.createStartContract(),
@@ -2423,17 +2425,17 @@ describe('xy_visualization', () => {
       datasourceLayers.first.getOperationForColumnId = jest.fn((id: string) =>
         id === 'a'
           ? ({
-              dataType: 'date',
-              scale: 'interval',
-            } as unknown as OperationDescriptor)
+            dataType: 'date',
+            scale: 'interval',
+          } as unknown as OperationDescriptor)
           : null
       );
       datasourceLayers.second.getOperationForColumnId = jest.fn((id: string) =>
         id === 'e'
           ? ({
-              dataType: 'number',
-              scale: 'interval',
-            } as unknown as OperationDescriptor)
+            dataType: 'number',
+            scale: 'interval',
+          } as unknown as OperationDescriptor)
           : null
       );
       expect(
@@ -2479,17 +2481,17 @@ describe('xy_visualization', () => {
       datasourceLayers.first.getOperationForColumnId = jest.fn((id: string) =>
         id === 'a'
           ? ({
-              dataType: 'date',
-              scale: 'interval',
-            } as unknown as OperationDescriptor)
+            dataType: 'date',
+            scale: 'interval',
+          } as unknown as OperationDescriptor)
           : null
       );
       datasourceLayers.second.getOperationForColumnId = jest.fn((id: string) =>
         id === 'e'
           ? ({
-              dataType: 'string',
-              scale: 'ordinal',
-            } as unknown as OperationDescriptor)
+            dataType: 'string',
+            scale: 'ordinal',
+          } as unknown as OperationDescriptor)
           : null
       );
       expect(
@@ -2869,7 +2871,7 @@ describe('xy_visualization', () => {
   describe('getSupportedActionsForLayer', () => {
     it('should return no actions for a data layer', () => {
       expect(
-        xyVisualization.getSupportedActionsForLayer?.('first', exampleState(), jest.fn())
+        xyVisualization.getSupportedActionsForLayer?.('first', exampleState(), jest.fn(), core)
       ).toHaveLength(0);
     });
 
@@ -2891,7 +2893,8 @@ describe('xy_visualization', () => {
               },
             ],
           },
-          jest.fn()
+          jest.fn(),
+          core
         )
       ).toEqual([
         expect.objectContaining({
@@ -2923,7 +2926,8 @@ describe('xy_visualization', () => {
             },
           ],
         },
-        setState
+        setState,
+        core
       )!;
       action.execute();
 

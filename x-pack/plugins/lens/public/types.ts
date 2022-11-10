@@ -1072,7 +1072,9 @@ export interface Visualization<T = unknown, P = unknown> {
     layerId: string,
     state: T,
     setState: StateSetter<T>,
-    openLayerSettings?: () => void
+    core: CoreStart,
+    openLayerSettings?: () => void,
+    isSaveable?: boolean
   ) => LayerAction[];
   /** returns the type string of the given layer */
   getLayerType: (layerId: string, state?: T) => LayerType | undefined;

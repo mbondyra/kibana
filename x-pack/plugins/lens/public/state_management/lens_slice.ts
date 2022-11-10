@@ -38,7 +38,7 @@ export const initialState: LensAppState = {
   query: { language: 'kuery', query: '' },
   resolvedDateRange: { fromDate: '', toDate: '' },
   isFullscreenDatasource: false,
-  isLoadLibraryVisible: true, // TODO: remove this when the library is ready
+  isLoadLibraryVisible: false,
   isSaveable: false,
   isLoading: false,
   isLinkedToOriginatingApp: false,
@@ -363,14 +363,14 @@ export const makeLensReducer = (storeDeps: LensStoreDeps) => {
       state.datasourceStates = mapValues(state.datasourceStates, (datasourceState, datasourceId) =>
         datasourceId
           ? {
-              ...datasourceState,
-              state: datasourceMap[datasourceId].cloneLayer(
-                datasourceState.state,
-                layerId,
-                newLayerId,
-                getNewId
-              ),
-            }
+            ...datasourceState,
+            state: datasourceMap[datasourceId].cloneLayer(
+              datasourceState.state,
+              layerId,
+              newLayerId,
+              getNewId
+            ),
+          }
           : datasourceState
       );
       state.visualization.state = visualizationMap[state.visualization.activeId].cloneLayer!(
@@ -439,10 +439,10 @@ export const makeLensReducer = (storeDeps: LensStoreDeps) => {
 
       uniq(removedLayerIds).forEach(
         (removedId) =>
-          (state.visualization.state = activeVisualization.removeLayer?.(
-            state.visualization.state,
-            removedId
-          ))
+        (state.visualization.state = activeVisualization.removeLayer?.(
+          state.visualization.state,
+          removedId
+        ))
       );
     },
     [changeIndexPattern.type]: (
@@ -709,12 +709,12 @@ export const makeLensReducer = (storeDeps: LensStoreDeps) => {
         ...state,
         datasourceStates: datasourceId
           ? {
-              ...state.datasourceStates,
-              [datasourceId]: {
-                ...state.datasourceStates[datasourceId],
-                state: datasourceState,
-              },
-            }
+            ...state.datasourceStates,
+            [datasourceId]: {
+              ...state.datasourceStates[datasourceId],
+              state: datasourceState,
+            },
+          }
           : state.datasourceStates,
         visualization: {
           ...state.visualization,
@@ -724,10 +724,10 @@ export const makeLensReducer = (storeDeps: LensStoreDeps) => {
         stagedPreview: payload.clearStagedPreview
           ? undefined
           : state.stagedPreview || {
-              datasourceStates: state.datasourceStates,
-              visualization: state.visualization,
-              activeData: state.activeData,
-            },
+            datasourceStates: state.datasourceStates,
+            visualization: state.visualization,
+            activeData: state.activeData,
+          },
       };
     },
     [rollbackSuggestion.type]: (state) => {
@@ -798,8 +798,8 @@ export const makeLensReducer = (storeDeps: LensStoreDeps) => {
       const datasourceState = current(state).datasourceStates[payload.newDatasourceId]
         ? current(state).datasourceStates[payload.newDatasourceId]?.state
         : datasourceMap[payload.newDatasourceId].createEmptyLayer(
-            payload.currentIndexPatternId ?? ''
-          );
+          payload.currentIndexPatternId ?? ''
+        );
       const updatedState = datasourceMap[payload.newDatasourceId].insertLayer(
         datasourceState,
         currentVizId
@@ -1052,10 +1052,10 @@ export const makeLensReducer = (storeDeps: LensStoreDeps) => {
       const datasourceState =
         !noDatasource && activeDatasource
           ? activeDatasource.insertLayer(
-              state.datasourceStates[state.activeDatasourceId].state,
-              layerId,
-              layersToLinkTo
-            )
+            state.datasourceStates[state.activeDatasourceId].state,
+            layerId,
+            layersToLinkTo
+          )
           : state.datasourceStates[state.activeDatasourceId].state;
 
       const { activeDatasourceState, activeVisualizationState } = addInitialValueIfAvailable({
