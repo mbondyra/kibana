@@ -21,3 +21,5 @@ export {
   isManualPointAnnotationConfig,
   isQueryAnnotationConfig,
 } from './event_annotation_service/helpers';
+
+export { EventAnnotationGroupSavedObjectFinder } from './components/event_annotation_group_saved_object_finder';

@@ -10,6 +10,17 @@ import { ExpressionAstExpression } from '@kbn/expressions-plugin/common/ast';
 import { EventAnnotationConfig, EventAnnotationGroupConfig } from '../../common';
 
 export interface EventAnnotationServiceType {
+  loadAnnotationGroup: (savedObjectId: string) => Promise<EventAnnotationGroupConfig>;
+  deleteAnnotationGroup: (savedObjectId: string) => Promise<void>;
+  createAnnotationGroup: (group: EventAnnotationGroupConfig) => Promise<{ id: string }>;
+  updateAnnotations: (
+    savedObjectId: string,
+    modifications: { delete: string[]; upsert: EventAnnotationConfig[] }
+  ) => Promise<void>;
+  updateAnnotationGroup: (
+    group: EventAnnotationGroupConfig,
+    savedObjectId: string
+  ) => Promise<void>;
   toExpression: (props: EventAnnotationConfig[]) => ExpressionAstExpression[];
   toFetchExpression: (props: {
     interval: string;

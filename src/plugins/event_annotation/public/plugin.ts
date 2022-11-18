@@ -51,10 +51,7 @@ export class EventAnnotationPlugin
     return this.eventAnnotationService;
   }
 
-  public start(
-    core: CoreStart,
-    startDependencies: EventAnnotationStartDependencies
-  ): EventAnnotationService {
+  public start(): EventAnnotationService {
     return this.eventAnnotationService;
   }
 }

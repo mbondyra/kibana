@@ -6,13 +6,14 @@
  * Side Public License, v 1.
  */
 
+import { coreMock } from '@kbn/core/public/mocks';
 import { getEventAnnotationService } from './service';
 import { EventAnnotationServiceType } from './types';
 
 describe('Event Annotation Service', () => {
   let eventAnnotationService: EventAnnotationServiceType;
   beforeAll(() => {
-    eventAnnotationService = getEventAnnotationService();
+    eventAnnotationService = getEventAnnotationService(coreMock.createStart());
   });
   describe('toExpression', () => {
     it('should work for an empty list', () => {
