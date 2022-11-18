@@ -23,6 +23,7 @@ import {
   DataViewsPublicPluginSetup,
   DataViewsPublicPluginStart,
 } from '@kbn/data-views-plugin/public';
+import { EventAnnotationPluginStart } from '@kbn/event-annotation-plugin/public';
 import { Document } from '../persistence/saved_object_store';
 import {
   Datasource,
@@ -49,6 +50,7 @@ export interface EditorFrameStartPlugins {
   expressions: ExpressionsStart;
   charts: ChartsPluginSetup;
   dataViews: DataViewsPublicPluginStart;
+  eventAnnotation: EventAnnotationPluginStart;
 }
 
 export interface EditorFramePlugins {

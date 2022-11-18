@@ -46,6 +46,7 @@ export interface EditorFrameState extends PreviewState {
   applyChangesCounter?: number;
   changesApplied?: boolean;
   isFullscreenDatasource?: boolean;
+  isLoadLibraryVisible?: boolean;
 }
 export interface LensAppState extends EditorFrameState {
   persistedDoc?: Document;

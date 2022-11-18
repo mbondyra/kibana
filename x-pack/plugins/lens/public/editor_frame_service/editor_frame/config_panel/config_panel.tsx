@@ -252,6 +252,8 @@ export function LayerPanels(
           !hidden && (
             <LayerPanel
               {...props}
+              savedObjects={props.core.savedObjects}
+              uiSettings={props.core.uiSettings}
               dimensionGroups={groups}
               activeVisualization={activeVisualization}
               registerNewLayerRef={registerNewLayerRef}
@@ -319,7 +321,7 @@ export function LayerPanels(
           visualization={activeVisualization}
           visualizationState={visualization.state}
           layersMeta={props.framePublicAPI}
-          onAddLayerClick={(layerType) => addLayer(layerType)}
+          onAddLayerClick={addLayer}
         />
       )}
     </EuiForm>

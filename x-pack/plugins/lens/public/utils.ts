@@ -133,6 +133,8 @@ export function getIndexPatternsIds({
     references.push(...savedObjectReferences);
   });
 
+  // TODO: index pattern ids inside annnotations
+
   if (activeVisualization?.getPersistableState) {
     const { savedObjectReferences } = activeVisualization.getPersistableState(visualizationState);
     references.push(...savedObjectReferences);
