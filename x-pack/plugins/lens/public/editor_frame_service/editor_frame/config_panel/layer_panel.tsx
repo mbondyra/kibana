@@ -20,6 +20,8 @@ import {
 import { i18n } from '@kbn/i18n';
 import { css } from '@emotion/react';
 import { euiThemeVars } from '@kbn/ui-theme';
+import { SavedObjectsStart } from '@kbn/core/public';
+import { IUiSettingsClient } from '@kbn/core-ui-settings-browser';
 import { LayerType } from '../../../../common';
 import { LayerActions } from './layer_actions';
 import { IndexPatternServiceAPI } from '../../../data_views_service/service';
@@ -49,7 +51,8 @@ import {
 } from '../../../state_management';
 import { onDropForVisualization, shouldRemoveSource } from './buttons/drop_targets_utils';
 import { getSharedActions } from './layer_actions/layer_actions';
-import { FlyoutContainer } from './flyout_container';
+import { FlyoutContainer } from '../../../shared_components/flyout_container';
+import { LoadAnnotationLibraryFlyout } from './load_annotation_library_flyout';
 
 // hide the random sampling settings from the UI
 const DISPLAY_RANDOM_SAMPLING_SETTINGS = false;
@@ -84,6 +87,8 @@ export function LayerPanel(
     registerNewLayerRef: (layerId: string, instance: HTMLDivElement | null) => void;
     toggleFullscreen: () => void;
     onEmptyDimensionAdd: (columnId: string, group: { groupId: string }) => void;
+    uiSettings: IUiSettingsClient;
+    savedObjects: SavedObjectsStart;
     onChangeIndexPattern: (args: {
       indexPatternId: string;
       layerId: string;
@@ -120,6 +125,8 @@ export function LayerPanel(
     core,
   } = props;
 
+  const isSaveable = useLensSelector((state) => state.lens.isSaveable);
+
   const datasourceStates = useLensSelector(selectDatasourceStates);
   const isFullscreen = useLensSelector(selectIsFullscreenDatasource);
   const dateRange = useLensSelector(selectResolvedDateRange);
@@ -130,6 +137,7 @@ export function LayerPanel(
 
   const panelRef = useRef<HTMLDivElement | null>(null);
   const settingsPanelRef = useRef<HTMLDivElement | null>(null);
+
   const registerLayerRef = useCallback(
     (el) => registerNewLayerRef(layerId, el),
     [layerId, registerNewLayerRef]
@@ -324,7 +332,14 @@ export function LayerPanel(
     () =>
       [
         ...(activeVisualization
-          .getSupportedActionsForLayer?.(layerId, visualizationState)
+          .getSupportedActionsForLayer?.(
+            layerId,
+            visualizationState,
+            updateVisualization,
+            core,
+            () => setPanelSettingsOpen(true),
+            isSaveable
+          )
           .map((action) => ({
             ...action,
             execute: () => {
@@ -333,6 +348,7 @@ export function LayerPanel(
               );
             },
           })) || []),
+
         ...getSharedActions({
           layerId,
           activeVisualization,
@@ -363,8 +379,10 @@ export function LayerPanel(
       onRemoveLayer,
       updateVisualization,
       visualizationState,
+      isSaveable,
     ]
   );
+  const domElementRef = useRef<Element>();
 
   return (
     <>
@@ -388,7 +406,11 @@ export function LayerPanel(
                 />
               </EuiFlexItem>
               <EuiFlexItem grow={false}>
-                <LayerActions actions={compatibleActions} layerIndex={layerIndex} />
+                <LayerActions
+                  actions={compatibleActions}
+                  layerIndex={layerIndex}
+                  domElement={domElementRef.current}
+                />
               </EuiFlexItem>
             </EuiFlexGroup>
             {(layerDatasource || activeVisualization.renderLayerPanel) && <EuiSpacer size="s" />}
@@ -675,7 +697,6 @@ export function LayerPanel(
         <FlyoutContainer
           panelRef={(el) => (settingsPanelRef.current = el)}
           isOpen={isPanelSettingsOpen}
-          isFullscreen={false}
           groupLabel={i18n.translate('xpack.lens.editorFrame.layerSettingsTitle', {
             defaultMessage: 'Layer settings',
           })}
@@ -709,6 +730,15 @@ export function LayerPanel(
             </div>
           </div>
         </FlyoutContainer>
+      )}
+      {activeVisualization && (
+        <LoadAnnotationLibraryFlyout
+          activeVisualization={activeVisualization}
+          layerId={layerId}
+          uiSettings={props.uiSettings}
+          savedObjects={props.savedObjects}
+          eventAnnotationService={props.eventAnnotationService}
+        />
       )}
       <DimensionContainer
         panelRef={(el) => (panelRef.current = el)}

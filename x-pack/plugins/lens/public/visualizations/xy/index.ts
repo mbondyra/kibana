@@ -34,8 +34,9 @@ export class XyVisualization {
         await core.getStartServices();
       const [palettes, eventAnnotationService] = await Promise.all([
         charts.palettes.getPalettes(),
-        eventAnnotation.getService(),
+        eventAnnotation.getService(coreStart),
       ]);
+
       const useLegacyTimeAxis = core.uiSettings.get(LEGACY_TIME_AXIS);
       return getXyVisualization({
         core: coreStart,
