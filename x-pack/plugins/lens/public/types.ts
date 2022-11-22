@@ -577,7 +577,7 @@ export interface LayerAction {
   id: string;
   displayName: string;
   description?: string;
-  execute: () => void | Promise<void>;
+  execute: (domElement?: Element) => void | Promise<void>;
   icon: IconType;
   color?: EuiButtonIconProps['color'];
   isCompatible: boolean;
@@ -626,7 +626,10 @@ export type DatasourceDimensionEditorProps<T = unknown> = DatasourceDimensionPro
       forceRender?: boolean;
     }
   >;
-  core: Pick<CoreStart, 'http' | 'notifications' | 'uiSettings' | 'overlays' | 'theme'>;
+  core: Pick<
+    CoreStart,
+    'http' | 'notifications' | 'uiSettings' | 'overlays' | 'theme' | 'savedObjects'
+  >;
   dateRange: DateRange;
   dimensionGroups: VisualizationDimensionGroupConfig[];
   toggleFullscreen: () => void;
@@ -1065,7 +1068,14 @@ export interface Visualization<T = unknown, P = unknown> {
    * returns a list of custom actions supported by the visualization layer.
    * Default actions like delete/clear are not included in this list and are managed by the editor frame
    * */
-  getSupportedActionsForLayer?: (layerId: string, state: T) => LayerActionFromVisualization[];
+  getSupportedActionsForLayer?: (
+    layerId: string,
+    state: T,
+    setState: StateSetter<T>,
+    core: CoreStart,
+    openLayerSettings?: () => void,
+    isSaveable?: boolean
+  ) => LayerActionFromVisualization[];
 
   /**
    * Perform state mutations in response to a layer action

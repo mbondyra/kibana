@@ -36,6 +36,7 @@ export class XyVisualization {
         charts.palettes.getPalettes(),
         eventAnnotation.getService(coreStart),
       ]);
+
       const useLegacyTimeAxis = core.uiSettings.get(LEGACY_TIME_AXIS);
       return getXyVisualization({
         core: coreStart,
