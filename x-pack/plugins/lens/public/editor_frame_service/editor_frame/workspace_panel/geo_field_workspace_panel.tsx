@@ -11,7 +11,7 @@ import { FormattedMessage } from '@kbn/i18n-react';
 import { i18n } from '@kbn/i18n';
 import { UiActionsStart, VISUALIZE_GEO_FIELD_TRIGGER } from '@kbn/ui-actions-plugin/public';
 import { GlobeIllustration } from '@kbn/chart-icons';
-import { DragDrop } from '@kbn/dom-drag-drop';
+import { DragDrop, Droppable } from '@kbn/dom-drag-drop';
 import { IndexPattern } from '../../../types';
 import { getVisualizeGeoFieldMessage } from '../../../utils';
 import { APP_ID } from '../../../../common/constants';
@@ -52,14 +52,13 @@ export function GeoFieldWorkspacePanel(props: Props) {
             <strong>{getVisualizeGeoFieldMessage(props.fieldType)}</strong>
           </h2>
           <GlobeIllustration aria-hidden={true} className="lnsWorkspacePanel__promptIllustration" />
-          <DragDrop
+          <Droppable
+            value={dragDropIdentifier}
+            order={dragDropOrder}
+            onDrop={onDrop}
+            dropTypes={['field_add']}
             className="lnsVisualizeGeoFieldWorkspacePanel__dragDrop"
             dataTestSubj="lnsGeoFieldWorkspace"
-            draggable={false}
-            dropTypes={['field_add']}
-            order={dragDropOrder}
-            value={dragDropIdentifier}
-            onDrop={onDrop}
           >
             <p>
               <strong>
@@ -69,7 +68,7 @@ export function GeoFieldWorkspacePanel(props: Props) {
                 />
               </strong>
             </p>
-          </DragDrop>
+          </Droppable>
         </div>
       </EuiText>
     </div>

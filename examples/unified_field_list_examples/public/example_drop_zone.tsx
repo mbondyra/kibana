@@ -15,7 +15,13 @@
  */
 
 import React, { useMemo } from 'react';
-import { DragDrop, DropOverlayWrapper, DropType, useDragDropContext } from '@kbn/dom-drag-drop';
+import {
+  DragDrop,
+  DropOverlayWrapper,
+  DropType,
+  Droppable,
+  useDragDropContext,
+} from '@kbn/dom-drag-drop';
 import { EuiEmptyPrompt, EuiPanel } from '@elastic/eui';
 
 const DROP_PROPS = {
@@ -48,12 +54,11 @@ export const ExampleDropZone: React.FC<ExampleDropZoneProps> = ({ onDropField })
   const isDropAllowed = Boolean(onDroppingField);
 
   return (
-    <DragDrop
-      draggable={false}
-      dropTypes={isDropAllowed ? DROP_PROPS.types : undefined}
+    <Droppable
       value={DROP_PROPS.value}
       order={DROP_PROPS.order}
       onDrop={onDroppingField}
+      dropTypes={isDropAllowed ? DROP_PROPS.types : undefined}
     >
       <DropOverlayWrapper isVisible={isDropAllowed}>
         <EuiPanel hasShadow={false} paddingSize="l" className="eui-fullHeight">
@@ -68,6 +73,6 @@ export const ExampleDropZone: React.FC<ExampleDropZoneProps> = ({ onDropField })
           />
         </EuiPanel>
       </DropOverlayWrapper>
-    </DragDrop>
+    </Droppable>
   );
 };

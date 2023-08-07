@@ -15,6 +15,8 @@ export {
   type DragDropAction,
   type DropOverlayWrapperProps,
   DragDrop,
+  Droppable,
+  Draggable,
   useDragDropContext,
   RootDragDropProvider,
   ChildDragDropProvider,

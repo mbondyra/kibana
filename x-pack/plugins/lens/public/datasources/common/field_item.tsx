@@ -22,7 +22,7 @@ import {
   FieldItemButton,
   type GetCustomFieldType,
 } from '@kbn/unified-field-list';
-import { DragDrop } from '@kbn/dom-drag-drop';
+import { Draggable } from '@kbn/dom-drag-drop';
 import { generateFilters, getEsQueryConfig } from '@kbn/data-plugin/public';
 import { type DatatableColumn } from '@kbn/expressions-plugin/common';
 import { DatasourceDataPanelProps } from '../../types';
@@ -206,8 +206,7 @@ export function InnerFieldItem(props: FieldItemProps) {
         }}
         container={document.querySelector<HTMLElement>('.application') || undefined}
         button={
-          <DragDrop
-            draggable
+          <Draggable
             order={order}
             value={value}
             dataTestSubj={`lnsFieldListPanelField-${field.name}`}
@@ -222,7 +221,7 @@ export function InnerFieldItem(props: FieldItemProps) {
             ) : (
               <FieldItemButton field={field} {...commonFieldItemButtonProps} />
             )}
-          </DragDrop>
+          </Draggable>
         }
         renderHeader={() => {
           return (

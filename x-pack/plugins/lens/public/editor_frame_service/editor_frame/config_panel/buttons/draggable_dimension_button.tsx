@@ -12,6 +12,8 @@ import {
   useDragDropContext,
   DropType,
   DropTargetSwapDuplicateCombine,
+  Droppable,
+  Draggable,
 } from '@kbn/dom-drag-drop';
 import { isDraggedField } from '../../../../utils';
 import {
@@ -138,24 +140,28 @@ export function DraggableDimensionButton({
       className="lnsLayerPanel__dimensionContainer"
       data-test-subj={group.dataTestSubj}
     >
-      <DragDrop
-        draggable
+      <Droppable
+        value={value}
+        order={order}
+        reorderableGroup={reorderableGroup}
+        dropTypes={dropTypes}
+        onDrop={handleOnDrop}
         getCustomDropTarget={DropTargetSwapDuplicateCombine.getCustomDropTarget}
         getAdditionalClassesOnEnter={DropTargetSwapDuplicateCombine.getAdditionalClassesOnEnter}
         getAdditionalClassesOnDroppable={
           DropTargetSwapDuplicateCombine.getAdditionalClassesOnDroppable
         }
-        order={order}
-        dragType={isOperation(dragging) ? 'move' : 'copy'}
-        dropTypes={dropTypes}
-        reorderableGroup={reorderableGroup.length > 1 ? reorderableGroup : undefined}
-        value={value}
-        onDrop={handleOnDrop}
-        onDragStart={onDragStart}
-        onDragEnd={onDragEnd}
       >
-        {children}
-      </DragDrop>
+        <Draggable
+          value={value}
+          order={order}
+          reorderableGroup={reorderableGroup}
+          onDragStart={onDragStart}
+          onDragEnd={onDragEnd}
+        >
+          {children}
+        </Draggable>
+      </Droppable>
     </div>
   );
 }

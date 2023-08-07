@@ -6,9 +6,9 @@
  * Side Public License, v 1.
  */
 
-import { EuiFlexGroup, EuiFlexItem, EuiHorizontalRule } from '@elastic/eui';
-import { DragDrop, type DropType, DropOverlayWrapper } from '@kbn/dom-drag-drop';
 import React, { useCallback, useMemo } from 'react';
+import { EuiFlexGroup, EuiFlexItem, EuiHorizontalRule } from '@elastic/eui';
+import { DragDrop, type DropType, DropOverlayWrapper, Droppable } from '@kbn/dom-drag-drop';
 import { DataView } from '@kbn/data-views-plugin/common';
 import { METRIC_TYPE } from '@kbn/analytics';
 import { i18n } from '@kbn/i18n';
@@ -84,11 +84,10 @@ export const DiscoverMainContent = ({
   const showChart = useAppStateSelector((state) => !state.hideChart);
 
   return (
-    <DragDrop
-      draggable={false}
-      dropTypes={isDropAllowed ? DROP_PROPS.types : undefined}
+    <Droppable
       value={DROP_PROPS.value}
       order={DROP_PROPS.order}
+      dropTypes={isDropAllowed ? DROP_PROPS.types : undefined}
       onDrop={onDropFieldToTable}
     >
       <DropOverlayWrapper isVisible={isDropAllowed}>
@@ -122,6 +121,6 @@ export const DiscoverMainContent = ({
           )}
         </EuiFlexGroup>
       </DropOverlayWrapper>
-    </DragDrop>
+    </Droppable>
   );
 };

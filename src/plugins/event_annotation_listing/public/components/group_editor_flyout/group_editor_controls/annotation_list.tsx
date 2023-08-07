@@ -10,6 +10,7 @@ import { css } from '@emotion/react';
 import {
   DragDrop,
   DropTargetSwapDuplicateCombine,
+  Droppable,
   ReorderProvider,
   useDragDropContext,
 } from '@kbn/dom-drag-drop';
@@ -163,6 +164,7 @@ export const AnnotationList = ({
         }}
         onDrop={({ id: sourceId }) => addNewAnnotation(sourceId)}
       >
+<<<<<<< HEAD:src/plugins/event_annotation_listing/public/components/group_editor_flyout/group_editor_controls/annotation_list.tsx
         <EmptyDimensionButton
           dataTestSubj="addAnnotation"
           label={addAnnotationText}
@@ -170,6 +172,31 @@ export const AnnotationList = ({
           onClick={() => addNewAnnotation()}
         />
       </DragDrop>
+=======
+        <Droppable
+          value={{
+            id: 'addAnnotation',
+            humanData: {
+              label: addAnnotationText,
+            },
+          }}
+          order={[annotations.length]}
+          onDrop={({ id: sourceId }) => addNewAnnotation(sourceId)}
+          dropTypes={dragging ? ['duplicate_compatible'] : []}
+          getCustomDropTarget={DropTargetSwapDuplicateCombine.getCustomDropTarget}
+          getAdditionalClassesOnDroppable={
+            DropTargetSwapDuplicateCombine.getAdditionalClassesOnDroppable
+          }
+        >
+          <EmptyDimensionButton
+            dataTestSubj="addAnnotation"
+            label={addAnnotationText}
+            ariaLabel={addAnnotationText}
+            onClick={() => addNewAnnotation()}
+          />
+        </Droppable>
+      </div>
+>>>>>>> e355c60190d (wip):packages/kbn-event-annotation-components/components/group_editor_controls/annotation_list.tsx
     </div>
   );
 };

@@ -9,4 +9,6 @@
 export * from './types';
 export * from './providers';
 export * from './drag_drop';
+export { Droppable } from './droppable';
+export { Draggable } from './draggable';
 export { DropOverlayWrapper, type DropOverlayWrapperProps } from './drop_overlay_wrapper';

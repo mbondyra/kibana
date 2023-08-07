@@ -14,6 +14,7 @@ import {
   useDragDropContext,
   DropType,
   DropTargetSwapDuplicateCombine,
+  Droppable,
 } from '@kbn/dom-drag-drop';
 import { EmptyDimensionButton as EmptyDimensionButtonInner } from '@kbn/visualization-ui-components';
 import { css } from '@emotion/react';
@@ -180,15 +181,15 @@ export function EmptyDimensionButton({
 
   return (
     <div className="lnsLayerPanel__dimensionContainer" data-test-subj={group.dataTestSubj}>
-      <DragDrop
-        getCustomDropTarget={DropTargetSwapDuplicateCombine.getCustomDropTarget}
-        getAdditionalClassesOnDroppable={
-          DropTargetSwapDuplicateCombine.getAdditionalClassesOnDroppable
-        }
+      <Droppable
         value={value}
         order={order}
         onDrop={handleOnDrop}
         dropTypes={dropTypes}
+        getCustomDropTarget={DropTargetSwapDuplicateCombine.getCustomDropTarget}
+        getAdditionalClassesOnDroppable={
+          DropTargetSwapDuplicateCombine.getAdditionalClassesOnDroppable
+        }
       >
         <div
           css={css`
@@ -201,7 +202,7 @@ export function EmptyDimensionButton({
             <DefaultEmptyButton {...buttonProps} />
           )}
         </div>
-      </DragDrop>
+      </Droppable>
     </div>
   );
 }
