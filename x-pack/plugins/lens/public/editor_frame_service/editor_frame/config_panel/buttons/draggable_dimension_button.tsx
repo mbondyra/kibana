@@ -152,15 +152,17 @@ export function DraggableDimensionButton({
           DropTargetSwapDuplicateCombine.getAdditionalClassesOnDroppable
         }
       >
-        <Draggable
-          value={value}
-          order={order}
-          reorderableGroup={reorderableGroup}
-          onDragStart={onDragStart}
-          onDragEnd={onDragEnd}
-        >
-          {children}
-        </Draggable>
+        <div>
+          <Draggable
+            value={value}
+            order={order}
+            reorderableGroup={reorderableGroup}
+            onDragStart={onDragStart}
+            onDragEnd={onDragEnd}
+          >
+            {children}
+          </Draggable>
+        </div>
       </Droppable>
     </div>
   );
