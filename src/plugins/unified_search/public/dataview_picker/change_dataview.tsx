@@ -340,6 +340,10 @@ export function ChangeDataView({
         <EuiHorizontalRule margin="none" key="textbasedLanguages-divider" />,
         <EuiPanel color="transparent" paddingSize="none" key="try-esql">
           <EuiButton
+            css={css`
+              border-top-right-radius: unset;
+              border-top-left-radius: unset;
+            `}
             color="success"
             size="s"
             fullWidth
