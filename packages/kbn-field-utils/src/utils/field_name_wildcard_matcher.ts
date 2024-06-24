@@ -7,6 +7,7 @@
  */
 
 import { escapeRegExp, memoize } from 'lodash';
+import levenshtein from 'js-levenshtein';
 
 const makeRegEx = memoize(function makeRegEx(glob: string) {
   const trimmedGlob = glob.trim();
@@ -39,8 +40,38 @@ export const fieldNameWildcardMatcher = (
   }
 
   const regExp = makeRegEx(fieldSearchHighlight);
-  return (!!field.displayName && regExp.test(field.displayName)) || regExp.test(field.name);
+  const doesWildcardMatch =
+    (!!field.displayName && regExp.test(field.displayName)) || regExp.test(field.name);
+  if (doesWildcardMatch) {
+    return true;
+  }
+  const distance = getLevensteinDistance(field, fieldSearchHighlight);
+  if (distance < 3) {
+    return true;
+  }
+  return false;
 };
+
+function getLevensteinDistance(
+  field: { name: string; displayName?: string },
+  fieldSearchHighlight: string
+) {
+  if (!fieldSearchHighlight || !field.name) {
+    return Infinity;
+  }
+  const distance = levenshtein(fieldSearchHighlight, field.name);
+  return distance;
+  console.log('distance', distance, fieldSearchHighlight, field.name);
+  // const allSolutions = allPossibilities.reduce((solutions, item) => {
+  //   const distance = levenshtein(item, errorText);
+  //   if (distance < 3) {
+  //     solutions.push(item);
+  //   }
+  //   return solutions;
+  // }, [] as string[]);
+  // // filter duplicates
+  // return Array.from(new Set(allSolutions));
+}
 
 /**
  * Adapts fieldNameWildcardMatcher to combobox props.
@@ -53,7 +84,10 @@ export const comboBoxFieldOptionMatcher = ({
 }: {
   option: { name?: string; label: string };
   searchValue: string;
-}) => fieldNameWildcardMatcher({ name: name || label, displayName: label }, searchValue);
+}) => {
+  const field = { name: name || label, displayName: label };
+  return fieldNameWildcardMatcher(field, searchValue);
+};
 
 /**
  * Get `highlight` string to be used together with `EuiHighlight`
