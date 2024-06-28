@@ -11,6 +11,15 @@ import { mountWithIntl } from '@kbn/test-jest-helpers';
 import { act } from 'react-dom/test-utils';
 import { FieldNameSearch, type FieldNameSearchProps } from './field_name_search';
 
+jest.mock('lodash', () => {
+  const original = jest.requireActual('lodash');
+
+  return {
+    ...original,
+    debounce: (fn: unknown) => fn,
+  };
+});
+
 describe('UnifiedFieldList <FieldNameSearch />', () => {
   it('should render correctly', async () => {
     const props: FieldNameSearchProps = {
@@ -42,8 +51,11 @@ describe('UnifiedFieldList <FieldNameSearch />', () => {
 
     expect(wrapper.find('input').prop('value')).toBe('this');
 
-    wrapper.setProps({
-      nameFilter: 'that',
+    act(() => {
+      wrapper.setProps({
+        nameFilter: 'that',
+      });
+      wrapper.update();
     });
 
     expect(wrapper.find('input').prop('value')).toBe('that');
