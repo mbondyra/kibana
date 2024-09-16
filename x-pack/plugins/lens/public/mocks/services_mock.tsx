@@ -5,7 +5,6 @@
  * 2.0.
  */
 
-import React from 'react';
 import { Subject } from 'rxjs';
 import { coreMock } from '@kbn/core/public/mocks';
 import { navigationPluginMock } from '@kbn/navigation-plugin/public/mocks';
@@ -104,12 +103,6 @@ export function makeDefaultServices(
   dataViewsMock.getIdsWithTitle.mockImplementation(jest.fn(async () => []));
 
   const navigationStartMock = navigationPluginMock.createStartContract();
-
-  jest
-    .spyOn(navigationStartMock.ui.AggregateQueryTopNavMenu.prototype, 'constructor')
-    .mockImplementation(() => {
-      return <div className="topNavMenu" />;
-    });
 
   return {
     ...startMock,
