@@ -37,10 +37,25 @@ import faker from 'faker';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { VisualizeEditorContext } from '../types';
-// import { LazySavedObjectSaveModalDashboard } from '@kbn/presentation-util-plugin/public';
+import { pluginServices as presentationUtilPluginServices } from '@kbn/presentation-util-plugin/public/services';
+
+presentationUtilPluginServices.getHooks = jest.fn().mockReturnValue({
+  capabilities: {
+    useService: () => ({
+      canAccessDashboards: () => true,
+      canCreateNewDashboards: () => true,
+      canSaveVisualizations: () => true,
+      canSetAdvancedSettings: () => true,
+    }),
+  },
+});
 
 jest.mock('../persistence/saved_objects_utils/check_for_duplicate_title', () => ({
   checkForDuplicateTitle: jest.fn(),
+}));
+jest.mock('lodash', () => ({
+  ...jest.requireActual('lodash'),
+  debounce: (fn: unknown) => fn,
 }));
 
 const defaultSavedObjectId: string = faker.random.uuid();
@@ -52,11 +67,6 @@ const getLensDocumentMock = (someProps?: Partial<LensDocument>) => ({
   ...defaultDoc,
   ...someProps,
 });
-
-jest.mock('lodash', () => ({
-  ...jest.requireActual('lodash'),
-  debounce: (fn: unknown) => fn,
-}));
 
 describe('Lens App', () => {
   let props: jest.Mocked<LensAppProps>;
@@ -610,7 +620,7 @@ describe('Lens App', () => {
         );
       });
 
-      it.only('saves new docs', async () => {
+      it('saves new docs', async () => {
         await save({
           prevSavedObjectId: undefined,
           savedObjectId: defaultSavedObjectId,
