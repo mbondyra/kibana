@@ -103,6 +103,7 @@ export function makeDefaultServices(
   dataViewsMock.getIdsWithTitle.mockImplementation(jest.fn(async () => []));
 
   const navigationStartMock = navigationPluginMock.createStartContract();
+  const presentationUtilMock = presentationUtilPluginMock.createStartContract(core);
 
   return {
     ...startMock,
@@ -115,7 +116,7 @@ export function makeDefaultServices(
       inspect: jest.fn(),
       closeInspector: jest.fn(),
     },
-    presentationUtil: presentationUtilPluginMock.createStartContract(core),
+    presentationUtil: presentationUtilMock,
     savedObjectStore: {
       load: jest.fn(),
       search: jest.fn(),
@@ -128,6 +129,9 @@ export function makeDefaultServices(
       capabilities: {
         ...core.application.capabilities,
         visualize: { save: true, saveQuery: true, show: true, createShortUrl: true },
+        dashboard: {
+          showWriteControls: true,
+        },
       },
       getUrlForApp: jest.fn((appId: string) => `/testbasepath/app/${appId}#/`),
     },

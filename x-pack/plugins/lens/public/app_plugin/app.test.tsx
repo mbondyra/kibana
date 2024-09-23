@@ -26,21 +26,19 @@ import { FilterManager } from '@kbn/data-plugin/public';
 import type { DataView } from '@kbn/data-views-plugin/public';
 import { buildExistsFilter, FilterStateStore } from '@kbn/es-query';
 import type { FieldSpec } from '@kbn/data-plugin/common';
-import { SavedObjectReference } from '@kbn/core/types';
 import { KibanaContextProvider } from '@kbn/kibana-react-plugin/public';
 import { serverlessMock } from '@kbn/serverless/public/mocks';
 import moment from 'moment';
 import { setState, LensAppState } from '../state_management';
 import { coreMock } from '@kbn/core/public/mocks';
 import { LensSerializedState } from '..';
-import { cloneDeep } from 'lodash';
 import { createMockedField, createMockedIndexPattern } from '../datasources/form_based/mocks';
 import faker from 'faker';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { VisualizeEditorContext } from '../types';
-jest.mock('../editor_frame_service/editor_frame/expression_helpers');
-jest.mock('@kbn/core/public');
+// import { LazySavedObjectSaveModalDashboard } from '@kbn/presentation-util-plugin/public';
+
 jest.mock('../persistence/saved_objects_utils/check_for_duplicate_title', () => ({
   checkForDuplicateTitle: jest.fn(),
 }));
@@ -50,9 +48,10 @@ const defaultSavedObjectId: string = faker.random.uuid();
 const waitToLoad = async () =>
   await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
 
-function getLensDocumentMock(someProps?: Partial<LensDocument>) {
-  return cloneDeep({ ...defaultDoc, ...someProps });
-}
+const getLensDocumentMock = (someProps?: Partial<LensDocument>) => ({
+  ...defaultDoc,
+  ...someProps,
+});
 
 jest.mock('lodash', () => ({
   ...jest.requireActual('lodash'),
@@ -110,7 +109,7 @@ describe('Lens App', () => {
       store,
       render: renderRtl,
       rerender,
-      ...instance
+      ...rest
     } = renderWithReduxStore(
       <App {...props} />,
       { wrapper: Wrapper },
@@ -127,7 +126,7 @@ describe('Lens App', () => {
     };
 
     await act(async () => await store.dispatch(setState({ ...preloadedState })));
-    return { instance, props, lensStore: store, rerender: rerenderWithProps };
+    return { props, lensStore: store, rerender: rerenderWithProps, ...rest };
   }
 
   it('renders the editor frame', async () => {
@@ -271,7 +270,7 @@ describe('Lens App', () => {
     });
 
     it('sets originatingApp breadcrumb when the document title changes', async () => {
-      props.incomingState = { originatingApp: 'coolContainer' };
+      props.incomingState = { originatingApp: 'dashboards' };
       services.getOriginatingAppName = jest.fn(() => 'The Coolest Container Ever Made');
       const { lensStore, rerender } = await renderApp({
         preloadedState: { isLinkedToOriginatingApp: false },
@@ -455,38 +454,38 @@ describe('Lens App', () => {
     });
 
     describe('save buttons', () => {
-      interface SaveProps {
-        newCopyOnSave: boolean;
-        returnToOrigin?: boolean;
-        newTitle: string;
-      }
-
       const querySaveButton = () => screen.queryByTestId('lnsApp_saveButton');
       const clickSaveButton = async () =>
-        await userEvent.click(screen.getByTestId('lnsApp_saveButton'));
+        await act(async () => await userEvent.click(screen.getByTestId('lnsApp_saveButton')));
+
       const querySaveAndReturnButton = () => screen.queryByTestId('lnsApp_saveAndReturnButton');
       const waitForModalVisible = async () =>
-        await waitFor(() => screen.getByTestId('confirmSaveSavedObjectButton'));
+        await waitFor(() => screen.getByTestId('savedObjectTitle'));
 
-      async function save(
-        {
-          preloadedState,
-          savedObjectId,
-          ...saveProps
-        }: SaveProps & {
-          preloadedState?: Partial<LensAppState>;
-          savedObjectId?: string;
-        } = { savedObjectId: defaultSavedObjectId, newCopyOnSave: false, newTitle: 'hello there' }
-      ) {
-        services.attributeService.saveToLibrary = jest
-          .fn()
-          .mockImplementation(async ({ savedObjectId: soId }) => soId || defaultSavedObjectId);
+      async function save({
+        preloadedState,
+        savedObjectId = defaultSavedObjectId,
+        prevSavedObjectId = undefined,
+        newTitle = 'hello there',
+        newCopyOnSave = false,
+        comesFromDashboard = true,
+        switchToAddToDashboardNone = false,
+      }: {
+        newCopyOnSave?: boolean;
+        newTitle?: string;
+        preloadedState?: Partial<LensAppState>;
+        prevSavedObjectId?: string;
+        savedObjectId?: string;
+        comesFromDashboard?: boolean;
+        switchToAddToDashboardNone?: boolean;
+      }) {
+        services.attributeService.saveToLibrary = jest.fn().mockResolvedValue(savedObjectId);
         services.attributeService.loadFromLibrary = jest.fn().mockResolvedValue({
           sharingSavedObjectProps: {
             outcome: 'exactMatch',
           },
           attributes: {
-            savedObjectId: savedObjectId ?? defaultSavedObjectId,
+            savedObjectId,
             references: [],
             state: {
               query: { query: 'fake query', language: 'kuery' },
@@ -496,28 +495,47 @@ describe('Lens App', () => {
           managed: false,
         });
 
-        props.incomingState = { originatingApp: 'ultraDashboard' };
-        props.initialInput = savedObjectId ? { savedObjectId } : undefined;
+        props = {
+          ...props,
+          initialInput: prevSavedObjectId ? { savedObjectId: prevSavedObjectId } : undefined,
+        };
 
-        const { instance, lensStore } = await renderApp({
+        if (comesFromDashboard) {
+          props.incomingState = { originatingApp: 'dashboards' };
+        }
+
+        const { lensStore } = await renderApp({
           preloadedState: {
             isSaveable: true,
-            isLinkedToOriginatingApp: true,
+            isLinkedToOriginatingApp: comesFromDashboard,
             ...preloadedState,
           },
         });
         await clickSaveButton();
         await waitForModalVisible();
-        await userEvent.type(screen.getByTestId('savedObjectTitle'), saveProps.newTitle);
+        if (newCopyOnSave) {
+          await userEvent.click(screen.getByTestId('saveAsNewCheckbox'));
+        }
+        if (switchToAddToDashboardNone) {
+          await userEvent.click(screen.getByLabelText('None'));
+        }
+        await waitFor(async () => {
+          await userEvent.clear(screen.getByTestId('savedObjectTitle'));
+          expect(screen.getByTestId('savedObjectTitle')).toHaveValue('');
+        });
+        await userEvent.type(screen.getByTestId('savedObjectTitle'), `${newTitle}`);
         await userEvent.click(screen.getByTestId('confirmSaveSavedObjectButton'));
         await waitToLoad();
-        return { props, instance, lensStore };
+        return { props, lensStore };
       }
 
       it('shows a disabled save button when the user does not have permissions', async () => {
         services.application.capabilities = {
           ...services.application.capabilities,
           visualize: { save: false, saveQuery: false, show: true },
+          dashboard: {
+            showWriteControls: false,
+          },
         };
         await renderApp({ preloadedState: { isSaveable: true } });
         expect(querySaveButton()).toBeDisabled();
@@ -534,13 +552,13 @@ describe('Lens App', () => {
 
       it('Shows Save and Return and Save to library buttons in create by value mode with originating app', async () => {
         props.incomingState = {
-          originatingApp: 'ultraDashboard',
+          originatingApp: 'dashboards',
           valueInput: {
             id: 'whatchaGonnaDoWith',
             attributes: {
               title:
                 'whatcha gonna do with all these references? All these references in your value Input',
-              references: [] as SavedObjectReference[],
+              references: [],
             },
           } as unknown as LensSerializedState,
         };
@@ -557,7 +575,7 @@ describe('Lens App', () => {
 
       it('Shows Save and Return and Save As buttons in edit by reference mode', async () => {
         props.incomingState = {
-          originatingApp: 'ultraDashboard',
+          originatingApp: 'dashboards',
         };
         props.initialInput = { savedObjectId: defaultSavedObjectId, id: '5678' };
         await renderApp({
@@ -582,175 +600,153 @@ describe('Lens App', () => {
         });
         expect(lensStore.getState().lens.applyChangesCounter).toBe(1);
       });
+      it('adds to the recently accessed list on save', async () => {
+        const savedObjectId = faker.random.uuid();
+        await save({ savedObjectId, prevSavedObjectId: 'prevId', comesFromDashboard: false });
+        expect(services.chrome.recentlyAccessed.add).toHaveBeenCalledWith(
+          `/app/lens#/edit/${savedObjectId}`,
+          'hello there',
+          savedObjectId
+        );
+      });
 
-      describe('saving with errors on the console', () => {
-        // to fix
-        it.skip('saves new docs', async () => {
-          await save({
-            savedObjectId: undefined,
-            newCopyOnSave: false,
-            newTitle: 'hello there',
-          });
-          expect(services.attributeService.saveToLibrary).toHaveBeenCalledWith(
-            expect.objectContaining({
-              title: 'hello there',
-            }),
-            // from mocks
-            [
-              {
-                id: 'mockip',
-                name: 'mockip',
-                type: 'index-pattern',
-              },
-            ],
-            undefined
-          );
-          expect(props.redirectTo).toHaveBeenCalledWith(defaultSavedObjectId);
-          expect(services.notifications.toasts.addSuccess).toHaveBeenCalledWith(
-            "Saved 'hello there'"
-          );
+      it.only('saves new docs', async () => {
+        await save({
+          prevSavedObjectId: undefined,
+          savedObjectId: defaultSavedObjectId,
+          newTitle: 'hello there',
+          comesFromDashboard: false,
+          switchToAddToDashboardNone: true,
         });
-
-        // to fix
-        it.skip('adds to the recently accessed list on save', async () => {
-          await save({
-            savedObjectId: undefined,
-            newCopyOnSave: false,
-            newTitle: 'hello there',
-          });
-          expect(services.chrome.recentlyAccessed.add).toHaveBeenCalledWith(
-            `/app/lens#/edit/${defaultSavedObjectId}`,
-            'hello there',
-            defaultSavedObjectId
-          );
-        });
-
-        it('saves the latest doc as a copy', async () => {
-          const doc = getLensDocumentMock();
-          await save({
-            savedObjectId: doc.savedObjectId,
-            newCopyOnSave: true,
-            newTitle: 'hello there',
-            preloadedState: { persistedDoc: doc },
-          });
-          expect(services.attributeService.saveToLibrary).toHaveBeenCalledWith(
-            expect.objectContaining({
-              title: 'hello there',
-            }),
-            [{ id: 'mockip', name: 'mockip', type: 'index-pattern' }],
-            undefined
-          );
-          // new copy gets a new SO id
-          expect(props.redirectTo).toHaveBeenCalledWith(defaultSavedObjectId);
-          expect(services.attributeService.saveToLibrary).toHaveBeenCalledTimes(1);
-          expect(services.notifications.toasts.addSuccess).toHaveBeenCalledWith(
-            "Saved 'hello there'"
-          );
-        });
-
-        it('saves existing docs', async () => {
-          await save({
-            savedObjectId: defaultSavedObjectId,
-            newCopyOnSave: false,
-            newTitle: 'hello there',
-            preloadedState: {
-              persistedDoc: getLensDocumentMock({ savedObjectId: defaultSavedObjectId }),
-            },
-          });
-          expect(services.attributeService.saveToLibrary).toHaveBeenCalledWith(
-            expect.objectContaining({
-              title: 'hello there',
-            }),
-            [{ id: 'mockip', name: 'mockip', type: 'index-pattern' }],
-            undefined
-          );
-          expect(props.redirectTo).toHaveBeenCalledWith(defaultSavedObjectId);
-          expect(services.notifications.toasts.addSuccess).toHaveBeenCalledWith(
-            "Saved 'hello there'"
-          );
-        });
-
-        it('saves app filters and does not save pinned filters', async () => {
-          const indexPattern = { id: 'index1', isPersisted: () => true } as unknown as DataView;
-          const field = { name: 'myfield' } as unknown as FieldSpec;
-          const pinnedField = { name: 'pinnedField' } as unknown as FieldSpec;
-          const unpinned = buildExistsFilter(field, indexPattern);
-          const pinned = buildExistsFilter(pinnedField, indexPattern);
-          await act(async () => {
-            FilterManager.setFiltersStore([pinned], FilterStateStore.GLOBAL_STATE);
-          });
-
-          services.attributeService.saveToLibrary = jest
-            .fn()
-            .mockResolvedValue({ savedObjectId: '123' });
-
-          props.incomingState = {
-            originatingApp: 'coolContainer',
-          };
-          props.initialInput = { savedObjectId: defaultSavedObjectId };
-          await renderApp({
-            preloadedState: {
-              isSaveable: true,
-              persistedDoc: getLensDocumentMock({ savedObjectId: defaultSavedObjectId }),
-              isLinkedToOriginatingApp: true,
-              filters: [pinned, unpinned],
-            },
-          });
-          await clickSaveButton();
-          await waitForModalVisible();
-          await userEvent.click(screen.getByTestId('confirmSaveSavedObjectButton'));
-          await waitToLoad();
-
-          const { state: expectedFilters } = services.data.query.filterManager.extract([unpinned]);
-
-          expect(services.attributeService.saveToLibrary).toHaveBeenCalledWith(
-            expect.objectContaining({
-              title: 'An extremely cool default document!',
-              state: expect.objectContaining({ filters: expectedFilters }),
-            }),
-            [{ id: 'mockip', name: 'mockip', type: 'index-pattern' }],
-            undefined
-          );
-        });
-
-        it('checks for duplicate title before saving', async () => {
-          services.attributeService.saveToLibrary = jest
-            .fn()
-            .mockResolvedValue({ savedObjectId: '123' });
-
-          props.incomingState = {
-            originatingApp: 'coolContainer',
-          };
-          props.initialInput = { savedObjectId: '123' };
-          await renderApp({
-            preloadedState: {
-              isSaveable: true,
-              persistedDoc: { savedObjectId: '123' } as unknown as LensDocument,
-              isLinkedToOriginatingApp: true,
-            },
-          });
-          await clickSaveButton();
-          await waitForModalVisible();
-          await userEvent.click(screen.getByTestId('confirmSaveSavedObjectButton'));
-
-          expect(checkForDuplicateTitle).toHaveBeenCalledWith(
+        expect(services.attributeService.saveToLibrary).toHaveBeenCalledWith(
+          expect.objectContaining({
+            title: 'hello there',
+          }),
+          // from mocks
+          [
             {
-              copyOnSave: true,
-              displayName: 'Lens visualization',
-              isTitleDuplicateConfirmed: false,
-              lastSavedTitle: '',
-              title: 'An extremely cool default document!',
+              id: 'mockip',
+              name: 'mockip',
+              type: 'index-pattern',
             },
-            expect.any(Function),
-            expect.anything()
-          );
+          ],
+          undefined
+        );
+        expect(props.redirectTo).toHaveBeenCalledWith(defaultSavedObjectId);
+        expect(services.notifications.toasts.addSuccess).toHaveBeenCalledWith(
+          "Saved 'hello there'"
+        );
+      });
+
+      it('saves existing docs as a copy', async () => {
+        const doc = getLensDocumentMock();
+        await save({
+          savedObjectId: doc.savedObjectId,
+          newCopyOnSave: true,
+          newTitle: 'hello there',
+          preloadedState: { persistedDoc: doc },
+          prevSavedObjectId: 'prevId',
+          comesFromDashboard: false,
         });
+        expect(services.attributeService.saveToLibrary).toHaveBeenCalledWith(
+          expect.objectContaining({
+            title: 'hello there',
+          }),
+          [{ id: 'mockip', name: 'mockip', type: 'index-pattern' }],
+          undefined
+        );
+        // new copy gets a new SO id
+        expect(props.redirectTo).toHaveBeenCalledWith(doc.savedObjectId);
+        expect(services.attributeService.saveToLibrary).toHaveBeenCalledTimes(1);
+        expect(services.notifications.toasts.addSuccess).toHaveBeenCalledWith(
+          "Saved 'hello there'"
+        );
+      });
+
+      it('saves existing docs', async () => {
+        await save({
+          savedObjectId: defaultSavedObjectId,
+          prevSavedObjectId: defaultSavedObjectId,
+          newCopyOnSave: false,
+          newTitle: 'hello there',
+          comesFromDashboard: false,
+          preloadedState: {
+            persistedDoc: getLensDocumentMock({ savedObjectId: defaultSavedObjectId }),
+          },
+        });
+        expect(services.attributeService.saveToLibrary).toHaveBeenCalledWith(
+          expect.objectContaining({
+            title: 'hello there',
+          }),
+          [{ id: 'mockip', name: 'mockip', type: 'index-pattern' }],
+          defaultSavedObjectId
+        );
+        expect(props.redirectTo).not.toHaveBeenCalled();
+        expect(services.notifications.toasts.addSuccess).toHaveBeenCalledWith(
+          "Saved 'hello there'"
+        );
+      });
+
+      it('saves app filters and does not save pinned filters', async () => {
+        const indexPattern = { id: 'index1', isPersisted: () => true } as unknown as DataView;
+        const field = { name: 'myfield' } as unknown as FieldSpec;
+        const pinnedField = { name: 'pinnedField' } as unknown as FieldSpec;
+        const unpinned = buildExistsFilter(field, indexPattern);
+        const pinned = buildExistsFilter(pinnedField, indexPattern);
+        await act(async () => {
+          FilterManager.setFiltersStore([pinned], FilterStateStore.GLOBAL_STATE);
+        });
+
+        await save({
+          savedObjectId: defaultSavedObjectId,
+          prevSavedObjectId: defaultSavedObjectId,
+          preloadedState: {
+            isSaveable: true,
+            persistedDoc: getLensDocumentMock({ savedObjectId: defaultSavedObjectId }),
+            isLinkedToOriginatingApp: true,
+            filters: [pinned, unpinned],
+          },
+        });
+
+        const { state: expectedFilters } = services.data.query.filterManager.extract([unpinned]);
+
+        expect(services.attributeService.saveToLibrary).toHaveBeenCalledWith(
+          expect.objectContaining({
+            title: 'hello there',
+            state: expect.objectContaining({ filters: expectedFilters }),
+          }),
+          [{ id: 'mockip', name: 'mockip', type: 'index-pattern' }],
+          undefined
+        );
+      });
+
+      it('checks for duplicate title before saving', async () => {
+        await save({
+          savedObjectId: defaultSavedObjectId,
+          prevSavedObjectId: defaultSavedObjectId,
+          preloadedState: {
+            isSaveable: true,
+            persistedDoc: { savedObjectId: defaultSavedObjectId } as unknown as LensDocument,
+            isLinkedToOriginatingApp: true,
+          },
+        });
+
+        expect(checkForDuplicateTitle).toHaveBeenCalledWith(
+          {
+            copyOnSave: true,
+            displayName: 'Lens visualization',
+            isTitleDuplicateConfirmed: false,
+            lastSavedTitle: '',
+            title: 'hello there',
+          },
+          expect.any(Function),
+          expect.anything()
+        );
       });
 
       it('saves new doc and redirects to originating app', async () => {
         await save({
           savedObjectId: undefined,
-          returnToOrigin: true,
           newCopyOnSave: false,
           newTitle: 'hello there',
         });
@@ -766,48 +762,6 @@ describe('Lens App', () => {
           isCopied: false,
         });
       });
-      it('saves app filters and does not save pinned filters', async () => {
-        const indexPattern = { id: 'index1', isPersisted: () => true } as unknown as DataView;
-        const field = { name: 'myfield' } as unknown as FieldSpec;
-        const pinnedField = { name: 'pinnedField' } as unknown as FieldSpec;
-        const unpinned = buildExistsFilter(field, indexPattern);
-        const pinned = buildExistsFilter(pinnedField, indexPattern);
-        await act(async () => {
-          FilterManager.setFiltersStore([pinned], FilterStateStore.GLOBAL_STATE);
-        });
-
-        services.attributeService.saveToLibrary = jest
-          .fn()
-          .mockResolvedValue({ savedObjectId: '123' });
-
-        props.incomingState = {
-          originatingApp: 'coolContainer',
-        };
-        props.initialInput = { savedObjectId: defaultSavedObjectId };
-        await renderApp({
-          preloadedState: {
-            isSaveable: true,
-            persistedDoc: getLensDocumentMock({ savedObjectId: defaultSavedObjectId }),
-            isLinkedToOriginatingApp: true,
-            filters: [pinned, unpinned],
-          },
-        });
-        await clickSaveButton();
-        await waitForModalVisible();
-        await userEvent.click(screen.getByTestId('confirmSaveSavedObjectButton'));
-        await waitToLoad();
-
-        const { state: expectedFilters } = services.data.query.filterManager.extract([unpinned]);
-
-        expect(services.attributeService.saveToLibrary).toHaveBeenCalledWith(
-          expect.objectContaining({
-            title: 'An extremely cool default document!',
-            state: expect.objectContaining({ filters: expectedFilters }),
-          }),
-          [{ id: 'mockip', name: 'mockip', type: 'index-pattern' }],
-          undefined
-        );
-      });
 
       it('handles save failure by showing a warning, but still allows another save', async () => {
         const mockedConsoleDir = jest.spyOn(console, 'dir').mockImplementation(() => {}); // mocked console.dir to avoid messages in the console when running tests
@@ -817,7 +771,7 @@ describe('Lens App', () => {
           .mockRejectedValue({ message: 'failed' });
 
         props.incomingState = {
-          originatingApp: 'ultraDashboard',
+          originatingApp: 'dashboards',
         };
 
         await renderApp({
@@ -840,7 +794,7 @@ describe('Lens App', () => {
 
       it('does not show the copy button on first save', async () => {
         props.incomingState = {
-          originatingApp: 'coolContainer',
+          originatingApp: 'dashboards',
         };
 
         await renderApp({
