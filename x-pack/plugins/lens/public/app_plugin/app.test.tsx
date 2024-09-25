@@ -28,6 +28,7 @@ import { buildExistsFilter, FilterStateStore } from '@kbn/es-query';
 import type { FieldSpec } from '@kbn/data-plugin/common';
 import { KibanaContextProvider } from '@kbn/kibana-react-plugin/public';
 import { serverlessMock } from '@kbn/serverless/public/mocks';
+import { cloneDeep } from 'lodash';
 import moment from 'moment';
 import { setState, LensAppState } from '../state_management';
 import { coreMock } from '@kbn/core/public/mocks';
@@ -63,10 +64,9 @@ const defaultSavedObjectId: string = faker.random.uuid();
 const waitToLoad = async () =>
   await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
 
-const getLensDocumentMock = (someProps?: Partial<LensDocument>) => ({
-  ...defaultDoc,
-  ...someProps,
-});
+function getLensDocumentMock(propsOverrides?: Partial<LensDocument>) {
+  return cloneDeep({ ...defaultDoc, ...propsOverrides });
+}
 
 describe('Lens App', () => {
   let props: jest.Mocked<LensAppProps>;
