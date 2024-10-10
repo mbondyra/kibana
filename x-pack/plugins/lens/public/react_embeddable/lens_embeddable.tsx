@@ -6,7 +6,11 @@
  */
 
 import React, { useEffect } from 'react';
-import { useStateFromPublishingSubject } from '@kbn/presentation-publishing';
+import {
+  apiPublishesViewMode,
+  getInheritedViewMode,
+  useStateFromPublishingSubject,
+} from '@kbn/presentation-publishing';
 import { ReactEmbeddableFactory } from '@kbn/embeddable-plugin/public';
 import { DOC_TYPE } from '../../common/constants';
 import {
@@ -96,7 +100,6 @@ export const createLensEmbeddableFactory = (
         getState,
         internalApi,
         stateConfig.api,
-        dashboardConfig.api,
         inspectorConfig.api,
         isTextBasedLanguage,
         services,
@@ -181,14 +184,18 @@ export const createLensEmbeddableFactory = (
       return {
         api,
         Component: () => {
-          const { renderCount$, hasRenderCompleted$, expressionParams$, viewMode$ } = internalApi;
+          const { renderCount$, hasRenderCompleted$, expressionParams$ } = internalApi;
           // Pick up updated params from the observable
           const expressionParams = useStateFromPublishingSubject(expressionParams$);
           // used for functional tests
           const renderCount = useStateFromPublishingSubject(renderCount$);
           // used for reporting/functional tests
           const hasRendered = useStateFromPublishingSubject(hasRenderCompleted$);
-          const canEdit = Boolean(api.isEditingEnabled?.() && viewMode$.getValue() === 'edit');
+          const canEdit = Boolean(
+            api.isEditingEnabled?.() &&
+              apiPublishesViewMode(parentApi) &&
+              getInheritedViewMode(parentApi) === 'edit'
+          );
 
           const [blockingErrors, warningOrErrors, infoMessages] = useMessages(
             getUserMessages,

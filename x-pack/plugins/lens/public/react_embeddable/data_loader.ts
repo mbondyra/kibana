@@ -6,7 +6,13 @@
  */
 
 import type { DefaultInspectorAdapters, RenderMode } from '@kbn/expressions-plugin/common';
-import { fetch$, apiHasExecutionContext, type FetchContext } from '@kbn/presentation-publishing';
+import {
+  fetch$,
+  apiHasExecutionContext,
+  type FetchContext,
+  apiPublishesViewMode,
+  getInheritedViewMode,
+} from '@kbn/presentation-publishing';
 import { apiPublishesSearchSession } from '@kbn/presentation-publishing/interfaces/fetch/publishes_search_session';
 import { type KibanaExecutionContext } from '@kbn/core/public';
 import { BehaviorSubject, type Subscription, distinctUntilChanged, skip } from 'rxjs';
@@ -133,7 +139,9 @@ export function loadEmbeddableData(
           syncCursor: currentState.syncCursor,
           syncTooltips: currentState.syncTooltips,
         },
-        renderMode: currentState.viewMode as RenderMode,
+        renderMode: (apiPublishesViewMode(parentApi) && parentApi.viewMode
+          ? getInheritedViewMode(parentApi)
+          : 'view') as RenderMode,
         services,
         searchSessionId,
         abortController: internalApi.expressionAbortController$.getValue(),
@@ -192,15 +200,17 @@ export function loadEmbeddableData(
     api.savedObjectId.pipe(distinctUntilChanged(fastIsEqual), skip(1)).subscribe(reload),
     internalApi.overrides$.pipe(distinctUntilChanged(fastIsEqual), skip(1)).subscribe(reload),
     internalApi.disableTriggers$.pipe(distinctUntilChanged(fastIsEqual), skip(1)).subscribe(reload),
-
-    // reload on view mode change only if drilldowns are set
-    internalApi.viewMode$.subscribe(() => {
-      // only reload if drilldowns are set
-      if (getState().enhancements?.dynamicActions) {
-        reload();
-      }
-    }),
   ];
+  if (apiPublishesViewMode(parentApi)) {
+    subscriptions.push(
+      parentApi.viewMode.subscribe(() => {
+        // only reload if drilldowns are set
+        if (getState().enhancements?.dynamicActions) {
+          reload();
+        }
+      })
+    );
+  }
 
   return {
     getUserMessages,

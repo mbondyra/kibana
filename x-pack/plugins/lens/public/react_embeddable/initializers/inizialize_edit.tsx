@@ -8,8 +8,9 @@
 import {
   HasEditCapabilities,
   HasSupportedTriggers,
-  PublishesViewMode,
   apiHasAppContext,
+  apiPublishesViewMode,
+  getInheritedViewMode,
 } from '@kbn/presentation-publishing';
 import { ENABLE_ESQL } from '@kbn/esql-utils';
 import { noop } from 'lodash';
@@ -45,7 +46,6 @@ function getSupportedTriggers(
 
 /**
  * Initialize the edit API for the embeddable
- * Note: this has also the side effect to update the viewMode$ if parent publishes it
  **/
 export function initializeEditApi(
   uuid: string,
@@ -53,7 +53,6 @@ export function initializeEditApi(
   getState: GetStateType,
   internalApi: LensInternalApi,
   stateApi: StateManagementConfig['api'],
-  { viewMode }: PublishesViewMode,
   inspectorApi: LensInspectorAdapters,
   isTextBasedLanguage: (currentState: LensRuntimeState) => boolean,
   startDependencies: LensEmbeddableStartServices,
@@ -117,7 +116,7 @@ export function initializeEditApi(
   const { uiSettings, capabilities, data } = startDependencies;
 
   const canEdit = () => {
-    if (viewMode.getValue() !== 'edit') {
+    if (apiPublishesViewMode(parentApi) && getInheritedViewMode(parentApi) !== 'edit') {
       return false;
     }
     // check if it's in ES|QL mode
