@@ -676,14 +676,18 @@ export const InnerWorkspacePanel = React.memo(function InnerWorkspacePanel({
 
 function useReportingState(errors: UserMessage[]): {
   isRenderComplete: boolean;
-  hasDynamicError: boolean;
   setIsRenderComplete: (state: boolean) => void;
-  setDynamicError: (state: boolean) => void;
   nodeRef: React.RefObject<HTMLDivElement>;
+  setDynamicError: (state: boolean) => void;
+  hasDynamicError: boolean;
 } {
   const [isRenderComplete, setIsRenderComplete] = useState(Boolean(errors?.length));
-  const [hasDynamicError, setDynamicError] = useState(false);
+
   const nodeRef = useRef<HTMLDivElement>(null);
+
+  // we use useRef instead of useState to avoid re-renders - we can be sure that the update happens when the data is changed
+  const hasDynamicError = useRef<boolean>(false);
+  const setDynamicError = useCallback((value: boolean) => (hasDynamicError.current = value), []);
 
   useEffect(() => {
     if (isRenderComplete && nodeRef.current) {
@@ -691,7 +695,13 @@ function useReportingState(errors: UserMessage[]): {
     }
   }, [isRenderComplete, errors]);
 
-  return { isRenderComplete, setIsRenderComplete, hasDynamicError, setDynamicError, nodeRef };
+  return {
+    isRenderComplete,
+    setIsRenderComplete,
+    nodeRef,
+    setDynamicError,
+    hasDynamicError: hasDynamicError.current,
+  };
 }
 
 export const VisualizationWrapper = ({
