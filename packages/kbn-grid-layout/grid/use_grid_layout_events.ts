@@ -8,9 +8,16 @@
  */
 
 import deepEqual from 'fast-deep-equal';
-import { useEffect, useRef } from 'react';
+import { useCallback, useRef } from 'react';
 import { resolveGridRow } from './utils/resolve_grid_row';
-import { GridPanelData, GridLayoutStateManager } from './types';
+import {
+  GridPanelData,
+  GridLayoutStateManager,
+  PanelInteractionEvent,
+  UserInteractionEvent,
+  UserMouseEvent,
+  UserTouchEvent,
+} from './types';
 import { isGridDataEqual } from './utils/equality_checks';
 import { isMouseEvent, isTouchEvent } from './utils/sensors';
 
@@ -53,28 +60,26 @@ const scrollOnInterval = (direction: 'up' | 'down') => {
   return interval;
 };
 
-export const useGridLayoutEvents = ({
+const usePointerMoveHandler = ({
   gridLayoutStateManager,
 }: {
   gridLayoutStateManager: GridLayoutStateManager;
 }) => {
-  const pointerClientPosition = useRef({ x: 0, y: 0 });
   const lastRequestedPanelPosition = useRef<GridPanelData | undefined>(undefined);
   const scrollInterval = useRef<NodeJS.Timeout | null>(null);
 
   // -----------------------------------------------------------------------------------------
   // Set up drag events
   // -----------------------------------------------------------------------------------------
-  useEffect(() => {
-    const { runtimeSettings$, interactionEvent$, gridLayout$ } = gridLayoutStateManager;
-
-    const stopAutoScrollIfNecessary = () => {
-      if (scrollInterval.current) {
-        clearInterval(scrollInterval.current);
-        scrollInterval.current = null;
-      }
-    };
-    const calculateUserEvent = (e: Event) => {
+  const pointerMoveHandler = useCallback(
+    (e: Event) => {
+      const stopAutoScrollIfNecessary = () => {
+        if (scrollInterval.current) {
+          clearInterval(scrollInterval.current);
+          scrollInterval.current = null;
+        }
+      };
+      const { runtimeSettings$, interactionEvent$, gridLayout$ } = gridLayoutStateManager;
       const interactionEvent = interactionEvent$.value;
       if (!interactionEvent) {
         // if no interaction event, stop auto scroll (if necessary) and return early
@@ -104,10 +109,7 @@ export const useGridLayoutEvents = ({
         return;
       }
 
-      const pointerClientPixel = {
-        x: pointerClientPosition.current.x,
-        y: pointerClientPosition.current.y,
-      };
+      const pointerClientPixel = getPointerClientPosition(e);
       const panelRect = interactionEvent.panelDiv.getBoundingClientRect();
 
       const { columnCount, gutterSize, rowHeight, columnPixelWidth } = runtimeSettings$.value;
@@ -133,10 +135,6 @@ export const useGridLayoutEvents = ({
       const lastRowIndex = interactionEvent?.targetRowIndex;
       const targetRowIndex = (() => {
         if (isResize) return lastRowIndex;
-        // TODO: a temporary workaround for the issue where the panel moves to a different row when the user uses touch events.
-        // Touch events don't work properly when the DOM element is removed and replaced (which is how we handle moving to another row) so we blocked the ability to move panels to another row.
-        // Reference: https://stackoverflow.com/questions/33298828/touch-move-event-dont-fire-after-touch-start-target-is-removed
-        if (isTouchEvent(e)) return lastRowIndex;
 
         let highestOverlap = -Infinity;
         let highestOverlapRowIndex = -1;
@@ -218,7 +216,7 @@ export const useGridLayoutEvents = ({
         lastRequestedPanelPosition.current = { ...requestedGridData };
 
         // remove the panel from the row it's currently in.
-        const nextLayout = currentLayout.map((row, rowIndex) => {
+        const nextLayout = currentLayout.map((row) => {
           const { [interactionEvent.id]: interactingPanel, ...otherPanels } = row.panels;
           return { ...row, panels: { ...otherPanels } };
         });
@@ -238,26 +236,11 @@ export const useGridLayoutEvents = ({
           gridLayout$.next(nextLayout);
         }
       }
-    };
+    },
+    [gridLayoutStateManager]
+  );
 
-    const onPointerMove = (e: Event) => {
-      // Note: When an item is being interacted with, `mousemove` events continue to be fired, even when the
-      // mouse moves out of the window (i.e. when a panel is being dragged around outside the window).
-      pointerClientPosition.current = getPointerClientPosition(e);
-      calculateUserEvent(e);
-    };
-
-    document.addEventListener('mousemove', onPointerMove, { passive: true });
-    document.addEventListener('scroll', calculateUserEvent, { passive: true });
-    document.addEventListener('touchmove', onPointerMove, { passive: false });
-
-    return () => {
-      document.removeEventListener('mousemove', onPointerMove);
-      document.removeEventListener('scroll', calculateUserEvent);
-      document.removeEventListener('touchmove', onPointerMove);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  return pointerMoveHandler;
 };
 
 function getPointerClientPosition(e: Event) {
@@ -269,3 +252,71 @@ function getPointerClientPosition(e: Event) {
   }
   throw new Error('Unknown event type');
 }
+
+const MOUSE_BUTTON_LEFT = 0;
+
+export const useGridLayoutEvents = ({
+  interactionType,
+  interactionStart,
+  gridLayoutStateManager,
+}: {
+  interactionType: PanelInteractionEvent['type'];
+  interactionStart: (type: PanelInteractionEvent['type'] | 'drop', e: UserInteractionEvent) => void;
+  gridLayoutStateManager: GridLayoutStateManager;
+}) => {
+  const pointerMoveHandler = usePointerMoveHandler({ gridLayoutStateManager });
+
+  const initializeMouseEvents = useCallback(
+    (e: UserMouseEvent) => {
+      if (e.button !== MOUSE_BUTTON_LEFT) return;
+
+      const onDragEnd = () => {
+        interactionStart('drop', e);
+        document.removeEventListener('scroll', pointerMoveHandler);
+        document.removeEventListener('mousemove', pointerMoveHandler);
+      };
+
+      document.addEventListener('scroll', pointerMoveHandler);
+      document.addEventListener('mousemove', pointerMoveHandler);
+      document.addEventListener('mouseup', onDragEnd, { once: true });
+
+      e.stopPropagation();
+      interactionStart(interactionType, e);
+    },
+    [pointerMoveHandler, interactionType, interactionStart]
+  );
+
+  const initializeTouchEvents = useCallback(
+    (e: UserTouchEvent) => {
+      if (e.touches.length > 1) return;
+
+      const onDragEnd = () => {
+        interactionStart('drop', e);
+        e.target!.removeEventListener('touchmove', pointerMoveHandler);
+      };
+
+      e.target!.addEventListener('touchmove', pointerMoveHandler);
+      e.target!.addEventListener('touchend', onDragEnd, { once: true });
+
+      interactionStart(interactionType, e);
+    },
+    [pointerMoveHandler, interactionType, interactionStart]
+  );
+
+  const onDragStart = useCallback(
+    (e: UserMouseEvent | UserTouchEvent) => {
+      const isInteractive =
+        gridLayoutStateManager.expandedPanelId$.value === undefined &&
+        gridLayoutStateManager.accessMode$.getValue() === 'EDIT';
+      if (!isInteractive) return;
+
+      if (isMouseEvent(e)) {
+        initializeMouseEvents(e);
+      } else if (isTouchEvent(e)) {
+        initializeTouchEvents(e);
+      }
+    },
+    [initializeMouseEvents, initializeTouchEvents, gridLayoutStateManager]
+  );
+  return onDragStart;
+};
