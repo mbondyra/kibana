@@ -60,30 +60,32 @@ const scrollOnInterval = (direction: 'up' | 'down') => {
   return interval;
 };
 
+const stopAutoScroll = (scrollInterval?: React.MutableRefObject<NodeJS.Timeout | null>) => {
+  if (scrollInterval?.current) {
+    clearInterval(scrollInterval.current);
+    scrollInterval.current = null;
+  }
+};
+
 const usePointerMoveHandler = ({
   gridLayoutStateManager,
+  scrollInterval,
 }: {
   gridLayoutStateManager: GridLayoutStateManager;
+  scrollInterval: React.MutableRefObject<NodeJS.Timeout | null>;
 }) => {
   const lastRequestedPanelPosition = useRef<GridPanelData | undefined>(undefined);
-  const scrollInterval = useRef<NodeJS.Timeout | null>(null);
 
   // -----------------------------------------------------------------------------------------
   // Set up drag events
   // -----------------------------------------------------------------------------------------
   const pointerMoveHandler = useCallback(
     (e: Event) => {
-      const stopAutoScrollIfNecessary = () => {
-        if (scrollInterval.current) {
-          clearInterval(scrollInterval.current);
-          scrollInterval.current = null;
-        }
-      };
       const { runtimeSettings$, interactionEvent$, gridLayout$ } = gridLayoutStateManager;
       const interactionEvent = interactionEvent$.value;
       if (!interactionEvent) {
         // if no interaction event, stop auto scroll (if necessary) and return early
-        stopAutoScrollIfNecessary();
+        stopAutoScroll(scrollInterval);
         return;
       }
 
@@ -189,13 +191,13 @@ const usePointerMoveHandler = ({
         requestedGridData.row = targetRow;
       }
 
-      // auto scroll when an event is happening close to the top or bottom of the screen
-      const heightPercentage =
-        100 - ((window.innerHeight - pointerClientPixel.y) / window.innerHeight) * 100;
-      const atTheTop = window.scrollY <= 0;
-      const atTheBottom = window.innerHeight + window.scrollY >= document.body.scrollHeight;
-
       if (!isTouchEvent(e)) {
+        // auto scroll when an event is happening close to the top or bottom of the screen
+        const heightPercentage =
+          100 - ((window.innerHeight - pointerClientPixel.y) / window.innerHeight) * 100;
+        const atTheTop = window.scrollY <= 0;
+        const atTheBottom = window.innerHeight + window.scrollY >= document.body.scrollHeight;
+
         const startScrollingUp = heightPercentage < 5 && !atTheTop; // don't scroll up when resizing
         const startScrollingDown = heightPercentage > 95 && !atTheBottom;
         if (startScrollingUp || startScrollingDown) {
@@ -204,7 +206,7 @@ const usePointerMoveHandler = ({
             scrollInterval.current = scrollOnInterval(startScrollingUp ? 'up' : 'down');
           }
         } else {
-          stopAutoScrollIfNecessary();
+          stopAutoScroll(scrollInterval);
         }
       }
 
@@ -264,7 +266,8 @@ export const useGridLayoutEvents = ({
   interactionStart: (type: PanelInteractionEvent['type'] | 'drop', e: UserInteractionEvent) => void;
   gridLayoutStateManager: GridLayoutStateManager;
 }) => {
-  const pointerMoveHandler = usePointerMoveHandler({ gridLayoutStateManager });
+  const scrollInterval = useRef<NodeJS.Timeout | null>(null);
+  const pointerMoveHandler = usePointerMoveHandler({ gridLayoutStateManager, scrollInterval });
 
   const initializeMouseEvents = useCallback(
     (e: UserMouseEvent) => {
@@ -274,13 +277,13 @@ export const useGridLayoutEvents = ({
         interactionStart('drop', e);
         document.removeEventListener('scroll', pointerMoveHandler);
         document.removeEventListener('mousemove', pointerMoveHandler);
+        stopAutoScroll(scrollInterval);
       };
 
       document.addEventListener('scroll', pointerMoveHandler);
       document.addEventListener('mousemove', pointerMoveHandler);
       document.addEventListener('mouseup', onDragEnd, { once: true });
 
-      e.stopPropagation();
       interactionStart(interactionType, e);
     },
     [pointerMoveHandler, interactionType, interactionStart]
