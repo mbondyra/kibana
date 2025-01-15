@@ -12,21 +12,27 @@ import { css } from '@emotion/react';
 import { useEuiTheme } from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
 import React from 'react';
-import { InteractionStart, GridLayoutStateManager } from '../types';
+import { InteractionEventHandler, GridLayoutStateManager } from '../types';
 import { useGridLayoutEvents } from '../use_grid_layout_events';
 
 export const ResizeHandle = ({
-  interactionStart,
+  onInteractionEvent,
   gridLayoutStateManager,
+  rowIndex,
+  panelId,
 }: {
-  interactionStart: InteractionStart;
+  onInteractionEvent: InteractionEventHandler;
   gridLayoutStateManager: GridLayoutStateManager;
+  rowIndex: number;
+  panelId: string;
 }) => {
   const { euiTheme } = useEuiTheme();
   const { onDragStart } = useGridLayoutEvents({
-    interactionStart,
+    onInteractionEvent,
     interactionType: 'resize',
     gridLayoutStateManager,
+    panelId,
+    rowIndex,
   });
 
   return (

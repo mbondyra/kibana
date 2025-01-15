@@ -165,11 +165,8 @@ export const GridRow = forwardRef<HTMLDivElement, GridRowProps>(
               rowIndex={rowIndex}
               gridLayoutStateManager={gridLayoutStateManager}
               renderPanelContents={renderPanelContents}
-              interactionStart={(type, e) => {
-                e.stopPropagation();
-
+              onInteractionEvent={(type) => {
                 if (type === 'drop') {
-                  setInteractionEvent(gridLayoutStateManager, undefined);
                   /**
                    * Ensure the row re-renders to reflect the new panel order after a drag-and-drop interaction, since
                    * the order of rendered panels need to be aligned with how they are displayed in the grid for accessibility
@@ -178,20 +175,6 @@ export const GridRow = forwardRef<HTMLDivElement, GridRowProps>(
                   setPanelIdsInOrder(
                     getKeysInOrder(gridLayoutStateManager.gridLayout$.getValue()[rowIndex].panels)
                   );
-                } else {
-                  const panelRef = gridLayoutStateManager.panelRefs.current[rowIndex][panelId];
-                  if (!panelRef) return;
-
-                  const panelRect = panelRef.getBoundingClientRect();
-                  const pointerOffsets = getPointerOffsets(e, panelRect);
-
-                  setInteractionEvent(gridLayoutStateManager, {
-                    type,
-                    id: panelId,
-                    panelDiv: panelRef,
-                    targetRowIndex: rowIndex,
-                    pointerOffsets,
-                  });
                 }
               }}
               ref={(element) => {
@@ -247,32 +230,3 @@ export const GridRow = forwardRef<HTMLDivElement, GridRowProps>(
     );
   }
 );
-
-const defaultPointerOffsets = {
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-};
-
-function getPointerOffsets(e: UserInteractionEvent, panelRect: DOMRect) {
-  if (isTouchEvent(e)) {
-    if (e.touches.length > 1) return defaultPointerOffsets;
-    const touch = e.touches[0];
-    return {
-      top: touch.clientY - panelRect.top,
-      left: touch.clientX - panelRect.left,
-      right: touch.clientX - panelRect.right,
-      bottom: touch.clientY - panelRect.bottom,
-    };
-  }
-  if (isMouseEvent(e)) {
-    return {
-      top: e.clientY - panelRect.top,
-      left: e.clientX - panelRect.left,
-      right: e.clientX - panelRect.right,
-      bottom: e.clientY - panelRect.bottom,
-    };
-  }
-  throw new Error('Invalid event type');
-}

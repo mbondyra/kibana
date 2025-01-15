@@ -17,7 +17,8 @@ import {
   UserMouseEvent,
   UserTouchEvent,
   RuntimeGridSettings,
-  InteractionStart,
+  InteractionEventHandler,
+  UserInteractionEvent,
 } from './types';
 import { isGridDataEqual } from './utils/equality_checks';
 import { isMouseEvent, isTouchEvent } from './utils/sensors';
@@ -216,26 +217,20 @@ const usePointerMoveHandler = ({
   return pointerMoveHandler;
 };
 
-function getPointerClientPositionForPointerEvents(e: Event) {
-  if (isMouseEvent(e)) {
-    return { x: e.clientX, y: e.clientY };
-  }
-  if (isTouchEvent(e)) {
-    return { x: e.touches[0].clientX, y: e.touches[0].clientY };
-  }
-  throw new Error('Invalid event type');
-}
-
 const MOUSE_BUTTON_LEFT = 0;
 
 export const useGridLayoutEvents = ({
   interactionType,
-  interactionStart,
+  onInteractionEvent,
   gridLayoutStateManager,
+  rowIndex,
+  panelId,
 }: {
   interactionType: PanelInteractionEvent['type'];
-  interactionStart: InteractionStart;
+  onInteractionEvent: InteractionEventHandler;
   gridLayoutStateManager: GridLayoutStateManager;
+  rowIndex: number;
+  panelId: string;
 }) => {
   const scrollInterval = useRef<NodeJS.Timeout | null>(null);
   const pointerMoveHandler = usePointerMoveHandler({ gridLayoutStateManager, scrollInterval });
@@ -245,19 +240,19 @@ export const useGridLayoutEvents = ({
       if (e.button !== MOUSE_BUTTON_LEFT) return;
 
       const onDragEnd = () => {
-        interactionStart('drop', e);
-        document.removeEventListener('scroll', pointerMoveHandler);
+        // document.removeEventListener('scroll', pointerMoveHandler);
         document.removeEventListener('mousemove', pointerMoveHandler);
+
         stopAutoScroll(scrollInterval);
+        drop(gridLayoutStateManager);
+        onInteractionEvent?.('drop');
       };
 
-      document.addEventListener('scroll', pointerMoveHandler);
+      // document.addEventListener('scroll', pointerMoveHandler);
       document.addEventListener('mousemove', pointerMoveHandler);
       document.addEventListener('mouseup', onDragEnd, { once: true });
-
-      interactionStart(interactionType, e);
     },
-    [pointerMoveHandler, interactionType, interactionStart]
+    [pointerMoveHandler, onInteractionEvent, gridLayoutStateManager]
   );
 
   const initializeTouchEvents = useCallback(
@@ -265,16 +260,16 @@ export const useGridLayoutEvents = ({
       if (e.touches.length > 1) return;
 
       const onDragEnd = () => {
-        interactionStart('drop', e);
         e.target!.removeEventListener('touchmove', pointerMoveHandler);
+
+        drop(gridLayoutStateManager);
+        onInteractionEvent?.('drop');
       };
 
-      e.target!.addEventListener('touchmove', pointerMoveHandler);
+      e.target!.addEventListener('touchmove', pointerMoveHandler, { passive: false });
       e.target!.addEventListener('touchend', onDragEnd, { once: true });
-
-      interactionStart(interactionType, e);
     },
-    [pointerMoveHandler, interactionType, interactionStart]
+    [gridLayoutStateManager, pointerMoveHandler, onInteractionEvent]
   );
 
   const onDragStart = useCallback(
@@ -283,17 +278,77 @@ export const useGridLayoutEvents = ({
         gridLayoutStateManager.expandedPanelId$.value === undefined &&
         gridLayoutStateManager.accessMode$.getValue() === 'EDIT';
       if (!isInteractive) return;
+      e.stopPropagation();
 
       if (isMouseEvent(e)) {
         initializeMouseEvents(e);
       } else if (isTouchEvent(e)) {
         initializeTouchEvents(e);
       }
+
+      startInteraction(gridLayoutStateManager, e, interactionType, rowIndex, panelId);
     },
-    [initializeMouseEvents, initializeTouchEvents, gridLayoutStateManager]
+    [
+      initializeMouseEvents,
+      initializeTouchEvents,
+      gridLayoutStateManager,
+      rowIndex,
+      panelId,
+      interactionType,
+    ]
   );
 
   return {
     onDragStart,
   };
 };
+
+const drop = (gridLayoutStateManager: GridLayoutStateManager) => {
+  gridLayoutStateManager.activePanel$.next(undefined);
+  gridLayoutStateManager.interactionEvent$.next(undefined);
+};
+
+const startInteraction = (
+  gridLayoutStateManager: GridLayoutStateManager,
+  e: UserMouseEvent | UserTouchEvent,
+  type: 'drag' | 'resize',
+  rowIndex: number,
+  panelId: string
+) => {
+  const panelRef = gridLayoutStateManager.panelRefs.current[rowIndex][panelId];
+  if (!panelRef) return;
+
+  const panelRect = panelRef.getBoundingClientRect();
+  const pointerOffsets = getPointerOffsets(e, panelRect);
+
+  gridLayoutStateManager.interactionEvent$.next({
+    type,
+    id: panelId,
+    panelDiv: panelRef,
+    targetRowIndex: rowIndex,
+    pointerOffsets,
+  });
+};
+
+function getPointerOffsets(e: UserInteractionEvent, panelRect: DOMRect) {
+  if (!isMouseEvent(e) && !isTouchEvent(e)) {
+    throw new Error('Invalid event type');
+  }
+  const { clientX, clientY } = isTouchEvent(e) ? e.touches[0] : e;
+  return {
+    top: clientY - panelRect.top,
+    left: clientX - panelRect.left,
+    right: clientX - panelRect.right,
+    bottom: clientY - panelRect.bottom,
+  };
+}
+
+function getPointerClientPositionForPointerEvents(e: Event) {
+  if (isMouseEvent(e)) {
+    return { x: e.clientX, y: e.clientY };
+  }
+  if (isTouchEvent(e)) {
+    return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  }
+  throw new Error('Invalid event type');
+}

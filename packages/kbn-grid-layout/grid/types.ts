@@ -131,4 +131,4 @@ export type UserTouchEvent = TouchEvent | React.TouchEvent<HTMLButtonElement>;
 
 export type UserInteractionEvent = React.UIEvent<HTMLElement> | Event;
 
-export type InteractionStart = (type: InteractionType, e: UserMouseEvent | UserTouchEvent) => void;
+export type InteractionEventHandler = (type: InteractionType) => void;

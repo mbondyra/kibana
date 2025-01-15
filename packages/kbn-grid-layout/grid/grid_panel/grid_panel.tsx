@@ -13,7 +13,7 @@ import { combineLatest, skip } from 'rxjs';
 import { useEuiTheme } from '@elastic/eui';
 import { css } from '@emotion/react';
 
-import { GridLayoutStateManager, InteractionStart } from '../types';
+import { GridLayoutStateManager, InteractionEventHandler } from '../types';
 import { DragHandle, DragHandleApi } from './drag_handle';
 import { ResizeHandle } from './resize_handle';
 
@@ -24,13 +24,13 @@ export interface GridPanelProps {
     panelId: string,
     setDragHandles?: (refs: Array<HTMLElement | null>) => void
   ) => React.ReactNode;
-  interactionStart: InteractionStart;
+  onInteractionEvent: InteractionEventHandler;
   gridLayoutStateManager: GridLayoutStateManager;
 }
 
 export const GridPanel = forwardRef<HTMLDivElement, GridPanelProps>(
   (
-    { panelId, rowIndex, renderPanelContents, interactionStart, gridLayoutStateManager },
+    { panelId, rowIndex, renderPanelContents, onInteractionEvent, gridLayoutStateManager },
     panelRef
   ) => {
     const [dragHandleApi, setDragHandleApi] = useState<DragHandleApi | null>(null);
@@ -166,12 +166,16 @@ export const GridPanel = forwardRef<HTMLDivElement, GridPanelProps>(
         <DragHandle
           ref={setDragHandleApi}
           gridLayoutStateManager={gridLayoutStateManager}
-          interactionStart={interactionStart}
+          onInteractionEvent={onInteractionEvent}
+          panelId={panelId}
+          rowIndex={rowIndex}
         />
         {panelContents}
         <ResizeHandle
-          interactionStart={interactionStart}
+          onInteractionEvent={onInteractionEvent}
           gridLayoutStateManager={gridLayoutStateManager}
+          panelId={panelId}
+          rowIndex={rowIndex}
         />
       </div>
     );

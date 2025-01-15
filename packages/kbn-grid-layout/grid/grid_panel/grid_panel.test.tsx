@@ -22,7 +22,7 @@ describe('GridPanel', () => {
         panelId="panel1"
         rowIndex={0}
         renderPanelContents={mockRenderPanelContents}
-        interactionStart={mockInteractionStart}
+        onInteractionEvent={mockInteractionStart}
         gridLayoutStateManager={gridLayoutStateManagerMock}
         {...propsOverrides}
       />
@@ -38,13 +38,13 @@ describe('GridPanel', () => {
   });
 
   describe('drag handle interaction', () => {
-    it('calls `drag` interactionStart on mouse down', () => {
+    it('calls `drag` onInteractionEvent on mouse down', () => {
       renderGridPanel();
       const dragHandle = screen.getByRole('button', { name: /drag to move/i });
       fireEvent.mouseDown(dragHandle);
       expect(mockInteractionStart).toHaveBeenCalledWith('drag', expect.any(Object));
     });
-    it('calls `drop` interactionStart on mouse up', () => {
+    it('calls `drop` onInteractionEvent on mouse up', () => {
       renderGridPanel();
       const dragHandle = screen.getByRole('button', { name: /drag to move/i });
       fireEvent.mouseUp(dragHandle);
@@ -52,13 +52,13 @@ describe('GridPanel', () => {
     });
   });
   describe('resize handle interaction', () => {
-    it('calls `resize` interactionStart on mouse down', () => {
+    it('calls `resize` onInteractionEvent on mouse down', () => {
       renderGridPanel();
       const resizeHandle = screen.getByRole('button', { name: /resize/i });
       fireEvent.mouseDown(resizeHandle);
       expect(mockInteractionStart).toHaveBeenCalledWith('resize', expect.any(Object));
     });
-    it('calls `drop` interactionStart on mouse up', () => {
+    it('calls `drop` onInteractionEvent on mouse up', () => {
       renderGridPanel();
       const resizeHandle = screen.getByRole('button', { name: /resize/i });
       fireEvent.mouseUp(resizeHandle);
