@@ -165,6 +165,11 @@ const usePointerMoveHandler = ({
       }
 
       const pointerClientPixel = getPointerClientPosition(e);
+
+      if (!isTouchEvent(e)) {
+        handleAutoscroll(scrollInterval, pointerClientPixel.y);
+      }
+
       const currentRuntimeSettings = runtimeSettings$.value;
 
       const { columnCount, gutterSize, rowHeight, columnPixelWidth } = currentRuntimeSettings;
@@ -234,10 +239,6 @@ const usePointerMoveHandler = ({
       } else {
         requestedGridData.column = targetColumn;
         requestedGridData.row = targetRow;
-      }
-
-      if (!isTouchEvent(e)) {
-        handleAutoscroll(scrollInterval, pointerClientPixel.y);
       }
 
       // resolve the new grid layout
