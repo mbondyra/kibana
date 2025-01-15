@@ -17,6 +17,7 @@ import {
   UserInteractionEvent,
   UserMouseEvent,
   UserTouchEvent,
+  RuntimeGridSettings,
 } from './types';
 import { isGridDataEqual } from './utils/equality_checks';
 import { isMouseEvent, isTouchEvent } from './utils/sensors';
@@ -58,6 +59,35 @@ const scrollOnInterval = (direction: 'up' | 'down') => {
     count++; // increase the counter to increase the time interval used in the parabola formula
   }, 60);
   return interval;
+};
+
+const calculateResizePreviewRect = (
+  interactionEvent: PanelInteractionEvent,
+  pointerClientPixel: { x: number; y: number },
+  runtimeSettings: RuntimeGridSettings
+) => {
+  const { columnCount, gutterSize, columnPixelWidth } = runtimeSettings;
+  const gridWidth = (gutterSize + columnPixelWidth) * columnCount + gutterSize * 2;
+
+  const panelRect = interactionEvent.panelDiv.getBoundingClientRect();
+  return {
+    left: panelRect.left,
+    top: panelRect.top,
+    bottom: pointerClientPixel.y - interactionEvent.pointerOffsets.bottom,
+    right: Math.min(pointerClientPixel.x - interactionEvent.pointerOffsets.right, gridWidth),
+  };
+};
+
+const calculateDragPreviewRect = (
+  interactionEvent: PanelInteractionEvent,
+  pointerClientPixel: { x: number; y: number }
+) => {
+  return {
+    left: pointerClientPixel.x - interactionEvent.pointerOffsets.left,
+    top: pointerClientPixel.y - interactionEvent.pointerOffsets.top,
+    bottom: pointerClientPixel.y - interactionEvent.pointerOffsets.bottom,
+    right: pointerClientPixel.x - interactionEvent.pointerOffsets.right,
+  };
 };
 
 const stopAutoScroll = (scrollInterval?: React.MutableRefObject<NodeJS.Timeout | null>) => {
@@ -113,32 +143,23 @@ const usePointerMoveHandler = ({
       }
 
       const pointerClientPixel = getPointerClientPosition(e);
-      const panelRect = interactionEvent.panelDiv.getBoundingClientRect();
+      const currentRuntimeSettings = runtimeSettings$.value;
 
-      const { columnCount, gutterSize, rowHeight, columnPixelWidth } = runtimeSettings$.value;
-      const gridWidth = (gutterSize + columnPixelWidth) * columnCount + gutterSize * 2;
+      const { columnCount, gutterSize, rowHeight, columnPixelWidth } = currentRuntimeSettings;
 
       const isResize = interactionEvent?.type === 'resize';
 
-      const previewRect = {
-        left: isResize
-          ? panelRect.left
-          : pointerClientPixel.x - interactionEvent.pointerOffsets.left,
-        top: isResize ? panelRect.top : pointerClientPixel.y - interactionEvent.pointerOffsets.top,
-        bottom: pointerClientPixel.y - interactionEvent.pointerOffsets.bottom,
-        right:
-          isResize && isTouchEvent(e)
-            ? Math.min(pointerClientPixel.x - interactionEvent.pointerOffsets.right, gridWidth)
-            : pointerClientPixel.x - interactionEvent.pointerOffsets.right,
-      };
+      const previewRect = isResize
+        ? calculateResizePreviewRect(interactionEvent, pointerClientPixel, currentRuntimeSettings)
+        : calculateDragPreviewRect(interactionEvent, pointerClientPixel);
 
       activePanel$.next({ id: interactionEvent.id, position: previewRect });
 
       // find the grid that the preview rect is over
-      const previewBottom = previewRect.top + runtimeSettings$.value.rowHeight;
       const lastRowIndex = interactionEvent?.targetRowIndex;
       const targetRowIndex = (() => {
         if (isResize) return lastRowIndex;
+        const previewBottom = previewRect.top + runtimeSettings$.value.rowHeight;
 
         let highestOverlap = -Infinity;
         let highestOverlapRowIndex = -1;
