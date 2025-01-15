@@ -61,6 +61,35 @@ const scrollOnInterval = (direction: 'up' | 'down') => {
   return interval;
 };
 
+const stopAutoScroll = (scrollInterval?: React.MutableRefObject<NodeJS.Timeout | null>) => {
+  if (scrollInterval?.current) {
+    clearInterval(scrollInterval.current);
+    scrollInterval.current = null;
+  }
+};
+
+const handleAutoscroll = (
+  scrollInterval: React.MutableRefObject<NodeJS.Timeout | null>,
+  pointerClientPixelY: number
+) => {
+  // auto scroll when an event is happening close to the top or bottom of the screen
+  const heightPercentage =
+    100 - ((window.innerHeight - pointerClientPixelY) / window.innerHeight) * 100;
+  const atTheTop = window.scrollY <= 0;
+  const atTheBottom = window.innerHeight + window.scrollY >= document.body.scrollHeight;
+
+  const startScrollingUp = heightPercentage < 5 && !atTheTop; // don't scroll up when resizing
+  const startScrollingDown = heightPercentage > 95 && !atTheBottom;
+  if (startScrollingUp || startScrollingDown) {
+    if (!scrollInterval.current) {
+      // only start scrolling if it's not already happening
+      scrollInterval.current = scrollOnInterval(startScrollingUp ? 'up' : 'down');
+    }
+  } else {
+    stopAutoScroll(scrollInterval);
+  }
+};
+
 const calculateResizePreviewRect = (
   interactionEvent: PanelInteractionEvent,
   pointerClientPixel: { x: number; y: number },
@@ -88,13 +117,6 @@ const calculateDragPreviewRect = (
     bottom: pointerClientPixel.y - interactionEvent.pointerOffsets.bottom,
     right: pointerClientPixel.x - interactionEvent.pointerOffsets.right,
   };
-};
-
-const stopAutoScroll = (scrollInterval?: React.MutableRefObject<NodeJS.Timeout | null>) => {
-  if (scrollInterval?.current) {
-    clearInterval(scrollInterval.current);
-    scrollInterval.current = null;
-  }
 };
 
 const usePointerMoveHandler = ({
@@ -215,22 +237,7 @@ const usePointerMoveHandler = ({
       }
 
       if (!isTouchEvent(e)) {
-        // auto scroll when an event is happening close to the top or bottom of the screen
-        const heightPercentage =
-          100 - ((window.innerHeight - pointerClientPixel.y) / window.innerHeight) * 100;
-        const atTheTop = window.scrollY <= 0;
-        const atTheBottom = window.innerHeight + window.scrollY >= document.body.scrollHeight;
-
-        const startScrollingUp = heightPercentage < 5 && !atTheTop; // don't scroll up when resizing
-        const startScrollingDown = heightPercentage > 95 && !atTheBottom;
-        if (startScrollingUp || startScrollingDown) {
-          if (!scrollInterval.current) {
-            // only start scrolling if it's not already happening
-            scrollInterval.current = scrollOnInterval(startScrollingUp ? 'up' : 'down');
-          }
-        } else {
-          stopAutoScroll(scrollInterval);
-        }
+        handleAutoscroll(scrollInterval, pointerClientPixel.y);
       }
 
       // resolve the new grid layout
