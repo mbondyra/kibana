@@ -27,7 +27,7 @@ export const ResizeHandle = ({
   panelId: string;
 }) => {
   const { euiTheme } = useEuiTheme();
-  const { onDragStart } = useGridLayoutEvents({
+  const attachLayoutEvents = useGridLayoutEvents({
     onInteractionEvent,
     interactionType: 'resize',
     gridLayoutStateManager,
@@ -38,8 +38,8 @@ export const ResizeHandle = ({
   return (
     <button
       className="kbnGridPanel__resizeHandle"
-      onMouseDown={onDragStart}
-      onTouchStart={onDragStart}
+      onMouseDown={attachLayoutEvents}
+      onTouchStart={attachLayoutEvents}
       aria-label={i18n.translate('kbnGridLayout.resizeHandle.ariaLabel', {
         defaultMessage: 'Resize panel',
       })}

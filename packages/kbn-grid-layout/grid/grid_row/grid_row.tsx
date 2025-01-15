@@ -16,9 +16,8 @@ import { css } from '@emotion/react';
 
 import { DragPreview } from '../drag_preview';
 import { GridPanel } from '../grid_panel';
-import { GridLayoutStateManager, PanelInteractionEvent, UserInteractionEvent } from '../types';
+import { GridLayoutStateManager } from '../types';
 import { getKeysInOrder } from '../utils/resolve_grid_row';
-import { isMouseEvent, isTouchEvent } from '../utils/sensors';
 import { GridRowHeader } from './grid_row_header';
 
 export interface GridRowProps {
@@ -29,16 +28,6 @@ export interface GridRowProps {
   ) => React.ReactNode;
   gridLayoutStateManager: GridLayoutStateManager;
 }
-
-const setInteractionEvent = (
-  gridLayoutStateManager: GridLayoutStateManager,
-  nextInteractionEvent?: PanelInteractionEvent
-) => {
-  if (!nextInteractionEvent) {
-    gridLayoutStateManager.activePanel$.next(undefined);
-  }
-  gridLayoutStateManager.interactionEvent$.next(nextInteractionEvent);
-};
 
 export const GridRow = forwardRef<HTMLDivElement, GridRowProps>(
   ({ rowIndex, renderPanelContents, gridLayoutStateManager }, gridRef) => {

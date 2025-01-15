@@ -9,49 +9,24 @@
 
 import deepEqual from 'fast-deep-equal';
 import { useCallback, useRef } from 'react';
-import { resolveGridRow } from './utils/resolve_grid_row';
+import { resolveGridRow } from '../utils/resolve_grid_row';
 import {
   GridPanelData,
   GridLayoutStateManager,
   PanelInteractionEvent,
   UserMouseEvent,
   UserTouchEvent,
-  RuntimeGridSettings,
   InteractionEventHandler,
-  UserInteractionEvent,
-} from './types';
-import { isGridDataEqual } from './utils/equality_checks';
-import { isMouseEvent, isTouchEvent } from './utils/sensors';
+} from '../types';
+import { isGridDataEqual } from '../utils/equality_checks';
+import { isMouseEvent, isTouchEvent } from '../utils/sensors';
 import { handleAutoscroll, stopAutoScroll } from './autoscroll';
-
-const calculateResizePreviewRect = (
-  interactionEvent: PanelInteractionEvent,
-  pointerClientPixel: { x: number; y: number },
-  runtimeSettings: RuntimeGridSettings
-) => {
-  const { columnCount, gutterSize, columnPixelWidth } = runtimeSettings;
-  const gridWidth = (gutterSize + columnPixelWidth) * columnCount + gutterSize * 2;
-
-  const panelRect = interactionEvent.panelDiv.getBoundingClientRect();
-  return {
-    left: panelRect.left,
-    top: panelRect.top,
-    bottom: pointerClientPixel.y - interactionEvent.pointerOffsets.bottom,
-    right: Math.min(pointerClientPixel.x - interactionEvent.pointerOffsets.right, gridWidth),
-  };
-};
-
-const calculateDragPreviewRect = (
-  interactionEvent: PanelInteractionEvent,
-  pointerClientPixel: { x: number; y: number }
-) => {
-  return {
-    left: pointerClientPixel.x - interactionEvent.pointerOffsets.left,
-    top: pointerClientPixel.y - interactionEvent.pointerOffsets.top,
-    bottom: pointerClientPixel.y - interactionEvent.pointerOffsets.bottom,
-    right: pointerClientPixel.x - interactionEvent.pointerOffsets.right,
-  };
-};
+import {
+  getDragPreviewRect,
+  getResizePreviewRect,
+  getPointerPosition,
+  getPointerOffsets,
+} from './pointer_event_utils';
 
 const usePointerMoveHandler = ({
   gridLayoutStateManager,
@@ -100,7 +75,7 @@ const usePointerMoveHandler = ({
       }
 
       if (isMouseEvent(e) || isTouchEvent(e)) {
-        pointerClientPixel.current = getPointerClientPositionForPointerEvents(e);
+        pointerClientPixel.current = getPointerPosition(e);
       }
 
       if (!isTouchEvent(e)) {
@@ -114,12 +89,8 @@ const usePointerMoveHandler = ({
       const isResize = interactionEvent?.type === 'resize';
 
       const previewRect = isResize
-        ? calculateResizePreviewRect(
-            interactionEvent,
-            pointerClientPixel.current,
-            currentRuntimeSettings
-          )
-        : calculateDragPreviewRect(interactionEvent, pointerClientPixel.current);
+        ? getResizePreviewRect(interactionEvent, pointerClientPixel.current, currentRuntimeSettings)
+        : getDragPreviewRect(interactionEvent, pointerClientPixel.current);
 
       activePanel$.next({ id: interactionEvent.id, position: previewRect });
 
@@ -235,27 +206,27 @@ export const useGridLayoutEvents = ({
   const scrollInterval = useRef<NodeJS.Timeout | null>(null);
   const pointerMoveHandler = usePointerMoveHandler({ gridLayoutStateManager, scrollInterval });
 
-  const initializeMouseEvents = useCallback(
+  const attachMouseEvents = useCallback(
     (e: UserMouseEvent) => {
       if (e.button !== MOUSE_BUTTON_LEFT) return;
 
       const onDragEnd = () => {
-        // document.removeEventListener('scroll', pointerMoveHandler);
+        document.removeEventListener('scroll', pointerMoveHandler);
         document.removeEventListener('mousemove', pointerMoveHandler);
 
         stopAutoScroll(scrollInterval);
         drop(gridLayoutStateManager);
-        onInteractionEvent?.('drop');
+        onInteractionEvent('drop');
       };
 
-      // document.addEventListener('scroll', pointerMoveHandler);
+      document.addEventListener('scroll', pointerMoveHandler);
       document.addEventListener('mousemove', pointerMoveHandler);
       document.addEventListener('mouseup', onDragEnd, { once: true });
     },
     [pointerMoveHandler, onInteractionEvent, gridLayoutStateManager]
   );
 
-  const initializeTouchEvents = useCallback(
+  const attachTouchEvents = useCallback(
     (e: UserTouchEvent) => {
       if (e.touches.length > 1) return;
 
@@ -263,7 +234,7 @@ export const useGridLayoutEvents = ({
         e.target!.removeEventListener('touchmove', pointerMoveHandler);
 
         drop(gridLayoutStateManager);
-        onInteractionEvent?.('drop');
+        onInteractionEvent('drop');
       };
 
       e.target!.addEventListener('touchmove', pointerMoveHandler, { passive: false });
@@ -272,7 +243,7 @@ export const useGridLayoutEvents = ({
     [gridLayoutStateManager, pointerMoveHandler, onInteractionEvent]
   );
 
-  const onDragStart = useCallback(
+  const attachLayoutEvents = useCallback(
     (e: UserMouseEvent | UserTouchEvent) => {
       const isInteractive =
         gridLayoutStateManager.expandedPanelId$.value === undefined &&
@@ -281,16 +252,16 @@ export const useGridLayoutEvents = ({
       e.stopPropagation();
 
       if (isMouseEvent(e)) {
-        initializeMouseEvents(e);
+        attachMouseEvents(e);
       } else if (isTouchEvent(e)) {
-        initializeTouchEvents(e);
+        attachTouchEvents(e);
       }
 
       startInteraction(gridLayoutStateManager, e, interactionType, rowIndex, panelId);
     },
     [
-      initializeMouseEvents,
-      initializeTouchEvents,
+      attachMouseEvents,
+      attachTouchEvents,
       gridLayoutStateManager,
       rowIndex,
       panelId,
@@ -298,9 +269,7 @@ export const useGridLayoutEvents = ({
     ]
   );
 
-  return {
-    onDragStart,
-  };
+  return attachLayoutEvents;
 };
 
 const drop = (gridLayoutStateManager: GridLayoutStateManager) => {
@@ -329,26 +298,3 @@ const startInteraction = (
     pointerOffsets,
   });
 };
-
-function getPointerOffsets(e: UserInteractionEvent, panelRect: DOMRect) {
-  if (!isMouseEvent(e) && !isTouchEvent(e)) {
-    throw new Error('Invalid event type');
-  }
-  const { clientX, clientY } = isTouchEvent(e) ? e.touches[0] : e;
-  return {
-    top: clientY - panelRect.top,
-    left: clientX - panelRect.left,
-    right: clientX - panelRect.right,
-    bottom: clientY - panelRect.bottom,
-  };
-}
-
-function getPointerClientPositionForPointerEvents(e: Event) {
-  if (isMouseEvent(e)) {
-    return { x: e.clientX, y: e.clientY };
-  }
-  if (isTouchEvent(e)) {
-    return { x: e.touches[0].clientX, y: e.touches[0].clientY };
-  }
-  throw new Error('Invalid event type');
-}
