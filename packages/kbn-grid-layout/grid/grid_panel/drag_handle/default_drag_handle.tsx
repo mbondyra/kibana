@@ -58,6 +58,7 @@ export const DefaultDragHandle = ({
         .kbnGridPanel--expanded & {
           display: none;
         }
+        touch-action: none;
       `}
     >
       <EuiIcon type="grabOmnidirectional" />

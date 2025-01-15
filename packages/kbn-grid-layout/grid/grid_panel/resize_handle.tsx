@@ -76,6 +76,7 @@ export const ResizeHandle = ({
         .kbnGridPanel__dragHandle:has(~ &:focus) {
           opacity: 0 !important;
         }
+        touch-action: none;
       `}
     />
   );
