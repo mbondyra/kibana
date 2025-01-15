@@ -9,7 +9,7 @@
 
 import React, { useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 
-import { GridLayoutStateManager } from '../../types';
+import { GridLayoutStateManager, InteractionStart } from '../../types';
 import { useGridLayoutEvents } from '../../use_grid_layout_events';
 import { DefaultDragHandle } from './default_drag_handle';
 

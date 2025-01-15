@@ -71,6 +71,8 @@ export interface GridLayoutStateManager {
   panelRefs: React.MutableRefObject<Array<{ [id: string]: HTMLDivElement | null }>>;
 }
 
+type InteractionType = 'resize' | 'drag' | 'drop';
+
 /**
  * The information required to start a panel interaction.
  */
@@ -129,7 +131,4 @@ export type UserTouchEvent = TouchEvent | React.TouchEvent<HTMLButtonElement>;
 
 export type UserInteractionEvent = React.UIEvent<HTMLElement> | Event;
 
-export type InteractionStart = (
-  type: 'resize' | 'drag' | 'drop',
-  e: UserMouseEvent | React.TouchEvent<HTMLButtonElement>
-) => void;
+export type InteractionStart = (type: InteractionType, e: UserMouseEvent | UserTouchEvent) => void;
