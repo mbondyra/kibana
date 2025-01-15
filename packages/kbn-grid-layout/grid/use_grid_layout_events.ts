@@ -81,11 +81,17 @@ const usePointerMoveHandler = ({
   // -----------------------------------------------------------------------------------------
   const pointerMoveHandler = useCallback(
     (e: Event) => {
-      const { runtimeSettings$, interactionEvent$, gridLayout$ } = gridLayoutStateManager;
+      const { runtimeSettings$, interactionEvent$, gridLayout$, activePanel$, rowRefs } =
+        gridLayoutStateManager;
       const interactionEvent = interactionEvent$.value;
       if (!interactionEvent) {
         // if no interaction event, stop auto scroll (if necessary) and return early
         stopAutoScroll(scrollInterval);
+        return;
+      }
+
+      const gridRowElements = rowRefs.current;
+      if (!runtimeSettings$.value || !gridRowElements) {
         return;
       }
 
@@ -95,19 +101,14 @@ const usePointerMoveHandler = ({
         e.preventDefault();
       }
 
-      const gridRowElements = gridLayoutStateManager.rowRefs.current;
-
-      const isResize = interactionEvent?.type === 'resize';
-
       const currentLayout = gridLayout$.value;
       const currentGridData = (() => {
-        if (!interactionEvent) return;
         for (const row of currentLayout) {
           if (row.panels[interactionEvent.id]) return row.panels[interactionEvent.id];
         }
       })();
 
-      if (!runtimeSettings$.value || !gridRowElements || !currentGridData) {
+      if (!currentGridData) {
         return;
       }
 
@@ -116,6 +117,8 @@ const usePointerMoveHandler = ({
 
       const { columnCount, gutterSize, rowHeight, columnPixelWidth } = runtimeSettings$.value;
       const gridWidth = (gutterSize + columnPixelWidth) * columnCount + gutterSize * 2;
+
+      const isResize = interactionEvent?.type === 'resize';
 
       const previewRect = {
         left: isResize
@@ -129,11 +132,10 @@ const usePointerMoveHandler = ({
             : pointerClientPixel.x - interactionEvent.pointerOffsets.right,
       };
 
-      gridLayoutStateManager.activePanel$.next({ id: interactionEvent.id, position: previewRect });
+      activePanel$.next({ id: interactionEvent.id, position: previewRect });
 
       // find the grid that the preview rect is over
-      const previewBottom =
-        previewRect.top + gridLayoutStateManager.runtimeSettings$.value.rowHeight;
+      const previewBottom = previewRect.top + runtimeSettings$.value.rowHeight;
       const lastRowIndex = interactionEvent?.targetRowIndex;
       const targetRowIndex = (() => {
         if (isResize) return lastRowIndex;
@@ -239,7 +241,7 @@ const usePointerMoveHandler = ({
         }
       }
     },
-    [gridLayoutStateManager]
+    [gridLayoutStateManager, scrollInterval]
   );
 
   return pointerMoveHandler;
