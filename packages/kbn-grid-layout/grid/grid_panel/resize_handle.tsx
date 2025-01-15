@@ -23,7 +23,7 @@ export const ResizeHandle = ({
   gridLayoutStateManager: GridLayoutStateManager;
 }) => {
   const { euiTheme } = useEuiTheme();
-  const onDragStart = useGridLayoutEvents({
+  const { onDragStart } = useGridLayoutEvents({
     interactionStart,
     interactionType: 'resize',
     gridLayoutStateManager,
