@@ -321,31 +321,8 @@ export const useGridLayoutEvents = ({
     },
     [initializeMouseEvents, initializeTouchEvents, gridLayoutStateManager]
   );
-  const addDragEventListeners = useCallback(
-    (handles: Array<HTMLElement | null>) => {
-      for (const handle of handles) {
-        console.log(handle);
-        if (handle === null) return;
-        handle.addEventListener('mousedown', onDragStart, { passive: true });
-        handle.addEventListener('touchstart', onDragStart, { passive: false });
-      }
-    },
-    [onDragStart]
-  );
 
-  const removeDragEventListeners = useCallback(
-    (handles: Array<HTMLElement | null>) => {
-      for (const handle of handles) {
-        if (handle === null) return;
-        handle.removeEventListener('mousedown', onDragStart);
-        handle.removeEventListener('touchstart', onDragStart);
-      }
-    },
-    [onDragStart]
-  );
   return {
     onDragStart,
-    addDragEventListeners,
-    removeDragEventListeners,
   };
 };

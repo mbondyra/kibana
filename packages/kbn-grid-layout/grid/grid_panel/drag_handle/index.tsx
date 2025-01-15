@@ -27,30 +27,40 @@ export const DragHandle = React.forwardRef<
     ) => void;
   }
 >(({ interactionStart, gridLayoutStateManager }, ref) => {
-  const { addDragEventListeners, removeDragEventListeners, onDragStart } = useGridLayoutEvents({
+  const { onDragStart } = useGridLayoutEvents({
     interactionStart,
     interactionType: 'drag',
     gridLayoutStateManager,
   });
 
   const [dragHandleCount, setDragHandleCount] = useState<number>(0);
-  const dragHandleRefs = useRef<Array<HTMLElement | null>>([]);
+  const removeEventListenersRef = useRef<(() => void) | null>(null);
 
   const setDragHandles = useCallback(
     (dragHandles: Array<HTMLElement | null>) => {
       setDragHandleCount(dragHandles.length);
-      dragHandleRefs.current = dragHandles;
-      addDragEventListeners(dragHandles);
+      for (const handle of dragHandles) {
+        if (handle === null) return;
+        handle.addEventListener('mousedown', onDragStart, { passive: true });
+        handle.addEventListener('touchstart', onDragStart, { passive: false });
+      }
+      removeEventListenersRef.current = () => {
+        for (const handle of dragHandles) {
+          if (handle === null) return;
+          handle.removeEventListener('mousedown', onDragStart);
+          handle.removeEventListener('touchstart', onDragStart);
+        }
+      };
     },
-    [addDragEventListeners]
+    [onDragStart]
   );
 
   useEffect(
     () => () => {
       // on unmount, remove all drag handle event listeners
-      removeDragEventListeners(dragHandleRefs.current);
+      removeEventListenersRef.current?.();
     },
-    [removeDragEventListeners]
+    []
   );
 
   useImperativeHandle(ref, () => ({ setDragHandles }), [setDragHandles]);
