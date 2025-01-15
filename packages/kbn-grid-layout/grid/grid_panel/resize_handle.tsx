@@ -12,14 +12,14 @@ import { css } from '@emotion/react';
 import { useEuiTheme } from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
 import React from 'react';
-import { UserInteractionEvent, PanelInteractionEvent, GridLayoutStateManager } from '../types';
+import { InteractionStart, GridLayoutStateManager } from '../types';
 import { useGridLayoutEvents } from '../use_grid_layout_events';
 
 export const ResizeHandle = ({
   interactionStart,
   gridLayoutStateManager,
 }: {
-  interactionStart: (type: PanelInteractionEvent['type'] | 'drop', e: UserInteractionEvent) => void;
+  interactionStart: InteractionStart;
   gridLayoutStateManager: GridLayoutStateManager;
 }) => {
   const { euiTheme } = useEuiTheme();

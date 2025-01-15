@@ -9,7 +9,7 @@
 
 import React, { useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 
-import { GridLayoutStateManager, PanelInteractionEvent, UserInteractionEvent } from '../../types';
+import { GridLayoutStateManager } from '../../types';
 import { useGridLayoutEvents } from '../../use_grid_layout_events';
 import { DefaultDragHandle } from './default_drag_handle';
 
@@ -21,10 +21,7 @@ export const DragHandle = React.forwardRef<
   DragHandleApi,
   {
     gridLayoutStateManager: GridLayoutStateManager;
-    interactionStart: (
-      type: PanelInteractionEvent['type'] | 'drop',
-      e: UserInteractionEvent
-    ) => void;
+    interactionStart: InteractionStart;
   }
 >(({ interactionStart, gridLayoutStateManager }, ref) => {
   const { onDragStart } = useGridLayoutEvents({

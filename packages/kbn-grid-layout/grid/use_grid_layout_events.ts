@@ -14,10 +14,10 @@ import {
   GridPanelData,
   GridLayoutStateManager,
   PanelInteractionEvent,
-  UserInteractionEvent,
   UserMouseEvent,
   UserTouchEvent,
   RuntimeGridSettings,
+  InteractionStart,
 } from './types';
 import { isGridDataEqual } from './utils/equality_checks';
 import { isMouseEvent, isTouchEvent } from './utils/sensors';
@@ -294,7 +294,7 @@ export const useGridLayoutEvents = ({
   gridLayoutStateManager,
 }: {
   interactionType: PanelInteractionEvent['type'];
-  interactionStart: (type: PanelInteractionEvent['type'] | 'drop', e: UserInteractionEvent) => void;
+  interactionStart: InteractionStart;
   gridLayoutStateManager: GridLayoutStateManager;
 }) => {
   const scrollInterval = useRef<NodeJS.Timeout | null>(null);

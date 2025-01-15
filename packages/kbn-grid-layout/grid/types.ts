@@ -128,3 +128,8 @@ export type UserMouseEvent = MouseEvent | React.MouseEvent<HTMLButtonElement, Mo
 export type UserTouchEvent = TouchEvent | React.TouchEvent<HTMLButtonElement>;
 
 export type UserInteractionEvent = React.UIEvent<HTMLElement> | Event;
+
+export type InteractionStart = (
+  type: 'resize' | 'drag' | 'drop',
+  e: UserMouseEvent | React.TouchEvent<HTMLButtonElement>
+) => void;
