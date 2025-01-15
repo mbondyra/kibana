@@ -60,6 +60,7 @@ const usePointerMoveHandler = ({
   scrollInterval: React.MutableRefObject<NodeJS.Timeout | null>;
 }) => {
   const lastRequestedPanelPosition = useRef<GridPanelData | undefined>(undefined);
+  const pointerClientPixel = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   // -----------------------------------------------------------------------------------------
   // Set up drag events
@@ -97,10 +98,12 @@ const usePointerMoveHandler = ({
         return;
       }
 
-      const pointerClientPixel = getPointerClientPosition(e);
+      if (isMouseEvent(e) || isTouchEvent(e)) {
+        pointerClientPixel.current = getPointerClientPositionForPointerEvents(e);
+      }
 
       if (!isTouchEvent(e)) {
-        handleAutoscroll(scrollInterval, pointerClientPixel.y);
+        handleAutoscroll(scrollInterval, pointerClientPixel.current.y);
       }
 
       const currentRuntimeSettings = runtimeSettings$.value;
@@ -110,8 +113,12 @@ const usePointerMoveHandler = ({
       const isResize = interactionEvent?.type === 'resize';
 
       const previewRect = isResize
-        ? calculateResizePreviewRect(interactionEvent, pointerClientPixel, currentRuntimeSettings)
-        : calculateDragPreviewRect(interactionEvent, pointerClientPixel);
+        ? calculateResizePreviewRect(
+            interactionEvent,
+            pointerClientPixel.current,
+            currentRuntimeSettings
+          )
+        : calculateDragPreviewRect(interactionEvent, pointerClientPixel.current);
 
       activePanel$.next({ id: interactionEvent.id, position: previewRect });
 
@@ -209,14 +216,14 @@ const usePointerMoveHandler = ({
   return pointerMoveHandler;
 };
 
-function getPointerClientPosition(e: Event) {
+function getPointerClientPositionForPointerEvents(e: Event) {
   if (isMouseEvent(e)) {
     return { x: e.clientX, y: e.clientY };
   }
   if (isTouchEvent(e)) {
     return { x: e.touches[0].clientX, y: e.touches[0].clientY };
   }
-  throw new Error('Unknown event type');
+  throw new Error('Invalid event type');
 }
 
 const MOUSE_BUTTON_LEFT = 0;
