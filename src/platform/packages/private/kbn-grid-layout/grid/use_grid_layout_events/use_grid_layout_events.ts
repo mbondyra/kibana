@@ -192,6 +192,11 @@ export const useGridLayoutEvents = ({
       const onEnd = () => {
         commitAction(gridLayoutStateManager);
       };
+      const onBlur = () => {
+        if (gridLayoutStateManager.interactionEvent$.value?.id === panelId) {
+          commitAction(gridLayoutStateManager);
+        }
+      };
 
       if (isMouseEvent(e)) {
         startMouseInteraction({
@@ -220,8 +225,7 @@ export const useGridLayoutEvents = ({
             cancelAction(gridLayoutStateManager);
           },
           onEnd,
-          rowIndex,
-          panelId,
+          onBlur,
         });
       }
     },

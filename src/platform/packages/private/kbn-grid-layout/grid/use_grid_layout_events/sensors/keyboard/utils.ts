@@ -11,7 +11,7 @@ import { RuntimeGridSettings } from '../../../types';
 import { KeyboardCode, UserKeyboardEvent } from './types';
 
 export const dragKeyboardCoordinateGetter = (
-  event: KeyboardEvent,
+  pressedKey: UserKeyboardEvent['code'],
   {
     currentCoordinates,
     runtimeSettings: { columnPixelWidth, gutterSize, rowHeight },
@@ -20,7 +20,7 @@ export const dragKeyboardCoordinateGetter = (
     runtimeSettings: RuntimeGridSettings;
   }
 ) => {
-  switch (event.code) {
+  switch (pressedKey) {
     case KeyboardCode.Right:
       return {
         ...currentCoordinates,
