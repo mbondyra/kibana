@@ -25,7 +25,8 @@ import {
   startTouchInteraction,
 } from './sensors';
 import { getDragPreviewRect, getResizePreviewRect } from './pointer_event_utils';
-import { commitAction, startAction } from './state_manager_actions';
+import { cancelAction, commitAction, startAction } from './state_manager_actions';
+import { isKeyboardEvent, onKeyDown } from './sensors/keyboard/keyboard';
 
 export const useGridLayoutEvents = ({
   interactionType,
@@ -77,14 +78,14 @@ export const useGridLayoutEvents = ({
         pointerPixel.current = getPointerPosition(e);
       }
 
-      const currentRuntimeSettings = runtimeSettings$.value;
+      const runtimeSettings = runtimeSettings$.value;
 
-      const { columnCount, gutterSize, rowHeight, columnPixelWidth } = currentRuntimeSettings;
+      const { columnCount, gutterSize, rowHeight, columnPixelWidth } = runtimeSettings;
 
       const isResize = interactionEvent?.type === 'resize';
 
       const previewRect = isResize
-        ? getResizePreviewRect(interactionEvent, pointerPixel.current, currentRuntimeSettings)
+        ? getResizePreviewRect(interactionEvent, pointerPixel.current, runtimeSettings)
         : getDragPreviewRect(interactionEvent, pointerPixel.current);
 
       activePanel$.next({ id: interactionEvent.id, position: previewRect });
@@ -185,9 +186,17 @@ export const useGridLayoutEvents = ({
       if (!isLayoutInteractive(gridLayoutStateManager)) return;
       e.stopPropagation();
 
+      const onStart = () => {
+        startAction(gridLayoutStateManager, e, interactionType, rowIndex, panelId);
+      };
+      const onEnd = () => {
+        commitAction(gridLayoutStateManager);
+      };
+
       if (isMouseEvent(e)) {
         startMouseInteraction({
           e,
+          onStart,
           onMove: onPointerMove,
           onEnd: () => {
             commitAction(gridLayoutStateManager);
@@ -196,14 +205,25 @@ export const useGridLayoutEvents = ({
       } else if (isTouchEvent(e)) {
         startTouchInteraction({
           e,
+          onStart,
           onMove: onPointerMove,
           onEnd: () => {
             commitAction(gridLayoutStateManager);
           },
         });
+      } else if (isKeyboardEvent(e)) {
+        onKeyDown({
+          e,
+          gridLayoutStateManager,
+          onStart,
+          onCancel: () => {
+            cancelAction(gridLayoutStateManager);
+          },
+          onEnd,
+          rowIndex,
+          panelId,
+        });
       }
-
-      startAction(gridLayoutStateManager, e, interactionType, rowIndex, panelId);
     },
     [gridLayoutStateManager, onPointerMove, rowIndex, panelId, interactionType]
   );

@@ -23,14 +23,13 @@ export const startAction = (
   if (!panelRef) return;
 
   const panelRect = panelRef.getBoundingClientRect();
-  const pointerOffsets = getPointerOffsets(e, panelRect);
 
   gridLayoutStateManager.interactionEvent$.next({
     type,
     id: panelId,
     panelDiv: panelRef,
     targetRowIndex: rowIndex,
-    pointerOffsets,
+    pointerOffsets: getPointerOffsets(e, panelRect),
   });
 };
 
@@ -44,5 +43,18 @@ export const commitAction = ({
   interactionEvent$.next(undefined);
   if (!deepEqual(gridLayout$.getValue(), stableGridLayout$.getValue())) {
     stableGridLayout$.next(cloneDeep(gridLayout$.getValue()));
+  }
+};
+
+export const cancelAction = ({
+  activePanel$,
+  interactionEvent$,
+  stableGridLayout$,
+  gridLayout$,
+}: GridLayoutStateManager) => {
+  activePanel$.next(undefined);
+  interactionEvent$.next(undefined);
+  if (!deepEqual(gridLayout$.getValue(), stableGridLayout$.getValue())) {
+    gridLayout$.next(cloneDeep(stableGridLayout$.getValue()));
   }
 };
