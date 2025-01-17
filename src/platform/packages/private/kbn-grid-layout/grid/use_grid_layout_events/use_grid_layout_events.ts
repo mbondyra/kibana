@@ -27,6 +27,10 @@ import {
 import { getDragPreviewRect, getResizePreviewRect } from './pointer_event_utils';
 import { cancelAction, commitAction, startAction } from './state_manager_actions';
 import { isKeyboardEvent, onKeyDown } from './sensors/keyboard/keyboard';
+import {
+  dragKeyboardCoordinateGetter,
+  resizeKeyboardCoordinateGetter,
+} from './sensors/keyboard/utils';
 
 export const useGridLayoutEvents = ({
   interactionType,
@@ -84,9 +88,27 @@ export const useGridLayoutEvents = ({
 
       const isResize = interactionEvent?.type === 'resize';
 
-      const previewRect = isResize
+      let previewRect = isResize
         ? getResizePreviewRect(interactionEvent, pointerPixel.current, runtimeSettings)
         : getDragPreviewRect(interactionEvent, pointerPixel.current);
+
+      if (isKeyboardEvent(e)) {
+        const { top, bottom, left, right } = interactionEvent.panelDiv.getBoundingClientRect();
+
+        previewRect = isResize
+          ? resizeKeyboardCoordinateGetter(e.code, {
+              currentCoordinates: { top, bottom, left, right },
+              runtimeSettings,
+            })
+          : dragKeyboardCoordinateGetter(e.code, {
+              currentCoordinates: { top, bottom, left, right },
+              runtimeSettings,
+            });
+      }
+
+      if (previewRect === undefined) {
+        return;
+      }
 
       activePanel$.next({ id: interactionEvent.id, position: previewRect });
 
@@ -184,7 +206,6 @@ export const useGridLayoutEvents = ({
   const startInteraction = useCallback(
     (e: UserInteractionEvent) => {
       if (!isLayoutInteractive(gridLayoutStateManager)) return;
-      e.stopPropagation();
 
       const onStart = () => {
         startAction(gridLayoutStateManager, e, interactionType, rowIndex, panelId);
@@ -193,12 +214,16 @@ export const useGridLayoutEvents = ({
         commitAction(gridLayoutStateManager);
       };
       const onBlur = () => {
-        if (gridLayoutStateManager.interactionEvent$.value?.id === panelId) {
+        const {
+          interactionEvent$: { value: { id, targetRowIndex, type } = {} },
+        } = gridLayoutStateManager;
+        if (id === panelId && rowIndex === targetRowIndex && type === interactionType) {
           commitAction(gridLayoutStateManager);
         }
       };
 
       if (isMouseEvent(e)) {
+        e.stopPropagation();
         startMouseInteraction({
           e,
           onStart,
@@ -220,6 +245,7 @@ export const useGridLayoutEvents = ({
         onKeyDown({
           e,
           gridLayoutStateManager,
+          onMove: onPointerMove,
           onStart,
           onCancel: () => {
             cancelAction(gridLayoutStateManager);
