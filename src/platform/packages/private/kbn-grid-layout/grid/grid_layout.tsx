@@ -20,6 +20,7 @@ import { GridAccessMode, GridLayoutData, GridSettings } from './types';
 import { useGridLayoutState } from './use_grid_layout_state';
 import { isLayoutEqual } from './utils/equality_checks';
 import { resolveGridRow } from './utils/resolve_grid_row';
+import { DragPreview } from './drag_preview';
 
 export interface GridLayoutProps {
   layout: GridLayoutData;
@@ -134,6 +135,23 @@ export const GridLayout = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /** Set initial styles based on state at mount to prevent styles from "blipping" */
+  const initialStyles = useMemo(() => {
+    const { columnCount } = gridLayoutStateManager.runtimeSettings$.getValue();
+    return css`
+      .kbnGridRow {
+        height: 100%;
+        display: grid;
+        position: relative;
+        justify-items: stretch;
+        transition: background-color 300ms linear;
+        grid-auto-rows: calc(var(--kbnGridRowHeight) * 1px);
+        grid-template-columns: repeat(${columnCount}, minmax(0, 1fr));
+        gap: calc(var(--kbnGridGutterSize) * 1px);
+      }
+    `;
+  }, [gridLayoutStateManager]);
+
   /**
    * Memoize row children components to prevent unnecessary re-renders
    */
@@ -145,9 +163,6 @@ export const GridLayout = ({
           rowIndex={rowIndex}
           renderPanelContents={renderPanelContents}
           gridLayoutStateManager={gridLayoutStateManager}
-          ref={(element: HTMLDivElement | null) =>
-            (gridLayoutStateManager.rowRefs.current[rowIndex] = element)
-          }
         />
       );
     });
@@ -162,7 +177,9 @@ export const GridLayout = ({
         }}
         className={classNames('kbnGrid', className)}
         css={css`
+          position: relative;
           padding: calc(var(--kbnGridGutterSize) * 1px);
+          ${initialStyles}
 
           &:has(.kbnGridPanel--expanded) {
             ${expandedPanelStyles}
@@ -173,6 +190,7 @@ export const GridLayout = ({
         `}
       >
         {children}
+        <DragPreview gridLayoutStateManager={gridLayoutStateManager} />
       </div>
     </GridHeightSmoother>
   );
@@ -194,31 +212,38 @@ const singleColumnStyles = css`
 const expandedPanelStyles = css`
   height: 100%;
 
-  & .kbnGridRowContainer:has(.kbnGridPanel--expanded) {
-    // targets the grid row container that contains the expanded panel
-    .kbnGridRowHeader {
-      height: 0px; // used instead of 'display: none' due to a11y concerns
-    }
-    .kbnGridRow {
-      display: block !important; // overwrite grid display
-      height: 100%;
-      .kbnGridPanel {
-        &.kbnGridPanel--expanded {
-          height: 100% !important;
-        }
-        &:not(.kbnGridPanel--expanded) {
-          // hide the non-expanded panels
-          position: absolute;
-          top: -9999px;
-          left: -9999px;
-          visibility: hidden; // remove hidden panels and their contents from tab order for a11y
-        }
+  // .kbnGridRowHeader {
+  //   height: 0px; // used instead of 'display: none' due to a11y concerns
+  //   position: absolute;
+  // }
+
+  // TODO: a11y for active panel row
+  & .kbnGridRowHeader {
+    position: absolute;
+    top: -9999px;
+    left: -9999px;
+  }
+
+  & .kbnGridRow:has(.kbnGridPanel--expanded) {
+    // targets the grid row that contains the expanded panel
+    display: block !important; // overwrite grid display
+    height: 100%;
+    .kbnGridPanel {
+      &.kbnGridPanel--expanded {
+        height: 100% !important;
+      }
+      &:not(.kbnGridPanel--expanded) {
+        // hide the non-expanded panels
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+        visibility: hidden; // remove hidden panels and their contents from tab order for a11y
       }
     }
   }
 
-  & .kbnGridRowContainer:not(:has(.kbnGridPanel--expanded)) {
-    // targets the grid row containers that **do not** contain the expanded panel
+  & .kbnGridRow:not(:has(.kbnGridPanel--expanded)) {
+    // targets the grid rows that **do not** contain the expanded panel
     position: absolute;
     top: -9999px;
     left: -9999px;

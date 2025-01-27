@@ -102,7 +102,7 @@ export const GridExample = ({
   const renderPanelContents = useCallback(
     (id: string, setDragHandles?: (refs: Array<HTMLElement | null>) => void) => {
       const currentPanels = mockDashboardApi.panels$.getValue();
-
+      console.log('renderPanelContents');
       return (
         <ReactEmbeddableRenderer
           key={id}

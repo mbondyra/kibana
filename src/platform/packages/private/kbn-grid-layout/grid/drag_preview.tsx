@@ -9,16 +9,13 @@
 
 import React, { useEffect, useRef } from 'react';
 import { combineLatest, skip } from 'rxjs';
-
 import { css } from '@emotion/react';
 
 import { GridLayoutStateManager } from './types';
 
 export const DragPreview = ({
-  rowIndex,
   gridLayoutStateManager,
 }: {
-  rowIndex: number;
   gridLayoutStateManager: GridLayoutStateManager;
 }) => {
   const dragPreviewRef = useRef<HTMLDivElement | null>(null);
@@ -33,17 +30,21 @@ export const DragPreview = ({
         .pipe(skip(1)) // skip the first emit because the drag preview is only rendered after a user action
         .subscribe(([activePanel, proposedGridLayout]) => {
           if (!dragPreviewRef.current) return;
+          const targetRowIndex = gridLayoutStateManager.interactionEvent$.value?.targetRowIndex;
 
-          if (!activePanel || !proposedGridLayout?.[rowIndex].panels[activePanel.id]) {
+          if (
+            !activePanel ||
+            targetRowIndex === undefined ||
+            !proposedGridLayout?.[targetRowIndex].panels[activePanel.id]
+          ) {
             dragPreviewRef.current.style.display = 'none';
           } else {
-            const panel = proposedGridLayout[rowIndex].panels[activePanel.id];
+            const panel = proposedGridLayout[targetRowIndex].panels[activePanel.id];
             dragPreviewRef.current.style.display = 'block';
-            dragPreviewRef.current.style.height = `calc(1px * (${panel.height} * (var(--kbnGridRowHeight) + var(--kbnGridGutterSize)) - var(--kbnGridGutterSize)))`;
-            dragPreviewRef.current.style.width = `calc(1px * (${panel.width} * (var(--kbnGridColumnWidth) + var(--kbnGridGutterSize)) - var(--kbnGridGutterSize)))`;
-            dragPreviewRef.current.style.top = `calc(1px * (${panel.row} * (var(--kbnGridRowHeight) + var(--kbnGridGutterSize))))`;
-            dragPreviewRef.current.style.left = `calc(1px * (${panel.column} * (var(--kbnGridColumnWidth) + var(--kbnGridGutterSize))))`;
-          }
+            dragPreviewRef.current.style.gridColumnStart = `${panel.column + 1}`;
+            dragPreviewRef.current.style.gridColumnEnd = `${panel.column + 1 + panel.width}`;
+            dragPreviewRef.current.style.gridRowStart = `${panel.row + 1}`;
+            dragPreviewRef.current.style.gridRowEnd = `${panel.row + 1 + panel.height}`;    }
         });
 
       return () => {
@@ -57,7 +58,7 @@ export const DragPreview = ({
   return (
     <div
       ref={dragPreviewRef}
-      className={'kbnGridPanel--dragPreview'}
+      className="kbnGridPanel--dragPreview"
       css={css`
         display: none;
         pointer-events: none;
