@@ -9,7 +9,7 @@
 
 import { useCallback, useRef } from 'react';
 
-import { useGridLayoutContext } from '../use_grid_layout_context';
+import { useGridLayoutContext } from '../../use_grid_layout_context';
 import { cancelAction, commitAction, moveAction, startAction } from './row_state_manager_actions';
 import {
   getSensorPosition,
@@ -19,10 +19,10 @@ import {
   startKeyboardInteraction,
   startMouseInteraction,
   startTouchInteraction,
-} from './sensors';
-import { PointerPosition, UserInteractionEvent } from './types';
-import { isLayoutInteractive } from './utils';
-import { getNextPositionForRow } from './utils/keyboard_utils';
+} from '../sensors';
+import { PointerPosition, UserInteractionEvent } from '../types';
+import { isLayoutInteractive } from '../state_manager_selectors';
+import { getNextPositionForRow } from './utils';
 
 /*
  * This hook sets up and manages interaction logic for dragging grid rows.

@@ -7,5 +7,11 @@
  * License v3.0 only", or the "Server Side Public License, v 1".
  */
 
-export { useGridLayoutPanelEvents } from './panel/events';
-export { useGridLayoutRowEvents } from './row/events';
+import { GridLayoutStateManager } from '../types';
+
+export const isLayoutInteractive = (gridLayoutStateManager: GridLayoutStateManager) => {
+  return (
+    gridLayoutStateManager.expandedPanelId$.value === undefined &&
+    gridLayoutStateManager.accessMode$.getValue() === 'EDIT'
+  );
+};
