@@ -27,46 +27,34 @@ import {
 import type { UserInteractionEvent } from '../types';
 import { cancelAction, commitAction, moveAction, startAction } from './state_manager_actions';
 import { getNextKeyboardPositionForPanel } from './utils';
+
+export interface StartDragParams {
+  interactionType: ActivePanelEvent['type'];
+  sectionId?: string;
+  panelId: string;
+}
+
 /*
  * This hook sets up and manages drag/resize interaction logic for grid panels.
  * It initializes event handlers to start, move, and commit the interaction,
  * ensuring responsive updates to the panel's position and grid layout state.
  * The interaction behavior is dynamic and adapts to the input type (mouse, touch, or keyboard).
  */
-export const useGridLayoutPanelEvents = ({
-  interactionType,
-  sectionId,
-  panelId,
-}: {
-  interactionType: ActivePanelEvent['type'];
-  sectionId?: string;
-  panelId: string;
-}) => {
+export const useGridLayoutPanelEvents = () => {
   const { gridLayoutStateManager } = useGridLayoutContext();
-
   const lastRequestedPanelPosition = useRef<GridPanelData | undefined>(undefined);
 
   const onStart = useCallback(
-    (ev: UserInteractionEvent) => {
+    (ev: UserInteractionEvent, { interactionType, sectionId, panelId }: StartDragParams) => {
       if (!sectionId) return;
       startAction(ev, interactionType, gridLayoutStateManager, sectionId, panelId);
     },
-    [gridLayoutStateManager, interactionType, sectionId, panelId]
+    [gridLayoutStateManager]
   );
 
   const onEnd = useCallback(() => {
     commitAction(gridLayoutStateManager);
   }, [gridLayoutStateManager]);
-
-  const onBlur = useCallback(() => {
-    const {
-      activePanelEvent$: { value: { id, targetSection } = {} },
-    } = gridLayoutStateManager;
-    // make sure the user hasn't started another interaction in the meantime
-    if (id === panelId && sectionId === targetSection) {
-      commitAction(gridLayoutStateManager);
-    }
-  }, [gridLayoutStateManager, panelId, sectionId]);
 
   const onCancel = useCallback(() => {
     cancelAction(gridLayoutStateManager);
@@ -97,21 +85,21 @@ export const useGridLayoutPanelEvents = ({
   );
 
   const startInteraction = useCallback(
-    (e: UserInteractionEvent) => {
+    (e: UserInteractionEvent, startParams: StartDragParams) => {
       if (!isLayoutInteractive(gridLayoutStateManager)) {
         return;
       }
       if (isMouseEvent(e)) {
         startMouseInteraction({
           e,
-          onStart,
+          onStart: (ev) => onStart(ev, startParams),
           onMove,
           onEnd,
         });
       } else if (isTouchEvent(e)) {
         startTouchInteraction({
           e,
-          onStart,
+          onStart: (ev) => onStart(ev, startParams),
           onMove,
           onEnd,
         });
@@ -119,16 +107,16 @@ export const useGridLayoutPanelEvents = ({
         if (gridLayoutStateManager.activePanelEvent$.getValue()) return; // interaction has already happened, so don't start again
         startKeyboardInteraction({
           e,
-          onStart,
+          onStart: (ev) => onStart(ev, startParams),
           onMove,
           onEnd,
-          onBlur,
+          onBlur: onEnd,
           onCancel,
         });
       }
     },
-    [gridLayoutStateManager, onStart, onMove, onEnd, onBlur, onCancel]
+    [gridLayoutStateManager, onStart, onMove, onEnd, onCancel]
   );
 
-  return { startDrag: startInteraction };
+  return startInteraction;
 };

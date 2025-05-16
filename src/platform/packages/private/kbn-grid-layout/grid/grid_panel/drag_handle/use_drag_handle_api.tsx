@@ -27,11 +27,25 @@ export const useDragHandleApi = ({
 }): DragHandleApi => {
   const { useCustomDragHandle } = useGridLayoutContext();
 
-  const { startDrag } = useGridLayoutPanelEvents({
-    interactionType: 'drag',
-    panelId,
-    sectionId,
-  });
+  const startInteraction = useGridLayoutPanelEvents();
+
+  // we use ref because subscription is inside of the stable useEffect so the state would be stale
+  const sectionIdRef = useRef(sectionId);
+  // Keep ref in sync with state
+  useEffect(() => {
+    sectionIdRef.current = sectionId;
+  }, [sectionId]);
+
+  const startDrag = useCallback(
+    (ev: UserInteractionEvent) => {
+      return startInteraction(ev, {
+        interactionType: 'drag',
+        sectionId: sectionIdRef.current,
+        panelId,
+      });
+    },
+    [panelId, startInteraction]
+  );
 
   const removeEventListenersRef = useRef<(() => void) | null>(null);
 

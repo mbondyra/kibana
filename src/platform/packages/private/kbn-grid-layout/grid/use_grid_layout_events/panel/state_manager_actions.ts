@@ -17,7 +17,7 @@ import type { GridLayoutContextType } from '../../use_grid_layout_context';
 import { isGridDataEqual, isOrderedLayoutEqual } from '../../utils/equality_checks';
 import { resolveGridSection } from '../../utils/resolve_grid_section';
 import { resolveSections } from '../../utils/section_management';
-import { getSensorType, isKeyboardEvent } from '../sensors';
+import { getSensorType } from '../sensors';
 import type { PointerPosition, UserInteractionEvent } from '../types';
 import { getDragPreviewRect, getResizePreviewRect, getSensorOffsets } from './utils';
 
@@ -88,8 +88,7 @@ export const moveAction = (
   const lastSectionId = activePanel.targetSection;
   let previousSection;
   let targetSectionId: string | undefined = (() => {
-    // TODO: temporary blocking of moving with keyboard between sections till we can fix the bug with commiting the action
-    if (isResize || isKeyboardEvent(e)) return lastSectionId;
+    if (isResize) return lastSectionId;
     // early return - target the first "main" section if the panel is dragged above the layout element
     if (previewRect.top < (gridLayoutElement?.getBoundingClientRect().top ?? 0)) {
       return `main-0`;

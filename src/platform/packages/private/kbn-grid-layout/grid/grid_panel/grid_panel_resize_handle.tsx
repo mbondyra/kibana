@@ -7,22 +7,24 @@
  * License v3.0 only", or the "Server Side Public License, v 1".
  */
 
-import React from 'react';
+import React, { useCallback } from 'react';
 
 import type { UseEuiTheme } from '@elastic/eui';
 import { css } from '@emotion/react';
 import { i18n } from '@kbn/i18n';
 
 import { useGridLayoutPanelEvents } from '../use_grid_layout_events';
+import { UserInteractionEvent } from '../use_grid_layout_events/types';
 
 export const ResizeHandle = React.memo(
   ({ sectionId, panelId }: { sectionId?: string; panelId: string }) => {
-    const { startDrag } = useGridLayoutPanelEvents({
-      interactionType: 'resize',
-      panelId,
-      sectionId,
-    });
-
+    const startInteraction = useGridLayoutPanelEvents();
+    const startDrag = useCallback(
+      (ev: UserInteractionEvent) => {
+        return startInteraction(ev, { interactionType: 'resize', sectionId, panelId });
+      },
+      [sectionId, panelId, startInteraction]
+    );
     return (
       <button
         css={styles}
