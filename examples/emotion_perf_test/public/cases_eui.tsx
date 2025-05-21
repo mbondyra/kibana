@@ -8,16 +8,18 @@
  */
 
 import React, { useMemo } from 'react';
-import { css, cx } from '@emotion/css';
+import { css } from '@emotion/css';
+import { useEuiTheme } from '@elastic/eui';
 
 // Case A: Emotion inline styles
 export const InlineStylesRow = ({ disabled, index }: { disabled: boolean; index: number }) => {
+  const {euiTheme} = useEuiTheme();
   return (
     <div
       css={{
         outline: 0,
         border: 0,
-        margin: '2px 2px',
+        margin: euiTheme.size.xxs,
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'anchor-center',
@@ -57,17 +59,18 @@ const disabledBase = {
 
 // Case B: The condition is outside of the css prop
 export const ComposedStylesRow = ({ disabled, index }: { disabled: boolean; index: number }) => {
-  return <div className={cx(css(base), css(disabled && disabledBase))}>{index}</div>;
+  return <div css={[css(base), css(disabled && disabledBase)]}>{index}</div>;
 };
 
 // Case C: Styles are memoized
-export const useMemoStyles = (disabled: boolean) =>
+export const useMemoStyles = (disabled: boolean) =>{
+  const {euiTheme} = useEuiTheme();
   useMemo(
     () =>
       css({
         outline: 0,
         border: 0,
-        margin: '2px 2px',
+        margin: euiTheme.size.xxs,
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'anchor-center',
@@ -80,10 +83,10 @@ export const useMemoStyles = (disabled: boolean) =>
       }),
     [disabled]
   );
-
+}
 export const MemoizedStylesRow = ({ disabled, index }: { disabled: boolean; index: number }) => {
   const cls = useMemoStyles(disabled);
-  return <div className={cls}> {index}</div>;
+  return <div css={cls}> {index}</div>;
 };
 
 // Case D: CSS variables scoped to the component + single base class
@@ -109,7 +112,7 @@ export const ScopedCSSVarRow = ({ disabled, index }: { disabled: boolean; index:
     '--background': disabled ? '#C61E25' : '#008A5E',
   } as React.CSSProperties;
   return (
-    <div className={baseClass} style={vars}>
+    <div css={baseClass} style={vars}>
       {index}
     </div>
   );
@@ -117,7 +120,7 @@ export const ScopedCSSVarRow = ({ disabled, index }: { disabled: boolean; index:
 
 // Case E: CSS variables added to the root + single base class
 export const RootCSSVarRow = ({ index }: { disabled: boolean; index: number }) => {
-  return <div className={baseClass}>{index}</div>;
+  return <div css={baseClass}>{index}</div>;
 };
 
 // Case F: Styling through setting a classname and adding styles to the parent
