@@ -30,6 +30,7 @@ export interface AlertsSolutionSelectorProps {
   isError?: boolean;
   solution?: RuleTypeSolution;
   onSolutionChange: (newSolution: RuleTypeSolution) => void;
+  autoFocus?: boolean;
 }
 
 const featuresIcons: Record<string, string> = {
@@ -41,7 +42,7 @@ const featuresIcons: Record<string, string> = {
 export const AlertsSolutionSelector = forwardRef<
   EuiSuperSelect<RuleTypeSolution>,
   AlertsSolutionSelectorProps
->(({ availableSolutions, isLoading, isError, solution, onSolutionChange }, ref) => {
+>(({ availableSolutions, isLoading, isError, solution, onSolutionChange, autoFocus }, ref) => {
   const options = useMemo<Array<EuiSuperSelectOption<RuleTypeSolution>>>(() => {
     if (!availableSolutions) {
       return [];
@@ -69,6 +70,7 @@ export const AlertsSolutionSelector = forwardRef<
       data-test-subj={SOLUTION_SELECTOR_SUBJ}
     >
       <EuiSuperSelect
+        autoFocus={autoFocus}
         ref={ref}
         isLoading={isLoading}
         isInvalid={isError}

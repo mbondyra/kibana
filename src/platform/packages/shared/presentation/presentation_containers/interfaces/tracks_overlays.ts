@@ -9,6 +9,7 @@
 
 import { OverlayRef } from '@kbn/core-mount-utils-browser';
 
+// todo: this will be removed after rewriting all the flyout to openLazyFlyout
 export interface TracksOverlaysOptions {
   /**
    * If present, the panel with this ID will be focused when the overlay is opened. This can be used in tandem with a push
@@ -24,6 +25,6 @@ export interface TracksOverlays {
 
 export const tracksOverlays = (root: unknown): root is TracksOverlays => {
   return Boolean(
-    root && (root as TracksOverlays).openOverlay && (root as TracksOverlays).clearOverlays
+    root && typeof root === 'object' && 'openOverlay' in root && 'clearOverlays' in root
   );
 };

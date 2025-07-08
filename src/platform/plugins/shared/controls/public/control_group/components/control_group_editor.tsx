@@ -80,6 +80,7 @@ export const ControlGroupEditor = ({ onCancel, onSave, onDeleteAll, stateManager
         <EuiForm component="form" fullWidth>
           <EuiFormRow label={ControlGroupStrings.management.labelPosition.getLabelPositionTitle()}>
             <EuiButtonGroup
+              autoFocus
               buttonSize="compressed"
               options={CONTROL_LAYOUT_OPTIONS}
               data-test-subj="control-group-layout-options"
