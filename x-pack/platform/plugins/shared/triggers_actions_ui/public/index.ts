@@ -77,14 +77,8 @@ export {
   SectionLoading,
 } from './application/components';
 
-export {
-  hasMustacheTokens,
-  templateActionVariable,
-  updateActionConnector,
-  executeAction,
-} from './application/lib';
-
 export { AlertProvidedActionVariables } from '@kbn/alerts-ui-shared';
+export { templateActionVariable, updateActionConnector, executeAction } from './application/lib';
 
 export function plugin(context: PluginInitializerContext) {
   return new Plugin(context);
