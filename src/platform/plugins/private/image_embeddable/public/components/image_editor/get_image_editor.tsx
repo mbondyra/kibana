@@ -25,7 +25,7 @@ export const getImageEditor = async ({
   ariaLabelledBy,
 }: {
   initialImageConfig?: ImageConfig;
-  onSave?: (imageConfig: ImageConfig) => void;
+  onSave?: (imageConfig: ImageConfig) => Promise<void>;
   closeFlyout: () => void;
   ariaLabelledBy: string;
 }) => {
@@ -47,8 +47,8 @@ export const getImageEditor = async ({
       >
         <ImageEditorFlyout
           user={user}
-          onSave={(imageConfig: ImageConfig) => {
-            onSave?.(imageConfig);
+          onSave={async (imageConfig: ImageConfig) => {
+            await onSave?.(imageConfig);
             closeFlyout();
           }}
           onCancel={closeFlyout}

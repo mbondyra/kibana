@@ -34,6 +34,7 @@ import {
   showSaveModal,
 } from '@kbn/saved-objects-plugin/public';
 import { Action, IncompatibleActionError } from '@kbn/ui-actions-plugin/public';
+import { focusFirstFocusable } from '@kbn/presentation-util';
 
 import { coreServices } from '../services/kibana_services';
 import { dashboardAddToLibraryActionStrings } from './_dashboard_actions_strings';
@@ -115,7 +116,13 @@ export class AddToLibraryAction implements Action<EmbeddableApiContext> {
         showSaveModal(
           <SavedObjectSaveModal
             onSave={onSave}
-            onClose={() => {}}
+            onClose={() => {
+              // focus the panel
+              const triggerId = apiHasUniqueId(embeddable) ? `panel-${embeddable.uuid}` : undefined;
+              if (triggerId) {
+                focusFirstFocusable(document.getElementById(triggerId));
+              }
+            }}
             title={lastTitle ?? ''}
             showCopyOnSave={false}
             objectType={
@@ -127,8 +134,14 @@ export class AddToLibraryAction implements Action<EmbeddableApiContext> {
           />
         );
       });
-
       await embeddable.parentApi.replacePanel(embeddable.uuid, byRefPackage);
+
+      // focus the panel
+      const triggerId = apiHasUniqueId(embeddable) ? `panel-${embeddable.uuid}` : undefined;
+      if (triggerId) {
+        focusFirstFocusable(document.getElementById(triggerId));
+      }
+
       coreServices.notifications.toasts.addSuccess({
         title: dashboardAddToLibraryActionStrings.getSuccessMessage(`'${libraryTitle}'`),
         'data-test-subj': 'addPanelToLibrarySuccess',

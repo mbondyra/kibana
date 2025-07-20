@@ -166,6 +166,7 @@ export const RangeSliderControl: FC<Props> = ({
         'data-test-subj': `rangeSlider__${testSubj}`,
         'aria-label': ariaLabel,
         'aria-labelledby': `control-title-${id}`,
+        tabIndex: -1,
         id: `controls-range-slider-${id}`,
       };
     },

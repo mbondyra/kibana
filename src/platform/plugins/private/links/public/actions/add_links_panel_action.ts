@@ -16,6 +16,7 @@ import {
   apiPublishesDescription,
   apiPublishesTitle,
   apiPublishesSavedObjectId,
+  apiHasUniqueId,
 } from '@kbn/presentation-publishing';
 import { openLazyFlyout } from '@kbn/presentation-util';
 import type { LinksParentApi, LinksSerializedState } from '../types';
@@ -39,7 +40,7 @@ export const addLinksPanelAction: ActionDefinition<EmbeddableApiContext> = {
   isCompatible: async ({ embeddable }) => isParentApiCompatible(embeddable),
   execute: async ({ embeddable }) => {
     if (!isParentApiCompatible(embeddable)) throw new IncompatibleActionError();
-
+    let newlyCreatedPanel: unknown;
     openLazyFlyout({
       core: coreServices,
       parentApi: embeddable,
@@ -65,11 +66,11 @@ export const addLinksPanelAction: ActionDefinition<EmbeddableApiContext> = {
                 rawState: {
                   attributes,
                 },
-                references,
+                references, 
               };
             }
 
-            await embeddable.addNewPanel<LinksSerializedState>({
+            newlyCreatedPanel = await embeddable.addNewPanel<LinksSerializedState>({
               panelType: CONTENT_ID,
               serializedState: serializeState(),
             });
@@ -78,6 +79,11 @@ export const addLinksPanelAction: ActionDefinition<EmbeddableApiContext> = {
       },
       flyoutProps: {
         'data-test-subj': 'links--panelEditor--flyout',
+        getFocusedElementAfterClose: () => {
+          return apiHasUniqueId(newlyCreatedPanel)
+            ? document.getElementById(`panel-${newlyCreatedPanel.uuid}`)
+            : document.getElementById(`dashboardEditorMenuButton`);
+        },
       },
     });
   },

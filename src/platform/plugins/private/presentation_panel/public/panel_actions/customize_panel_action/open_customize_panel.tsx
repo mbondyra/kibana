@@ -43,6 +43,8 @@ export function openCustomizePanelFlyout({
     flyoutProps: {
       'data-test-subj': 'customizePanel',
       focusedPanelId: apiHasUniqueId(api) ? api.uuid : undefined,
+      getFocusedElementAfterClose: () =>
+        apiHasUniqueId(api) ? document.getElementById(`panel-${api.uuid}`) : null,
     },
   });
 }

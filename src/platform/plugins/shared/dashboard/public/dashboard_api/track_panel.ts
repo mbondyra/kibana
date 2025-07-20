@@ -11,7 +11,7 @@ import { BehaviorSubject, Subject } from 'rxjs';
 
 export const highlightAnimationDuration = 2000;
 
-export function initializeTrackPanel(untilLoaded: (id: string) => Promise<undefined>) {
+export function initializeTrackPanel(untilLoaded: (id: string) => Promise<undefined>, hasOverlaysOpen: () => boolean) {
   const expandedPanelId$ = new BehaviorSubject<string | undefined>(undefined);
   const focusedPanelId$ = new BehaviorSubject<string | undefined>(undefined);
   const highlightPanelId$ = new BehaviorSubject<string | undefined>(undefined);
@@ -49,7 +49,12 @@ export function initializeTrackPanel(untilLoaded: (id: string) => Promise<undefi
       if (id && panelRef) {
         untilLoaded(id).then(() => {
           // Adds the highlight class in the next event loop to allow the DOM to update
-          setTimeout(() => panelRef.classList.add('dshDashboardGrid__item--highlighted'), 0);
+          setTimeout(() => {
+            panelRef.classList.add('dshDashboardGrid__item--highlighted')
+            if (!hasOverlaysOpen()) {
+              panelRef.focus();
+            }
+          }, 0);
           // Removes the class after the highlight animation finishes
           setTimeout(() => {
             panelRef.classList.remove('dshDashboardGrid__item--highlighted');
@@ -86,6 +91,7 @@ export function initializeTrackPanel(untilLoaded: (id: string) => Promise<undefi
     },
     setHighlightPanelId: (id: string | undefined) => {
       if (highlightPanelId$.value !== id) highlightPanelId$.next(id);
+      // focusFirstFocusable(document.getElementById(`panel-${id}`));
     },
     setScrollToPanelId,
   };

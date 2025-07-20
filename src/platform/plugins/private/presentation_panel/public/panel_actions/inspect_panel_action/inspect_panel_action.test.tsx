@@ -80,6 +80,7 @@ describe('Inspect panel action', () => {
         title: 'some-title',
         flyoutProps: {
           focusedPanelId: 'some-uuid',
+          triggerId: 'panel-some-uuid',
           type: 'push',
         },
       },

@@ -28,6 +28,7 @@ import {
   initializeStateManager,
   titleComparators,
   StateComparators,
+  apiHasUniqueId,
 } from '@kbn/presentation-publishing';
 import React from 'react';
 import { PresentationContainer, apiIsPresentationContainer } from '@kbn/presentation-containers';
@@ -122,6 +123,13 @@ export const getSavedBookEmbeddableFactory = (core: CoreStart) => {
                 },
               });
             },
+            flyoutProps: {
+              getFocusedElementAfterClose: () => {
+                return apiHasUniqueId(api)
+                  ? document.getElementById(`panel-${api.uuid}`)
+                  : null
+              },
+            }
           });
         },
         isEditingEnabled: () => true,

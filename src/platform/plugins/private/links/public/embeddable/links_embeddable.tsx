@@ -264,6 +264,8 @@ export const getLinksEmbeddableFactory = () => {
             },
             flyoutProps: {
               'data-test-subj': 'links--panelEditor--flyout',
+              focusedPanelId: api.uuid,
+              getFocusedElementAfterClose: () => document.getElementById(`panel-${api.uuid}`),
             },
           });
         },

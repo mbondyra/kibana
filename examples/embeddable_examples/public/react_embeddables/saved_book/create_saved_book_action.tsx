@@ -10,7 +10,7 @@
 import { CoreStart } from '@kbn/core/public';
 import { i18n } from '@kbn/i18n';
 import { apiCanAddNewPanel } from '@kbn/presentation-containers';
-import { EmbeddableApiContext, initializeStateManager } from '@kbn/presentation-publishing';
+import { EmbeddableApiContext, apiHasUniqueId, initializeStateManager } from '@kbn/presentation-publishing';
 import { ADD_PANEL_TRIGGER, IncompatibleActionError } from '@kbn/ui-actions-plugin/public';
 import { UiActionsPublicStart } from '@kbn/ui-actions-plugin/public/plugin';
 import { openLazyFlyout } from '@kbn/presentation-util';
@@ -34,6 +34,8 @@ export const registerCreateSavedBookAction = (uiActions: UiActionsPublicStart, c
         defaultBookState,
         defaultBookState
       );
+      let newlyCreatedPanel: unknown;
+
       openLazyFlyout({
         core,
         parentApi: parent,
@@ -44,7 +46,7 @@ export const registerCreateSavedBookAction = (uiActions: UiActionsPublicStart, c
             stateManager: newBookStateManager,
             isCreate: true,
             onSubmit: async ({ savedObjectId }) => {
-              embeddable.addNewPanel<BookEmbeddableState>({
+              newlyCreatedPanel = await embeddable.addNewPanel<BookEmbeddableState>({
                 panelType: BOOK_EMBEDDABLE_TYPE,
                 serializedState: {
                   rawState: savedObjectId
@@ -55,6 +57,13 @@ export const registerCreateSavedBookAction = (uiActions: UiActionsPublicStart, c
             },
           });
         },
+        flyoutProps: {
+          getFocusedElementAfterClose: () => {
+            return apiHasUniqueId(newlyCreatedPanel)
+              ? document.getElementById(`panel-${newlyCreatedPanel.uuid}`)
+              : document.getElementById(`dashboardEditorMenuButton`);
+          },
+        }
       });
     },
     getDisplayName: () =>

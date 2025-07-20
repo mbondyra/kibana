@@ -53,6 +53,7 @@ export const mountInlinePanel = async ({
       ...lensFlyoutProps,
       'data-test-subj': dataTestSubj ?? 'customizeLens',
       focusedPanelId: uuid,
+      getFocusedElementAfterClose: () => (uuid && document.getElementById(`panel-${uuid}`) || document.getElementById('dashboardEditorMenuButton')), //TODO
     },
   });
 };

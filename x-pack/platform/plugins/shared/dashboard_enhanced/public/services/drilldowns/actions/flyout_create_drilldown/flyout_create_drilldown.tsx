@@ -118,6 +118,8 @@ export const flyoutCreateDrilldownAction: ActionDefinition<EmbeddableApiContext>
         'data-test-subj': 'createDrilldownFlyout',
         'aria-labelledby': 'drilldownFlyoutTitleAriaId',
         focusedPanelId: apiHasUniqueId(embeddable) ? embeddable.uuid : undefined,
+        getFocusedElementAfterClose: () =>
+          apiHasUniqueId(embeddable) ? document.getElementById(`panel-${embeddable.uuid}`) : null,
       },
     });
   },

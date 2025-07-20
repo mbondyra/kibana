@@ -69,6 +69,7 @@ export class InspectPanelAction implements Action<EmbeddableApiContext> {
         flyoutProps: {
           type: 'push',
           focusedPanelId: apiHasUniqueId(embeddable) ? embeddable.uuid : undefined,
+          triggerId: apiHasUniqueId(embeddable) ? `panel-${embeddable.uuid}` : undefined,
         },
       },
       embeddable.parentApi

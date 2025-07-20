@@ -103,10 +103,14 @@ export const getImageEmbeddableFactory = ({
                 closeFlyout,
                 ariaLabelledBy,
                 initialImageConfig: imageConfig$.getValue(),
-                onSave: (newImageConfig: ImageConfig) => {
+                onSave: async (newImageConfig: ImageConfig) => {
                   imageConfig$.next(newImageConfig);
                 },
               });
+            },
+            flyoutProps: {
+              focusedPanelId: uuid,
+              getFocusedElementAfterClose: () => document.getElementById(`panel-${uuid}`),
             },
           });
         },

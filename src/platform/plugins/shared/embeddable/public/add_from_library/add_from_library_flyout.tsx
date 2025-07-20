@@ -19,7 +19,7 @@ import {
 } from '@kbn/saved-objects-finder-plugin/public';
 
 import { METRIC_TYPE } from '@kbn/analytics';
-import { apiHasType } from '@kbn/presentation-publishing';
+import { apiHasType, apiHasUniqueId } from '@kbn/presentation-publishing';
 import { CanAddNewPanel } from '@kbn/presentation-containers';
 import {
   core,
@@ -45,9 +45,11 @@ const runAddTelemetry = (
 export const AddFromLibraryFlyout = ({
   container,
   modalTitleId,
+  setPanelToFocus,
 }: {
   container: CanAddNewPanel;
   modalTitleId?: string;
+  setPanelToFocus?: (uuid?: string) => void
 }) => {
   const libraryTypes = useAddFromLibraryTypes();
 
@@ -68,8 +70,12 @@ export const AddFromLibraryFlyout = ({
         );
         return;
       }
-      libraryType.onAdd(container, savedObject);
+      const embeddable = await libraryType.onAdd(container, savedObject);
       runAddTelemetry(container, savedObject, libraryType.savedObjectMetaData);
+
+      if (setPanelToFocus && apiHasUniqueId(embeddable)) {
+        setPanelToFocus(embeddable.uuid)
+      }
     },
     [container]
   );
