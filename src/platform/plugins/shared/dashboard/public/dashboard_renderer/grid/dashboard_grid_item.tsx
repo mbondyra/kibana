@@ -93,16 +93,19 @@ export const Item = React.forwardRef<HTMLDivElement, Props>(
         if (highlightPanelId === id) {
           dashboardApi.highlightPanel(panelRef);
         }
+             // const focusable = panelRef.querySelectorAll(
+        //   'a[href], button, input, select, textarea, [tabindex]'
+        // );
 
-        panelRef.querySelectorAll('*').forEach((e) => {
-          if (blurPanel) {
-            // remove blurred panels and nested elements from tab order
-            e.setAttribute('tabindex', '-1');
-          } else {
-            // restore tab order
-            e.removeAttribute('tabindex');
-          }
-        });
+        if (blurPanel) {
+          panelRef.setAttribute('inert', 'true');
+          // remove blurred panels and nested elements from tab order
+          // focusable.forEach((e) => e.setAttribute('tabindex', '-1'));
+        } else {
+          // restore tab order
+          panelRef.removeAttribute('inert');
+          // focusable.forEach((e) => e.removeAttribute('tabindex'));
+        }
       }
     }, [id, dashboardApi, scrollToPanelId, highlightPanelId, ref, blurPanel]);
 
@@ -147,6 +150,7 @@ export const Item = React.forwardRef<HTMLDivElement, Props>(
         css={[focusStyles, styles.item]}
         className={[classes, className].join(' ')}
         data-test-subj="dashboardPanel"
+        tabIndex={-1}
         id={`panel-${id}`}
         ref={ref}
         {...rest}
@@ -222,6 +226,10 @@ const dashboardGridItemStyles = {
         },
         '.kbnAppWrapper--hiddenChrome & .dshDashboardGrid__item--expanded': {
           padding: 0,
+        },
+        // This style is applied when the panel is focused after closing any associated flyout (inspect, edit, settings, drilldowns etc.)
+        '&:focus': {
+          '--hoverActionsBorderStyle': `${context.euiTheme.border.width.thick} solid ${context.euiTheme.colors.vis.euiColorVis0}`,
         },
       },
       getHighlightStyles(context),
