@@ -13,7 +13,15 @@ import { useAppFixedViewport } from '@kbn/core-rendering-browser';
 import { GridLayout, GridPanelData, GridSectionData, type GridLayoutData } from '@kbn/grid-layout';
 import { useBatchedPublishingSubjects } from '@kbn/presentation-publishing';
 import classNames from 'classnames';
-import { default as React, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  default as React,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useMemoCss } from '@kbn/css-utils/public/use_memo_css';
 import { DASHBOARD_GRID_COLUMN_COUNT } from '../../../common/content_management/constants';
 import type { GridData } from '../../../server/content_management';
@@ -24,6 +32,7 @@ import {
   DASHBOARD_GRID_HEIGHT,
   DASHBOARD_MARGIN_SIZE,
   DEFAULT_DASHBOARD_DRAG_TOP_OFFSET,
+  HOVER_ACTIONS_HEIGHT,
 } from './constants';
 import { DashboardGridItem } from './dashboard_grid_item';
 import { useLayoutStyles } from './use_layout_styles';
@@ -39,14 +48,16 @@ export const DashboardGrid = ({
 
   const layoutStyles = useLayoutStyles();
   const panelRefs = useRef<{ [panelId: string]: React.Ref<HTMLDivElement> }>({});
-
   const [topOffset, setTopOffset] = useState(DEFAULT_DASHBOARD_DRAG_TOP_OFFSET);
-  const [expandedPanelId, layout, useMargins, viewMode] = useBatchedPublishingSubjects(
-    dashboardApi.expandedPanelId$,
-    dashboardInternalApi.layout$,
-    dashboardApi.settings.useMargins$,
-    dashboardApi.viewMode$
-  );
+
+  const [expandedPanelId, focusedPanelId, layout, useMargins, viewMode] =
+    useBatchedPublishingSubjects(
+      dashboardApi.expandedPanelId$,
+      dashboardApi.focusedPanelId$,
+      dashboardInternalApi.layout$,
+      dashboardApi.settings.useMargins$,
+      dashboardApi.viewMode$
+    );
 
   useEffect(() => {
     setTopOffset(
@@ -54,7 +65,6 @@ export const DashboardGrid = ({
         DEFAULT_DASHBOARD_DRAG_TOP_OFFSET
     );
   }, [dashboardContainerRef]);
-
   const appFixedViewport = useAppFixedViewport();
 
   const currentLayout: GridLayoutData = useMemo(() => {
@@ -95,6 +105,29 @@ export const DashboardGrid = ({
     });
     return newLayout;
   }, [layout]);
+
+  useLayoutEffect(() => {
+    if (!panelRefs?.current) {
+      return;
+    }
+    Object.keys(panelRefs.current).forEach((panelId) => {
+      const panelRef = panelRefs.current[panelId];
+      if (typeof panelRef !== 'function' && panelRef?.current) {
+        if (!focusedPanelId || focusedPanelId === panelId) {
+          panelRef.current.removeAttribute('inert');
+        } else {
+          panelRef.current.setAttribute('inert', 'true');
+        }
+      }
+    });
+    document.querySelectorAll('.kbnGridSectionHeader').forEach((header) => {
+      if (focusedPanelId) {
+        header.setAttribute('inert', 'true');
+      } else {
+        header.removeAttribute('inert');
+      }
+    });
+  }, [focusedPanelId]);
 
   const onLayoutChange = useCallback(
     (newLayout: GridLayoutData) => {
@@ -229,14 +262,34 @@ export const DashboardGrid = ({
     topOffset,
   ]);
 
+  const dashboardOffset = dashboardContainerRef?.current?.offsetTop ?? 50;
+  const globalNavOffset = appFixedViewport?.offsetTop ?? 0;
+
+  const offset = dashboardOffset + globalNavOffset + DASHBOARD_MARGIN_SIZE + HOVER_ACTIONS_HEIGHT;
+
   return (
     <div
       ref={layoutRef}
       className={classNames(viewMode === 'edit' ? 'dshLayout--editing' : 'dshLayout--viewing', {
         'dshLayout-withoutMargins': !useMargins,
         'dshLayout-isMaximizedPanel': expandedPanelId !== undefined,
+        'dshLayout-hasFocusedPanel': focusedPanelId !== undefined,
       })}
-      css={styles.dashboard}
+      css={css([
+        styles.dashboard,
+        css({
+          '&.dshLayout-hasFocusedPanel': {
+            [`.dshDashboardGrid__item:not(#panel-${focusedPanelId}), .kbnGridSectionHeader`]: {
+              pointerEvents: 'none',
+              opacity: '0.25',
+              userSelect: 'none',
+            },
+          },
+          '.dshDashboardGrid__item': {
+            scrollMarginTop: `${offset}px`,
+          },
+        }),
+      ])}
     >
       {memoizedGridLayout}
     </div>
@@ -264,14 +317,9 @@ const dashboardGridStyles = {
           zIndex: euiTheme.levels.toast,
         },
 
-      // Hide hover actions when dashboard has an overlay
-      '.dshDashboardGrid__item--blurred .embPanel__hoverActions, .dshDashboardGrid__item--focused .embPanel__hoverActions':
-        {
-          visibility: 'hidden !important' as 'hidden',
-        },
       '&.dshLayout-isMaximizedPanel': {
         height: '100%', // need to override the kbn-grid-layout height when a single panel is expanded
-        '.dshDashboardGrid__item--expanded': {
+        '.dshDashboardGrid__item': {
           position: 'absolute',
           width: '100%',
         },
@@ -288,11 +336,17 @@ const dashboardGridStyles = {
         },
       },
       // drag handle visibility when dashboard is in edit mode or a panel is expanded
-      '&.dshLayout-withoutMargins:not(.dshLayout--editing), .dshDashboardGrid__item--expanded, .dshDashboardGrid__item--blurred, .dshDashboardGrid__item--focused':
-        {
-          '.embPanel--dragHandle, ~.kbnGridPanel--resizeHandle': {
-            visibility: 'hidden',
-          },
+      '&.dshLayout-withoutMargins.dshLayout-isMaximizedPanel:not(.dshLayout--editing)': {
+        '.embPanel--dragHandle, ~.kbnGridPanel--resizeHandle': {
+          visibility: 'hidden',
         },
+      },
+
+      // Hide hover actions, drag handle and resize handle when dashboard has an overlay
+      '&.dshLayout-hasFocusedPanel': {
+        '.embPanel--dragHandle, .kbnGridPanel--resizeHandle, .embPanel__hoverActions': {
+          visibility: 'hidden !important' as 'hidden',
+        },
+      },
     }),
 };
