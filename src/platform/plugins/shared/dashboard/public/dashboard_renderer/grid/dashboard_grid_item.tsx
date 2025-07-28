@@ -134,10 +134,8 @@ export const Item = React.forwardRef<HTMLDivElement, Props>(
     const focusStyles = blurPanel
       ? styles.focusPanelBlur
       : css({
-          scrollMarginTop: `${
-            dashboardContainerTopOffset + globalNavTopOffset + DASHBOARD_MARGIN_SIZE
-          }px`,
-        });
+        scrollMarginTop: 'inherit',
+      });
 
     return (
       <div
@@ -219,6 +217,7 @@ const dashboardGridItemStyles = {
     css([
       {
         height: '100%',
+        scrollMarginTop: 'inherit',
         // Remove padding in fullscreen mode
         '.kbnAppWrapper--hiddenChrome &.dshDashboardGrid__item--expanded': {
           padding: 0,

@@ -19,10 +19,8 @@ export const getNextKeyboardPosition = (
 ) => {
   const {
     headerRefs: { current: headerRefs },
-    runtimeSettings$: {
-      value: { keyboardDragTopLimit },
-    },
   } = gridLayoutStateManager;
+const keyboardDragTopLimit = gridLayoutStateManager.layoutRef.current?.getBoundingClientRect().top ?? 0;
 
   const headerRef = headerRefs[sectionId];
   const headerRefHeight = (headerRef?.getBoundingClientRect().height ?? 48) * 0.5;

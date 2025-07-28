@@ -40,20 +40,12 @@ export const DashboardGrid = ({
   const layoutStyles = useLayoutStyles();
   const panelRefs = useRef<{ [panelId: string]: React.Ref<HTMLDivElement> }>({});
 
-  const [topOffset, setTopOffset] = useState(DEFAULT_DASHBOARD_DRAG_TOP_OFFSET);
   const [expandedPanelId, layout, useMargins, viewMode] = useBatchedPublishingSubjects(
     dashboardApi.expandedPanelId$,
     dashboardInternalApi.layout$,
     dashboardApi.settings.useMargins$,
     dashboardApi.viewMode$
   );
-
-  useEffect(() => {
-    setTopOffset(
-      dashboardContainerRef?.current?.getBoundingClientRect().top ??
-        DEFAULT_DASHBOARD_DRAG_TOP_OFFSET
-    );
-  }, [dashboardContainerRef]);
 
   const appFixedViewport = useAppFixedViewport();
 
@@ -209,7 +201,6 @@ export const DashboardGrid = ({
           gutterSize: useMargins ? DASHBOARD_MARGIN_SIZE : 0,
           rowHeight: DASHBOARD_GRID_HEIGHT,
           columnCount: DASHBOARD_GRID_COLUMN_COUNT,
-          keyboardDragTopLimit: topOffset,
         }}
         useCustomDragHandle={true}
         renderPanelContents={renderPanelContents}
@@ -226,7 +217,6 @@ export const DashboardGrid = ({
     onLayoutChange,
     expandedPanelId,
     viewMode,
-    topOffset,
   ]);
 
   return (

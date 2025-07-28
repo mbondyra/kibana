@@ -77,9 +77,12 @@ export const getNextKeyboardPositionForPanel = (
   const {
     activePanelEvent$: { value: activePanel },
     runtimeSettings$: {
-      value: { columnPixelWidth, rowHeight, gutterSize, keyboardDragTopLimit },
+      value: { columnPixelWidth, rowHeight, gutterSize },
     },
+    layoutRef: { current: gridLayoutElement },
   } = gridLayoutStateManager;
+
+  const keyboardDragTopLimit = window.scrollY + (gridLayoutElement?.getBoundingClientRect().top?? 0)
 
   const { type } = activePanel ?? {};
   const panelPosition = activePanel?.position ?? activePanel?.panelDiv.getBoundingClientRect();

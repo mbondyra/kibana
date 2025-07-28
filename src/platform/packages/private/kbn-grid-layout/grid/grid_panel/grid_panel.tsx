@@ -27,6 +27,8 @@ export const GridPanel = React.memo(({ panelId }: GridPanelProps) => {
   const { euiTheme } = useEuiTheme();
   const { gridLayoutStateManager, useCustomDragHandle, renderPanelContents } =
     useGridLayoutContext();
+  const keyboardDragTopLimit = window.scrollY + (gridLayoutStateManager.layoutRef.current?.getBoundingClientRect().top?? 0)
+console.log(keyboardDragTopLimit    )
   const panel$ = useGridPanelState({ panelId });
   const [sectionId, setSectionId] = useState<string | undefined>(panel$.getValue()?.sectionId);
   const dragHandleApi = useDragHandleApi({ panelId, sectionId });
@@ -36,6 +38,7 @@ export const GridPanel = React.memo(({ panelId }: GridPanelProps) => {
     if (!initialPanel) return;
     return css`
       position: relative;
+      scroll-margin-top: ${keyboardDragTopLimit}px;
       height: calc(
         1px *
           (
@@ -50,10 +53,10 @@ export const GridPanel = React.memo(({ panelId }: GridPanelProps) => {
       .kbnGridPanel--dragHandle,
       .kbnGridPanel--resizeHandle {
         touch-action: none; // prevent scrolling on touch devices
-        scroll-margin-top: ${gridLayoutStateManager.runtimeSettings$.value.keyboardDragTopLimit}px;
+        scroll-margin-top: inherit;
       }
     `;
-  }, [panel$, gridLayoutStateManager.runtimeSettings$]);
+  }, [panel$, keyboardDragTopLimit]);
 
   useEffect(() => {
     return () => {

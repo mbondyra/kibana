@@ -24,7 +24,6 @@ export interface GridSettings {
   gutterSize: number;
   rowHeight: number;
   columnCount: number;
-  keyboardDragTopLimit: number;
 }
 
 /**
