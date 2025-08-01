@@ -675,6 +675,11 @@ export class QueryStringInput extends PureComponent<QueryStringInputProps, State
 
   textareaId = htmlIdGenerator()();
 
+  private handleResize = () => {        
+    this.handleAutoHeight();          
+    this.handleBlurOnScroll();
+  };
+
   public componentDidMount() {
     const parsedQuery = fromUser(toUser(this.props.query.query));
     if (!isEqual(this.props.query.query, parsedQuery)) {
@@ -685,11 +690,7 @@ export class QueryStringInput extends PureComponent<QueryStringInputProps, State
     this.fetchIndexPatterns();
     this.handleAutoHeight();
 
-    window.addEventListener('resize', () => {
-      this.handleAutoHeight();
-      this.handleBlurOnScroll();
-    });
-
+    window.addEventListener('resize', this.handleResize);
     this.handleBlurOnScroll();
   }
 
@@ -728,7 +729,7 @@ export class QueryStringInput extends PureComponent<QueryStringInputProps, State
     if (this.abortController) this.abortController.abort();
     if (this.updateSuggestions.cancel) this.updateSuggestions.cancel();
     this.componentIsUnmounting = true;
-    window.removeEventListener('resize', this.handleAutoHeight);
+    window.removeEventListener('resize', this.handleResize);
     if (this.hasScrollListener) window.removeEventListener('scroll', this.onOutsideClick);
   }
 
@@ -742,14 +743,14 @@ export class QueryStringInput extends PureComponent<QueryStringInputProps, State
   handleBlurOnScroll = onRaf(() => {
     // for small screens, unified search bar is no longer sticky,
     // so we need to blur the input when it scrolls out of view
-    if (window.innerWidth < 768 && !this.hasScrollListener) {
-      this.hasScrollListener = true;
+    const isSmallScreen = window.innerWidth < 768;
+
+    if (isSmallScreen && !this.hasScrollListener) {
       window.addEventListener('scroll', this.onOutsideClick);
-    } else {
-      if (this.hasScrollListener) {
-        this.hasScrollListener = false;
-        window.removeEventListener('scroll', this.onOutsideClick);
-      }
+      this.hasScrollListener = true;
+    } else if (!isSmallScreen && this.hasScrollListener) {
+      window.removeEventListener('scroll', this.onOutsideClick);
+      this.hasScrollListener = false;
     }
   });
 
