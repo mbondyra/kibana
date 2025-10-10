@@ -12,7 +12,7 @@ import { ToolType } from '@kbn/onechat-common';
 import { ToolResultType } from '@kbn/onechat-common/tools/tool_result';
 import type { BuiltinToolDefinition } from '@kbn/onechat-server';
 import { getToolResultId } from '@kbn/onechat-server';
-import { DashboardPluginStart } from '@kbn/dashboard-plugin/server';
+import type { DashboardPluginStart } from '@kbn/dashboard-plugin/server';
 import { dashboardTools } from '../../../common';
 
 // Type for the response from dashboardClient.create()
@@ -45,7 +45,10 @@ This tool will:
 3. Create a dashboard with the provided configuration`,
     schema: createDashboardSchema,
     tags: [],
-    handler: async ({ title, description, panels }, { logger, request, savedObjects, esClient }) => {
+    handler: async (
+      { title, description, panels },
+      { logger, request, savedObjects, esClient }
+    ) => {
       try {
         // eslint-disable-next-line no-console
         console.log('create_dashboard called with:', { title, description, panels });
@@ -67,7 +70,6 @@ This tool will:
             },
           }),
         } as any;
-
 
         const dashboardClient = dashboardContentClient.getForRequest({
           request,

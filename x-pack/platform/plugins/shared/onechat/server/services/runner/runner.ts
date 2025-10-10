@@ -20,6 +20,7 @@ import type {
   RunAgentReturn,
   WritableToolResultStore,
 } from '@kbn/onechat-server';
+import type { SavedObjectsServiceStart } from '@kbn/core/server';
 import type { ToolsServiceStart } from '../tools';
 import type { AgentsServiceStart } from '../agents';
 import type { ModelProviderFactoryFn } from './model_provider';
@@ -27,7 +28,6 @@ import { createEmptyRunContext } from './utils/run_context';
 import { createResultStore } from './tool_result_store';
 import { runTool } from './run_tool';
 import { runAgent } from './run_agent';
-import { SavedObjectsServiceStart } from '@kbn/core/server';
 
 export interface CreateScopedRunnerDeps {
   // core services

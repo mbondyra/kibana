@@ -18,11 +18,7 @@ import {
   createVisualizationTool,
 } from './definitions';
 
-export const registerBuiltinTools = ({
-  registry,
-}: {
-  registry: BuiltinToolRegistry;
-}) => {
+export const registerBuiltinTools = ({ registry }: { registry: BuiltinToolRegistry }) => {
   const tools: Array<BuiltinToolDefinition<any>> = [
     searchTool(),
     getDocumentByIdTool(),

@@ -10,6 +10,7 @@ import type { Logger } from '@kbn/logging';
 import type { IScopedClusterClient } from '@kbn/core-elasticsearch-server';
 import type { KibanaRequest } from '@kbn/core-http-server';
 import type { ToolResult } from '@kbn/onechat-common/tools/tool_result';
+import type { SavedObjectsServiceStart } from '@kbn/core/server';
 import type {
   ToolEventEmitter,
   ModelProvider,
@@ -17,7 +18,6 @@ import type {
   ToolProvider,
   ToolResultStore,
 } from '../runner';
-import { SavedObjectsServiceStart } from '@kbn/core/server';
 
 /**
  * Tool result as returned by the tool handler.

@@ -16,7 +16,8 @@ export function registerDashboardAgent(onechat: OnechatPluginSetup) {
   onechat.agents.register({
     id: DASHBOARD_AGENT_ID,
     name: 'Dashboard Agent',
-    description: 'Agent specialized in dashboard-related tasks, including creating, editing, and managing dashboards',
+    description:
+      'Agent specialized in dashboard-related tasks, including creating, editing, and managing dashboards',
     avatar_icon: 'dashboardApp',
     configuration: {
       instructions: `You are a dashboard specialist. Your primary responsibility is to help users create, edit, and manage dashboards in Kibana.

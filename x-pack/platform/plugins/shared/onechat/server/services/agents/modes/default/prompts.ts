@@ -188,4 +188,4 @@ function renderVisualizationPrompt() {
 
       To visualize this response as a bar chart your reply should be:
       <${tagName} ${attributes.toolResultId}="LiDoF1" ${attributes.chartType}="${ChartType.Bar}"/>`;
-};
+}

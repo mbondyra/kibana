@@ -51,6 +51,7 @@ export class ToolsService {
 
   setup(deps: ToolsServiceSetupDeps): ToolsServiceSetup {
     this.setupDeps = deps;
+    registerBuiltinTools({ registry: this.builtinRegistry });
 
     return {
       register: (reg) => {
@@ -73,9 +74,6 @@ export class ToolsService {
     savedObjects,
   }: ToolsServiceStartDeps): ToolsServiceStart {
     const { logger, workflowsManagement } = this.setupDeps!;
-
-    // Register builtin tools
-    registerBuiltinTools({ registry: this.builtinRegistry });
 
     const toolTypes = getToolTypeDefinitions({ workflowsManagement });
 
