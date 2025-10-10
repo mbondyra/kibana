@@ -10,6 +10,7 @@ import type { Logger } from '@kbn/logging';
 import type { IScopedClusterClient } from '@kbn/core-elasticsearch-server';
 import type { KibanaRequest } from '@kbn/core-http-server';
 import type { ToolResult } from '@kbn/onechat-common/tools/tool_result';
+import type { SavedObjectsServiceStart } from '@kbn/core/server';
 import type {
   ToolEventEmitter,
   ModelProvider,
@@ -48,6 +49,11 @@ export interface ToolHandlerContext {
    * Can be used to create scoped services not directly exposed by this context.
    */
   request: KibanaRequest;
+  /**
+   * The request handler context for the current request.
+   * Provides access to core services and plugin contracts.
+   */
+  savedObjects: SavedObjectsServiceStart;
   /**
    * A cluster client scoped to the current user.
    * Can be used to access ES on behalf of either the current user or the system user.

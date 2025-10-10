@@ -20,6 +20,7 @@ import type {
   RunAgentReturn,
   WritableToolResultStore,
 } from '@kbn/onechat-server';
+import type { SavedObjectsServiceStart } from '@kbn/core/server';
 import type { ToolsServiceStart } from '../tools';
 import type { AgentsServiceStart } from '../agents';
 import type { ModelProviderFactoryFn } from './model_provider';
@@ -32,6 +33,7 @@ export interface CreateScopedRunnerDeps {
   // core services
   elasticsearch: ElasticsearchServiceStart;
   security: SecurityServiceStart;
+  savedObjects: SavedObjectsServiceStart;
   // internal service deps
   modelProviderFactory: ModelProviderFactoryFn;
   toolsService: ToolsServiceStart;

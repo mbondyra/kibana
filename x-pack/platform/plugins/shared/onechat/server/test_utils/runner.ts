@@ -48,6 +48,7 @@ export const createScopedRunnerDepsMock = (): CreateScopedRunnerDepsMock => {
   return {
     elasticsearch: elasticsearchServiceMock.createStart(),
     security: securityServiceMock.createStart(),
+    savedObjects: {} as any,
     modelProviderFactory: createModelProviderFactoryMock(),
     toolsService: createToolsServiceStartMock(),
     agentsService: createAgentsServiceStartMock(),
