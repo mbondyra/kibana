@@ -5,10 +5,16 @@
  * 2.0.
  */
 
-import type { CoreSetup, CoreStart, Plugin, PluginInitializerContext } from '@kbn/core/server';
+import type {
+  CoreSetup,
+  CoreStart,
+  Plugin,
+  PluginInitializerContext,
+} from '@kbn/core/server';
 import type { Logger } from '@kbn/logging';
 import type {
   DashboardAgentSetupDependencies,
+  DashboardAgentStartDependencies,
   DashboardAgentPluginSetup,
   DashboardAgentPluginStart,
 } from './types';
@@ -16,7 +22,13 @@ import { registerDashboardAgent } from './register_agent';
 import { createDashboardTool } from './tools';
 
 export class DashboardAgentPlugin
-  implements Plugin<DashboardAgentPluginSetup, DashboardAgentPluginStart>
+  implements
+    Plugin<
+      DashboardAgentPluginSetup,
+      DashboardAgentPluginStart,
+      DashboardAgentSetupDependencies,
+      DashboardAgentStartDependencies
+    >
 {
   private logger: Logger;
 
@@ -25,13 +37,15 @@ export class DashboardAgentPlugin
   }
 
   setup(
-    _coreSetup: CoreSetup,
+    coreSetup: CoreSetup<DashboardAgentStartDependencies, DashboardAgentPluginStart>,
     setupDeps: DashboardAgentSetupDependencies
   ): DashboardAgentPluginSetup {
     this.logger.debug('Setting up Dashboard Agent plugin');
 
-    // Register dashboard-specific tools
-    setupDeps.onechat.tools.register(createDashboardTool());
+    // Register dashboard-specific tools during start lifecycle when dashboard plugin is available
+    coreSetup.getStartServices().then(([, startDeps]) => {
+      setupDeps.onechat.tools.register(createDashboardTool(startDeps.dashboard));
+    });
 
     // Register the dashboard agent with onechat
     registerDashboardAgent(setupDeps.onechat);
@@ -39,7 +53,10 @@ export class DashboardAgentPlugin
     return {};
   }
 
-  start(_coreStart: CoreStart): DashboardAgentPluginStart {
+  start(
+    _coreStart: CoreStart,
+    _startDeps: DashboardAgentStartDependencies
+  ): DashboardAgentPluginStart {
     return {};
   }
 

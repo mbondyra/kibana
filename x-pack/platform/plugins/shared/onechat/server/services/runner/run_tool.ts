@@ -105,7 +105,6 @@ export const createToolHandlerContext = async <TParams = Record<string, unknown>
     toolsService,
     resultStore,
     logger,
-    dashboard,
   } = manager.deps;
 
   return {
@@ -122,6 +121,5 @@ export const createToolHandlerContext = async <TParams = Record<string, unknown>
     resultStore: resultStore.asReadonly(),
     events: createToolEventEmitter({ eventHandler: onEvent, context: manager.context }),
     savedObjects,
-    dashboard,
   };
 };

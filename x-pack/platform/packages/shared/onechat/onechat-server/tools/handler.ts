@@ -85,9 +85,4 @@ export interface ToolHandlerContext {
    * Logger scoped to this execution
    */
   logger: Logger;
-  /**
-   * Dashboard plugin start contract.
-   * Provides access to dashboard creation and management functionality.
-   */
-  dashboard: unknown;
 }

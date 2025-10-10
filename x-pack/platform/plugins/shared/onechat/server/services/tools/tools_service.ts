@@ -13,7 +13,6 @@ import type {
 } from '@kbn/core/server';
 import type { Runner } from '@kbn/onechat-server';
 import type { WorkflowsPluginSetup } from '@kbn/workflows-management-plugin/server';
-import type { DashboardPluginStart } from '@kbn/dashboard-plugin/server';
 import { isAllowedBuiltinTool } from '@kbn/onechat-server/allow_lists';
 import type { SpacesPluginStart } from '@kbn/spaces-plugin/server';
 import { getCurrentSpaceId } from '../../utils/spaces';
@@ -40,7 +39,6 @@ export interface ToolsServiceStartDeps {
   spaces?: SpacesPluginStart;
   uiSettings: UiSettingsServiceStart;
   savedObjects: SavedObjectsServiceStart;
-  dashboard: DashboardPluginStart;
 }
 
 export class ToolsService {
@@ -73,7 +71,6 @@ export class ToolsService {
     spaces,
     uiSettings,
     savedObjects,
-    dashboard,
   }: ToolsServiceStartDeps): ToolsServiceStart {
     const { logger, workflowsManagement } = this.setupDeps!;
 

@@ -30,7 +30,9 @@ const createDashboardSchema = z.object({
     .describe('An array of panel configurations (PanelJSON or lens_tool_artifact).'),
 });
 
-export const createDashboardTool = (): BuiltinToolDefinition<typeof createDashboardSchema> => {
+export const createDashboardTool = (
+  dashboard: DashboardPluginStart
+): BuiltinToolDefinition<typeof createDashboardSchema> => {
   return {
     id: platformCoreTools.createDashboard,
     type: ToolType.builtin,
@@ -42,13 +44,13 @@ This tool will:
 3. Create a dashboard with the provided configuration`,
     schema: createDashboardSchema,
     tags: [],
-    handler: async ({ title, description, panels }, { logger, request, savedObjects, esClient, dashboard }) => {
+    handler: async ({ title, description, panels }, { logger, request, savedObjects, esClient }) => {
       try {
         // eslint-disable-next-line no-console
         console.log('create_dashboard called with:', { title, description, panels });
 
         // Get dashboard client scoped to the current request
-        const dashboardContentClient = (dashboard as DashboardPluginStart).getContentClient();
+        const dashboardContentClient = dashboard.getContentClient();
         if (!dashboardContentClient) {
           throw new Error('Dashboard content client is not available');
         }

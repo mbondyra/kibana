@@ -9,7 +9,6 @@ import type { Logger } from '@kbn/logging';
 import type { ElasticsearchServiceStart } from '@kbn/core-elasticsearch-server';
 import type { KibanaRequest } from '@kbn/core-http-server';
 import type { SecurityServiceStart } from '@kbn/core-security-server';
-import type { DashboardPluginStart } from '@kbn/dashboard-plugin/server';
 import { isOnechatError, createInternalError } from '@kbn/onechat-common';
 import type {
   ScopedRunner,
@@ -35,7 +34,6 @@ export interface CreateScopedRunnerDeps {
   elasticsearch: ElasticsearchServiceStart;
   security: SecurityServiceStart;
   savedObjects: SavedObjectsServiceStart;
-  dashboard: DashboardPluginStart;
   // internal service deps
   modelProviderFactory: ModelProviderFactoryFn;
   toolsService: ToolsServiceStart;
