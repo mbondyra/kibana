@@ -13,7 +13,6 @@
       "onechat"
     ],
     "requiredPlugins": [
-      "dashboard",
       "data",
       "dataViews",
       "uiActions",

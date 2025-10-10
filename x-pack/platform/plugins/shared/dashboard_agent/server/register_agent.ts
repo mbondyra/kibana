@@ -10,7 +10,7 @@ import { ToolResultType, platformCoreTools } from '@kbn/onechat-common';
 import type { OnechatPluginSetup } from '@kbn/onechat-plugin/server';
 import { dashboardTools } from '../common';
 
-export const DASHBOARD_AGENT_ID = 'platform.core.dashboard_agent';
+export const DASHBOARD_AGENT_ID = 'platform.dashboard.dashboard_agent';
 
 export function registerDashboardAgent(onechat: OnechatPluginSetup) {
   onechat.agents.register({
