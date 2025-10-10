@@ -5,7 +5,7 @@
  * 2.0.
  */
 
-import type { CoreSetup, CoreStart, Plugin, PluginInitializerContext, RequestHandlerContext } from '@kbn/core/server';
+import type { CoreSetup, CoreStart, Plugin, PluginInitializerContext } from '@kbn/core/server';
 import type { Logger } from '@kbn/logging';
 import type {
   DashboardAgentSetupDependencies,
@@ -36,20 +36,10 @@ export class DashboardAgentPlugin
     setupDeps: DashboardAgentSetupDependencies
   ): DashboardAgentPluginSetup {
     this.logger.debug('Setting up Dashboard Agent plugin');
+
     // Register dashboard-specific tools during start lifecycle when dashboard plugin is available
-    coreSetup.getStartServices().then(([coreStart, startDeps]) => {
-      const { dashboard } = startDeps;
-
-      const requestHandlerContext = {
-        core: Promise.resolve(coreStart),
-        resolve: async (_path: string[]) => {
-          throw new Error('Context resolve not implemented for dashboard tool');
-        },
-      } as unknown as RequestHandlerContext;
-
-      setupDeps.onechat.tools.register(
-        createDashboardTool(dashboard, requestHandlerContext)
-      );
+    coreSetup.getStartServices().then(([, startDeps]) => {
+      setupDeps.onechat.tools.register(createDashboardTool(startDeps.dashboard));
     });
 
     // Register the dashboard agent with onechat

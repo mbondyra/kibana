@@ -6,10 +6,6 @@
  */
 
 import { z } from '@kbn/zod';
-import type { CoreStart, RequestHandlerContext } from '@kbn/core/server';
-import type { KibanaRequest } from '@kbn/core-http-server';
-import type { IScopedClusterClient } from '@kbn/core-elasticsearch-server';
-import type { SavedObjectsClientContract } from '@kbn/core-saved-objects-api-server';
 import type { CreateResult } from '@kbn/content-management-plugin/common';
 import type { DashboardItem } from '@kbn/dashboard-plugin/server/content_management';
 import { ToolType } from '@kbn/onechat-common';
@@ -36,8 +32,7 @@ const createDashboardSchema = z.object({
 });
 
 export const createDashboardTool = (
-  dashboard: DashboardPluginStart,
-  requestHandlerContext: RequestHandlerContext,
+  dashboard: DashboardPluginStart
 ): BuiltinToolDefinition<typeof createDashboardSchema> => {
   return {
     id: dashboardTools.createDashboard,
@@ -52,16 +47,29 @@ This tool will:
     tags: [],
     handler: async (
       { title, description, panels },
-      { logger, request }
+      { logger, request, savedObjects, esClient }
     ) => {
       try {
         // eslint-disable-next-line no-console
         console.log('create_dashboard called with:', { title, description, panels });
-      
+
+        // Get dashboard client scoped to the current request
         const dashboardContentClient = dashboard.getContentClient();
         if (!dashboardContentClient) {
           throw new Error('Dashboard content client is not available');
         }
+
+        // Create a minimal request handler context
+        const requestHandlerContext = {
+          core: Promise.resolve({
+            savedObjects: {
+              client: savedObjects.getScopedClient(request),
+            },
+            elasticsearch: {
+              client: esClient,
+            },
+          }),
+        } as any;
 
         const dashboardClient = dashboardContentClient.getForRequest({
           request,
