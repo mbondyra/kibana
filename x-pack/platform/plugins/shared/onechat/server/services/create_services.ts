@@ -50,6 +50,7 @@ export class ServiceManager {
     inference,
     uiSettings,
     savedObjects,
+    dashboard,
   }: ServicesStartDeps): InternalStartServices {
     if (!this.services) {
       throw new Error('#startServices called before #setupServices');
@@ -70,6 +71,7 @@ export class ServiceManager {
       elasticsearch,
       uiSettings,
       savedObjects,
+      dashboard,
     });
 
     const agents = this.services.agents.start({
@@ -78,12 +80,16 @@ export class ServiceManager {
       elasticsearch,
       getRunner,
       toolsService: tools,
+      uiSettings,
+      savedObjects,
     });
 
     const runnerFactory = new RunnerFactoryImpl({
       logger: logger.get('runnerFactory'),
       security,
       elasticsearch,
+      savedObjects,
+      dashboard,
       inference,
       toolsService: tools,
       agentsService: agents,

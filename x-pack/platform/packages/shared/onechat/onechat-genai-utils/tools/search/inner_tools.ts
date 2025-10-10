@@ -24,6 +24,7 @@ const convertMatchResult = (result: MatchResult): ResourceResult => {
     tool_result_id: getToolResultId(),
     type: ToolResultType.resource,
     data: {
+      resourceType: 'document',
       reference: {
         id: result.id,
         index: result.index,

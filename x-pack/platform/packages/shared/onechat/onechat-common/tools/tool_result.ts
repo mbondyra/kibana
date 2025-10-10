@@ -26,6 +26,7 @@ interface ToolResultMixin<TType extends ToolResultType, TData extends Object> {
 export type ResourceResult = ToolResultMixin<
   ToolResultType.resource,
   {
+    resourceType: string; // e.g., 'dashboard', 'visualization', 'index-pattern', etc.
     reference: {
       id: string;
       index: string;

@@ -100,11 +100,14 @@ export const createToolHandlerContext = async <TParams = Record<string, unknown>
     request,
     defaultConnectorId,
     elasticsearch,
+    savedObjects,
     modelProviderFactory,
     toolsService,
     resultStore,
     logger,
+    dashboard,
   } = manager.deps;
+
   return {
     request,
     logger,
@@ -118,5 +121,7 @@ export const createToolHandlerContext = async <TParams = Record<string, unknown>
     }),
     resultStore: resultStore.asReadonly(),
     events: createToolEventEmitter({ eventHandler: onEvent, context: manager.context }),
+    savedObjects,
+    dashboard,
   };
 };

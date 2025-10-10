@@ -17,6 +17,7 @@ import type {
   ToolProvider,
   ToolResultStore,
 } from '../runner';
+import { SavedObjectsServiceStart } from '@kbn/core/server';
 
 /**
  * Tool result as returned by the tool handler.
@@ -49,6 +50,11 @@ export interface ToolHandlerContext {
    */
   request: KibanaRequest;
   /**
+   * The request handler context for the current request.
+   * Provides access to core services and plugin contracts.
+   */
+  savedObjects: SavedObjectsServiceStart;
+  /**
    * A cluster client scoped to the current user.
    * Can be used to access ES on behalf of either the current user or the system user.
    */
@@ -79,4 +85,9 @@ export interface ToolHandlerContext {
    * Logger scoped to this execution
    */
   logger: Logger;
+  /**
+   * Dashboard plugin start contract.
+   * Provides access to dashboard creation and management functionality.
+   */
+  dashboard: unknown;
 }

@@ -16,9 +16,14 @@ import {
   listIndicesTool,
   indexExplorerTool,
   createVisualizationTool,
+  createDashboardTool,
 } from './definitions';
 
-export const registerBuiltinTools = ({ registry }: { registry: BuiltinToolRegistry }) => {
+export const registerBuiltinTools = ({
+  registry,
+}: {
+  registry: BuiltinToolRegistry;
+}) => {
   const tools: Array<BuiltinToolDefinition<any>> = [
     searchTool(),
     getDocumentByIdTool(),
@@ -28,6 +33,7 @@ export const registerBuiltinTools = ({ registry }: { registry: BuiltinToolRegist
     listIndicesTool(),
     indexExplorerTool(),
     createVisualizationTool(),
+    createDashboardTool(),
   ];
 
   tools.forEach((tool) => {
