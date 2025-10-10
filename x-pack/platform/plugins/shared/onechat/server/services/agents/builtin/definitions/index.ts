@@ -7,10 +7,9 @@
 
 import type { BuiltinAgentRegistry } from '../registry';
 import { createDefaultAgentDefinition } from './default_agent';
-import { createDashboardAgentDefinition } from './dashboard_agent';
 
 export const registerBuiltinAgents = ({ registry }: { registry: BuiltinAgentRegistry }) => {
-  const definitions = [createDefaultAgentDefinition(), createDashboardAgentDefinition()];
+  const definitions = [createDefaultAgentDefinition()];
 
   for (const definition of definitions) {
     registry.register(definition);

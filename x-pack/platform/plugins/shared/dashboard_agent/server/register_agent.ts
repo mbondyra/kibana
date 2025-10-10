@@ -9,10 +9,11 @@ import { AGENT_BUILDER_DASHBOARD_TOOLS_SETTING_ID } from '@kbn/management-settin
 import { ToolResultType, platformCoreTools } from '@kbn/onechat-common';
 import type { OnechatPluginSetup } from '@kbn/onechat-plugin/server';
 
+export const DASHBOARD_AGENT_ID = 'platform.core.dashboard_agent';
+
 export function registerDashboardAgent(onechat: OnechatPluginSetup) {
-  console.log('hello')
   onechat.agents.register({
-    id: 'platform.core.dashboard_agent',
+    id: DASHBOARD_AGENT_ID,
     name: 'Dashboard Agent',
     description: 'Agent specialized in dashboard-related tasks, including creating, editing, and managing dashboards',
     avatar_icon: 'dashboardApp',
