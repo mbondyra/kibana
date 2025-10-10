@@ -11,6 +11,7 @@ import type { ChartType } from '@kbn/visualization-utils';
 export enum ToolResultType {
   resource = 'resource',
   tabularData = 'tabular_data',
+  dashboard = 'dashboard',
   query = 'query',
   visualization = 'visualization',
   other = 'other',
@@ -26,7 +27,6 @@ interface ToolResultMixin<TType extends ToolResultType, TData extends Object> {
 export type ResourceResult = ToolResultMixin<
   ToolResultType.resource,
   {
-    resourceType: string; // e.g., 'dashboard', 'visualization', 'index-pattern', etc.
     reference: {
       id: string;
       index: string;

@@ -140,8 +140,6 @@ export const getActPrompt = ({
 
         ${visEnabled ? renderVisualizationPrompt() : ''}
 
-        ${renderResourceResultPrompt()}
-
         ${customInstructionsBlock(customInstructions)}
 
         ADDITIONAL INFO
@@ -190,37 +188,4 @@ function renderVisualizationPrompt() {
 
       To visualize this response as a bar chart your reply should be:
       <${tagName} ${attributes.toolResultId}="LiDoF1" ${attributes.chartType}="${ChartType.Bar}"/>`;
-}
-
-function renderResourceResultPrompt() {
-  const { resource } = ToolResultType;
-
-  return `#### Handling Resource Results
-      When a tool call returns a result of type "${resource}", you should inform the user that a resource has been created and provide relevant information about it.
-
-      **Rules**
-      * When you receive a tool result with \`"type": "${resource}"\`, check the \`resourceType\` field to determine what kind of resource was created.
-      * Extract the \`id\`, \`title\`, and other relevant data from the result.
-      * Provide a clickable link if a URL is available in \`content.url\`.
-
-      **Example for Dashboard:**
-
-      Tool response:
-      {
-        "tool_result_id": "abc123",
-        "type": "${resource}",
-        "data": {
-          "resourceType": "dashboard",
-          "reference": { "id": "dashboard-123" },
-          "title": "My Dashboard",
-          "content": {
-            "url": "/app/dashboards#/view/dashboard-123",
-            "description": "Dashboard showing metrics",
-            "panelCount": 3
-          }
-        }
-      }
-
-      Your response to the user should include:
-      Dashboard "My Dashboard" created successfully. You can view it at: [/app/dashboards#/view/dashboard-123](/app/dashboards#/view/dashboard-123)`;
-}
+};

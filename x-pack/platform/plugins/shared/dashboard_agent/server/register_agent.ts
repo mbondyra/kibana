@@ -5,6 +5,8 @@
  * 2.0.
  */
 
+import { AGENT_BUILDER_DASHBOARD_TOOLS_SETTING_ID } from '@kbn/management-settings-ids';
+import { ToolResultType, platformCoreTools } from '@kbn/onechat-common';
 import type { OnechatPluginSetup } from '@kbn/onechat-plugin/server';
 
 export function registerDashboardAgent(onechat: OnechatPluginSetup) {
@@ -31,12 +33,59 @@ When working with dashboards:
 4. Ensure dashboards are well-organized and easy to understand
 5. Follow Kibana best practices for dashboard design
 
-Be proactive in suggesting improvements to dashboard layouts and visualizations when appropriate.`,
+Be proactive in suggesting improvements to dashboard layouts and visualizations when appropriate.
+
+${renderDashboardResultPrompt()}
+`,
       tools: [
         {
-          tool_ids: [],
+          tool_ids: [
+            platformCoreTools.createDashboard,
+            platformCoreTools.createVisualization,
+            platformCoreTools.executeEsql,
+            platformCoreTools.generateEsql,
+            platformCoreTools.search,
+            platformCoreTools.listIndices,
+            platformCoreTools.getIndexMapping,
+          ],
         },
       ],
     },
+    isEnabled: async ({ request, uiSettings, savedObjects }) => {
+      const soClient = savedObjects.getScopedClient(request);
+      const uiSettingsClient = uiSettings.asScopedToClient(soClient);
+      return await uiSettingsClient.get<boolean>(AGENT_BUILDER_DASHBOARD_TOOLS_SETTING_ID);
+    },
   });
+}
+
+function renderDashboardResultPrompt() {
+  const { dashboard } = ToolResultType;
+
+  return `#### Handling Dashboard Results
+      When a tool call returns a result of type "${dashboard}", you should inform the user that a dashboard has been created and provide relevant information about it.
+
+      **Rules**
+      * When you receive a tool result with \`"type": "${dashboard}"\`, extract the \`id\`, \`title\`, and other relevant data from the result.
+      * Provide a clickable link if a URL is available in \`content.url\`.
+
+      **Example for Dashboard:**
+
+      Tool response:
+      {
+        "tool_result_id": "abc123",
+        "type": "${dashboard}",
+        "data": {
+          "reference": { "id": "dashboard-123" },
+          "title": "My Dashboard",
+          "content": {
+            "url": "/app/dashboards#/view/dashboard-123",
+            "description": "Dashboard showing metrics",
+            "panelCount": 3
+          }
+        }
+      }
+
+      Your response to the user should include:
+      Dashboard "My Dashboard" created successfully. You can view it at: [/app/dashboards#/view/dashboard-123](/app/dashboards#/view/dashboard-123)`;
 }
