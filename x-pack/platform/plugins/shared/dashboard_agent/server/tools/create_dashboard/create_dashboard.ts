@@ -6,10 +6,7 @@
  */
 
 import { z } from '@kbn/zod';
-import type { CoreStart, RequestHandlerContext } from '@kbn/core/server';
-import type { KibanaRequest } from '@kbn/core-http-server';
-import type { IScopedClusterClient } from '@kbn/core-elasticsearch-server';
-import type { SavedObjectsClientContract } from '@kbn/core-saved-objects-api-server';
+import type { RequestHandlerContext } from '@kbn/core/server';
 import type { CreateResult } from '@kbn/content-management-plugin/common';
 import type { DashboardItem } from '@kbn/dashboard-plugin/server/content_management';
 import { ToolType } from '@kbn/onechat-common';
