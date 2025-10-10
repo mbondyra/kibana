@@ -16,7 +16,6 @@ import {
   listIndicesTool,
   indexExplorerTool,
   createVisualizationTool,
-  createDashboardTool,
 } from './definitions';
 
 export const registerBuiltinTools = ({
@@ -33,7 +32,6 @@ export const registerBuiltinTools = ({
     listIndicesTool(),
     indexExplorerTool(),
     createVisualizationTool(),
-    createDashboardTool(),
   ];
 
   tools.forEach((tool) => {

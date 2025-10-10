@@ -13,7 +13,8 @@
       "dashboardAgent"
     ],
     "requiredPlugins": [
-      "onechat"
+      "onechat",
+      "dashboard"
     ]
   }
 }

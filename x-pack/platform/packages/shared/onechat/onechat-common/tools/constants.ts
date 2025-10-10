@@ -13,9 +13,11 @@ const platformCoreTool = (toolName: string) => {
 };
 
 /**
- * Ids of built-in onechat tools
+ * Ids of built-in platform tools.
+ * These tools may be registered by different plugins but all use the platform.core namespace.
  */
 export const platformCoreTools = {
+  // Core data access tools (registered by onechat plugin)
   indexExplorer: platformCoreTool('index_explorer'),
   search: platformCoreTool('search'),
   listIndices: platformCoreTool('list_indices'),
@@ -24,6 +26,7 @@ export const platformCoreTools = {
   generateEsql: platformCoreTool('generate_esql'),
   executeEsql: platformCoreTool('execute_esql'),
   createVisualization: platformCoreTool('create_visualization'),
+  // Dashboard-specific tools (registered by dashboard_agent plugin)
   createDashboard: platformCoreTool('create_dashboard'),
 } as const;
 

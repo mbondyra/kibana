@@ -13,6 +13,7 @@ import type {
   DashboardAgentPluginStart,
 } from './types';
 import { registerDashboardAgent } from './register_agent';
+import { createDashboardTool } from './tools';
 
 export class DashboardAgentPlugin
   implements Plugin<DashboardAgentPluginSetup, DashboardAgentPluginStart>
@@ -27,7 +28,10 @@ export class DashboardAgentPlugin
     _coreSetup: CoreSetup,
     setupDeps: DashboardAgentSetupDependencies
   ): DashboardAgentPluginSetup {
-    this.logger.debug('#########Setting up Dashboard Agent plugin');
+    this.logger.debug('Setting up Dashboard Agent plugin');
+
+    // Register dashboard-specific tools
+    setupDeps.onechat.tools.register(createDashboardTool());
 
     // Register the dashboard agent with onechat
     registerDashboardAgent(setupDeps.onechat);

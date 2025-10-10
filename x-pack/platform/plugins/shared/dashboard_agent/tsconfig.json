@@ -7,7 +7,13 @@
   "kbn_references": [
     "@kbn/core",
     "@kbn/logging",
-    "@kbn/onechat-plugin"
+    "@kbn/onechat-plugin",
+    "@kbn/onechat-common",
+    "@kbn/onechat-server",
+    "@kbn/dashboard-plugin",
+    "@kbn/zod",
+    "@kbn/content-management-plugin",
+    "@kbn/management-settings-ids"
   ],
   "exclude": ["target/**/*"]
 }
