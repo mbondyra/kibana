@@ -8,6 +8,7 @@
 import { AGENT_BUILDER_DASHBOARD_TOOLS_SETTING_ID } from '@kbn/management-settings-ids';
 import { ToolResultType, platformCoreTools } from '@kbn/onechat-common';
 import type { OnechatPluginSetup } from '@kbn/onechat-plugin/server';
+import { dashboardTools } from '../common';
 
 export const DASHBOARD_AGENT_ID = 'platform.core.dashboard_agent';
 
@@ -41,7 +42,7 @@ ${renderDashboardResultPrompt()}
       tools: [
         {
           tool_ids: [
-            platformCoreTools.createDashboard,
+            dashboardTools.createDashboard,
             platformCoreTools.createVisualization,
             platformCoreTools.executeEsql,
             platformCoreTools.generateEsql,

@@ -8,11 +8,12 @@
 import { z } from '@kbn/zod';
 import type { CreateResult } from '@kbn/content-management-plugin/common';
 import type { DashboardItem } from '@kbn/dashboard-plugin/server/content_management';
-import { platformCoreTools, ToolType } from '@kbn/onechat-common';
+import { ToolType } from '@kbn/onechat-common';
 import { ToolResultType } from '@kbn/onechat-common/tools/tool_result';
 import type { BuiltinToolDefinition } from '@kbn/onechat-server';
 import { getToolResultId } from '@kbn/onechat-server';
 import { DashboardPluginStart } from '@kbn/dashboard-plugin/server';
+import { dashboardTools } from '../../../common';
 
 // Type for the response from dashboardClient.create()
 // The content management client wraps the CreateResult in a response object
@@ -34,7 +35,7 @@ export const createDashboardTool = (
   dashboard: DashboardPluginStart
 ): BuiltinToolDefinition<typeof createDashboardSchema> => {
   return {
-    id: platformCoreTools.createDashboard,
+    id: dashboardTools.createDashboard,
     type: ToolType.builtin,
     description: `Create a dashboard with the specified title, description, and panels.
 

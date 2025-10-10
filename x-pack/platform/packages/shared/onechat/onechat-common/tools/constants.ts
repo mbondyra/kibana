@@ -26,8 +26,6 @@ export const platformCoreTools = {
   generateEsql: platformCoreTool('generate_esql'),
   executeEsql: platformCoreTool('execute_esql'),
   createVisualization: platformCoreTool('create_visualization'),
-  // Dashboard-specific tools (registered by dashboard_agent plugin)
-  createDashboard: platformCoreTool('create_dashboard'),
 } as const;
 
 /**

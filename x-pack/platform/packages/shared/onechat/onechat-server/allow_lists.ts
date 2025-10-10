@@ -10,7 +10,7 @@
  * The intention is to force a code review from the Agent Builder team when any team adds a new tool.
  */
 export const AGENT_BUILDER_BUILTIN_TOOLS: string[] = [
-  'platform.core.create_dashboard',
+  'platform.dashboard.create_dashboard',
 ];
 
 /**
