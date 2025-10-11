@@ -6,6 +6,7 @@
  */
 
 import { z } from '@kbn/zod';
+import type { RequestHandlerContext, SavedObjectsServiceStart } from '@kbn/core/server';
 import type { CreateResult } from '@kbn/content-management-plugin/common';
 import type { DashboardItem } from '@kbn/dashboard-plugin/server/content_management';
 import { ToolType } from '@kbn/onechat-common';
@@ -32,7 +33,8 @@ const createDashboardSchema = z.object({
 });
 
 export const createDashboardTool = (
-  dashboard: DashboardPluginStart
+  dashboard: DashboardPluginStart,
+  savedObjects: SavedObjectsServiceStart,
 ): BuiltinToolDefinition<typeof createDashboardSchema> => {
   return {
     id: dashboardTools.createDashboard,
@@ -47,7 +49,7 @@ This tool will:
     tags: [],
     handler: async (
       { title, description, panels },
-      { logger, request, savedObjects, esClient }
+      { logger, request, esClient }
     ) => {
       try {
         // eslint-disable-next-line no-console
