@@ -56,6 +56,7 @@ export {
   type PublishesTimeslice,
   type PublishesUnifiedSearch,
   type PublishesWritableUnifiedSearch,
+  type PublishesProjectRouting,
 } from './interfaces/fetch/publishes_unified_search';
 export {
   apiHasAppContext,

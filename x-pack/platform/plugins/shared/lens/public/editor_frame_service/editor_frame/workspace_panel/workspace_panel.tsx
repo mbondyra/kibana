@@ -784,7 +784,7 @@ export const VisualizationWrapper = ({
     );
   }
 
-  console.log('searchContext', searchContext)
+  console.log('searchContext', searchContext);
 
   return (
     <div

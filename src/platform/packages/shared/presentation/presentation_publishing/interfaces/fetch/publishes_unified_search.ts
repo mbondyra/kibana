@@ -34,10 +34,9 @@ export interface PublishesFilters {
   filters$: PublishingSubject<Filter[] | undefined>;
 }
 
-export interface PublishesFilters {
+export interface PublishesProjectRouting {
   projectRouting$: PublishingSubject<ProjectRouting | undefined>;
 }
-
 
 export type PublishesUnifiedSearch = PublishesTimeRange &
   PublishesFilters & {
@@ -68,8 +67,12 @@ export const apiPublishesFilters = (unknownApi: unknown): unknownApi is Publishe
   return Boolean(unknownApi && (unknownApi as PublishesFilters)?.filters$ !== undefined);
 };
 
-export const apiPublishesProjectRouting = (unknownApi: unknown): unknownApi is PublishesFilters => {
-  return Boolean(unknownApi && (unknownApi as PublishesFilters)?.projectRouting$ !== undefined);
+export const apiPublishesProjectRouting = (
+  unknownApi: unknown
+): unknownApi is PublishesProjectRouting => {
+  return Boolean(
+    unknownApi && (unknownApi as PublishesProjectRouting)?.projectRouting$ !== undefined
+  );
 };
 
 export const apiPublishesUnifiedSearch = (
@@ -79,7 +82,7 @@ export const apiPublishesUnifiedSearch = (
     unknownApi &&
       apiPublishesTimeRange(unknownApi) &&
       apiPublishesFilters(unknownApi) &&
-      (unknownApi as PublishesUnifiedSearch)?.query$ !== undefined 
+      (unknownApi as PublishesUnifiedSearch)?.query$ !== undefined
   );
 };
 
