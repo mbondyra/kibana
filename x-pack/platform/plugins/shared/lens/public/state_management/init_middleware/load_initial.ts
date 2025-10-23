@@ -140,12 +140,13 @@ async function loadFromLocatorState(
     }
   );
   const currentSessionId = initialState?.searchSessionId || data.search.session.getSessionId();
+  const projectRouting = initialState.projectRouting || emptyState.projectRouting;
   store.dispatch(
     initExisting({
       isSaveable: true,
       filters: initialState.filters || data.query.filterManager.getFilters(),
       query: initialState.query || emptyState.query,
-      projectRouting: initialState.projectRouting || emptyState.projectRouting,
+      ...(projectRouting ? { projectRouting } : {}),
       searchSessionId: currentSessionId,
       activeDatasourceId: emptyState.activeDatasourceId,
       visualization: {
@@ -281,7 +282,7 @@ async function loadFromSavedObject(
       sharingSavedObjectProps,
       filters: data.query.filterManager.getFilters(),
       query: doc.state.query,
-      projectRouting: doc.state.projectRouting,
+      ...(doc.state.projectRouting ? { projectRouting: doc.state.projectRouting } : {}),
       searchSessionId:
         !savedObjectId && currentSessionId
           ? currentSessionId
