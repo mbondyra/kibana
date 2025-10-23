@@ -8,7 +8,7 @@
 import type { Reference } from '@kbn/content-management-utils';
 import type { DataViewSpec } from '@kbn/data-views-plugin/common';
 import { DataViewPersistableStateService } from '@kbn/data-views-plugin/common';
-import type { AggregateQuery, Query, Filter } from '@kbn/es-query';
+import type { AggregateQuery, Query, Filter, ProjectRouting } from '@kbn/es-query';
 import type { FilterManager } from '@kbn/data-plugin/public';
 import type { Datatable } from '@kbn/expressions-plugin/common';
 import { DOC_TYPE, INDEX_PATTERN_TYPE } from '../../common/constants';
@@ -26,6 +26,7 @@ export function mergeToNewDoc(
   filters: Filter[],
   activeDatasourceId: string | null,
   adHocDataViews: Record<string, DataViewSpec>,
+  projectRouting: ProjectRouting | undefined,
   {
     datasourceMap,
     visualizationMap,
@@ -124,6 +125,7 @@ export function mergeToNewDoc(
       filters: [...persistableFilters, ...adHocFilters],
       datasourceStates: persistibleDatasourceStates,
       internalReferences,
+      ...(projectRouting !== undefined ? { projectRouting } : {}),
       adHocDataViews: persistableAdHocDataViews,
     },
     version: LENS_ITEM_LATEST_VERSION,

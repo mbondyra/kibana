@@ -52,6 +52,7 @@ export const getSerializedState = ({
     title,
     filters,
     timeRestore,
+    projectRouting,
     description,
 
     options,
@@ -90,6 +91,7 @@ export const getSerializedState = ({
     description: description ?? '',
     ...(filters ? { filters } : {}),
     ...(query ? { query } : {}),
+    ...(projectRouting ? { projectRouting } : {}),
     refreshInterval,
     timeRange,
     timeRestore,

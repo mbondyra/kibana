@@ -10,7 +10,7 @@ import type { SerializableRecord } from '@kbn/utility-types';
 import type { GlobalQueryStateFromUrl } from '@kbn/data-plugin/public';
 import { LENS_APP_LOCATOR } from '@kbn/deeplinks-analytics';
 import type { LocatorDefinition, LocatorPublic } from '@kbn/share-plugin/common';
-import type { AggregateQuery, Filter, Query } from '@kbn/es-query';
+import type { AggregateQuery, Filter, ProjectRouting, Query } from '@kbn/es-query';
 import type { Reference } from '@kbn/content-management-utils';
 import type { DataViewSpec, SavedQuery } from '@kbn/data-plugin/common';
 import type { DateRange } from '../types';
@@ -22,6 +22,8 @@ interface LensShareableState {
    * Optionally apply filters.
    */
   filters?: Filter[];
+
+  projectRouting?: ProjectRouting;
 
   /**
    * Optionally set a query.

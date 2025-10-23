@@ -9,6 +9,7 @@ import type {
   AggregateQuery,
   ExecutionContextSearch,
   Filter,
+  ProjectRouting,
   Query,
   TimeRange,
 } from '@kbn/es-query';
@@ -243,6 +244,7 @@ export interface LensUnifiedSearchContext {
   timeslice?: [number, number];
   searchSessionId?: string;
   lastReloadRequestTime?: number;
+  projectRouting?: ProjectRouting;
 }
 
 export interface LensPanelProps {

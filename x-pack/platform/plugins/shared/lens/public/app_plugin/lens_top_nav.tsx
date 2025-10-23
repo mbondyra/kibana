@@ -8,7 +8,7 @@
 import { isEqual, noop } from 'lodash';
 import { i18n } from '@kbn/i18n';
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
-import type { AggregateQuery, Query } from '@kbn/es-query';
+import type { AggregateQuery, ProjectRouting, Query } from '@kbn/es-query';
 import { isOfAggregateQueryType } from '@kbn/es-query';
 import { useStore } from 'react-redux';
 import type { TopNavMenuData, TopNavMenuProps } from '@kbn/navigation-plugin/public';
@@ -352,6 +352,7 @@ export const LensTopNavMenu = ({
     datasourceStates,
     visualization,
     filters,
+    projectRouting,
     dataViews,
   } = useLensSelector((state) => state.lens);
 
@@ -1002,6 +1003,20 @@ export const LensTopNavMenu = ({
     dataViews.indexPatterns,
   ]);
 
+  const onProjectRoutingChangeWrapped = useCallback(
+    (value: ProjectRouting) => {
+      if (value !== projectRouting) {
+        // Start a new search session when project routing changes to ensure all data is fetched again
+        dispatchSetState({
+          projectRouting: value,
+          searchSessionId: data.search.session.start(),
+          resolvedDateRange: getResolvedDateRange(data.query.timefilter.timefilter),
+        });
+      }
+    },
+    [projectRouting, dispatchSetState, data.search.session, data.query.timefilter.timefilter]
+  );
+
   const editField = useMemo(
     () =>
       canEditDataView
@@ -1176,6 +1191,9 @@ export const LensTopNavMenu = ({
       onClearSavedQuery={onClearSavedQueryWrapped}
       indexPatterns={indexPatterns}
       query={query}
+      projectRouting={projectRouting}
+      onProjectRoutingChange={onProjectRoutingChangeWrapped}
+      showProjectPicker
       dateRangeFrom={from}
       dateRangeTo={to}
       indicateNoData={indicateNoData}

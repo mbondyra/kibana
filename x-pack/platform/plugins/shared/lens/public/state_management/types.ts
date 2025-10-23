@@ -7,7 +7,7 @@
 
 import type { VisualizeFieldContext } from '@kbn/ui-actions-plugin/public';
 import type { EmbeddableEditorState } from '@kbn/embeddable-plugin/public';
-import type { AggregateQuery, Filter, Query } from '@kbn/es-query';
+import type { AggregateQuery, Filter, ProjectRouting, Query } from '@kbn/es-query';
 import type { SavedQuery } from '@kbn/data-plugin/public';
 import type { $Values } from 'utility-types';
 import type { MainHistoryLocationState } from '../../common/locator/locator';
@@ -84,6 +84,7 @@ export interface LensAppState extends EditorFrameState {
   filters: Filter[];
   savedQuery?: SavedQuery;
   searchSessionId: string;
+  projectRouting?: ProjectRouting;
   resolvedDateRange: DateRange;
   sharingSavedObjectProps?: Omit<SharingSavedObjectProps, 'sourceId'>;
   // Dataview/Indexpattern management has moved in here from datasource

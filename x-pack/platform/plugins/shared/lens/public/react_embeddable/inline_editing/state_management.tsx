@@ -45,6 +45,7 @@ export function getStateManagementForInlineEditing(
       viz.state.filters,
       activeDatasourceId,
       viz.state.adHocDataViews || {},
+      viz.state.projectRouting,
       { visualizationMap, datasourceMap, extractFilterReferences }
     );
     const newDoc: TypedLensSerializedState['attributes'] = {

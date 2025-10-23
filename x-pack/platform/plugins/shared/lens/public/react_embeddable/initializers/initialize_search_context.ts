@@ -28,6 +28,7 @@ export const searchContextComparators: StateComparators<LensUnifiedSearchContext
   timeslice: 'skip',
   searchSessionId: 'skip',
   lastReloadRequestTime: 'skip',
+  projectRouting: 'skip',
 };
 
 export interface SearchContextConfig {

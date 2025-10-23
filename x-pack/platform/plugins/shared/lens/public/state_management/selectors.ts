@@ -24,6 +24,7 @@ export const selectAdHocDataViews = (state: LensState) =>
       .filter((indexPattern) => !indexPattern.isPersisted)
       .map((indexPattern) => [indexPattern.id, indexPattern.spec!])
   );
+export const selectProjectRouting = (state: LensState) => state.lens.projectRouting;
 export const selectVisualization = (state: LensState) => state.lens.visualization;
 export const selectStagedPreview = (state: LensState) => state.lens.stagedPreview;
 export const selectStagedActiveData = (state: LensState) =>
@@ -49,25 +50,30 @@ export const selectTriggerApplyChanges = (state: LensState) => {
 
 // TODO - is there any point to keeping this around since we have selectExecutionSearchContext?
 export const selectExecutionContext = createSelector(
-  [selectQuery, selectFilters, selectResolvedDateRange],
-  (query, filters, dateRange) => ({
+  [selectQuery, selectFilters, selectResolvedDateRange, selectProjectRouting],
+  (query, filters, dateRange, projectRouting) => ({
     now: Date.now(),
     dateRange,
     query,
     filters,
+    projectRouting,
   })
 );
 
-export const selectExecutionContextSearch = createSelector(selectExecutionContext, (res) => ({
-  now: res.now,
-  query: isOfAggregateQueryType(res.query) ? undefined : res.query,
-  timeRange: {
-    from: res.dateRange.fromDate,
-    to: res.dateRange.toDate,
-  },
-  filters: res.filters,
-  disableWarningToasts: true,
-}));
+export const selectExecutionContextSearch = createSelector(selectExecutionContext, (res) => {
+  const result = {
+    now: res.now,
+    query: isOfAggregateQueryType(res.query) ? undefined : res.query,
+    timeRange: {
+      from: res.dateRange.fromDate,
+      to: res.dateRange.toDate,
+    },
+    filters: res.filters,
+    disableWarningToasts: true,
+    projectRouting: res.projectRouting,
+  };
+  return result;
+});
 
 const selectInjectedDependencies = (_state: LensState, dependencies: unknown) => dependencies;
 
@@ -83,6 +89,7 @@ export const selectSavedObjectFormat = createSelector(
     selectFilters,
     selectActiveDatasourceId,
     selectAdHocDataViews,
+    selectProjectRouting,
     selectInjectedDependencies as SelectInjectedDependenciesFunction<{
       datasourceMap: DatasourceMap;
       visualizationMap: VisualizationMap;
