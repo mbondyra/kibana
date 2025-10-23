@@ -9,7 +9,7 @@ import { BehaviorSubject } from 'rxjs';
 import type { DataPublicPluginStart } from '@kbn/data-plugin/public';
 import type { LensRuntimeState } from '../types';
 import { getMergedSearchContext } from './merged_search_context';
-import { TimeRange } from '@kbn/es-query';
+import type { TimeRange } from '@kbn/es-query';
 
 describe('getMergedSearchContext - projectRouting', () => {
   const mockData = {
@@ -20,16 +20,17 @@ describe('getMergedSearchContext - projectRouting', () => {
 
   const mockInjectFilterReferences = jest.fn((filters, refs) => filters);
 
-  const createLensRuntimeState = (projectRouting?: '_alias:_origin'): LensRuntimeState => ({
-    attributes: {
-      state: {
-        query: { query: '', language: 'kuery' },
-        filters: [],
-        projectRouting,
+  const createLensRuntimeState = (projectRouting?: '_alias:_origin'): LensRuntimeState =>
+    ({
+      attributes: {
+        state: {
+          query: { query: '', language: 'kuery' },
+          filters: [],
+          projectRouting,
+        },
+        references: [],
       },
-      references: [],
-    },
-  } as unknown as LensRuntimeState);
+    } as unknown as LensRuntimeState);
 
   const customTimeRange$ = new BehaviorSubject<TimeRange | undefined>(undefined);
   const parentApi = {};
