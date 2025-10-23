@@ -6,9 +6,112 @@
  */
 
 import type { Datatable } from '@kbn/expressions-plugin/common';
-import { getActiveDataFromDatatable } from './shared_logic';
+import type { Filter } from '@kbn/es-query';
+import { getActiveDataFromDatatable, mergeToNewDoc } from './shared_logic';
+import type { DatasourceMap, VisualizationMap } from '../types';
 
 describe('lens shared logic', () => {
+  describe('#mergeToNewDoc - projectRouting', () => {
+    const createMockDeps = () => {
+      const mockDatasource = {
+        id: 'testDatasource',
+        getPersistableState: jest.fn((state) => ({ state, references: [] })),
+      };
+
+      const mockVisualization = {
+        id: 'testVis',
+        getPersistableState: jest.fn((state) => ({ state, references: [] })),
+      };
+
+      const datasourceMap: DatasourceMap = {
+        testDatasource: mockDatasource as any,
+      };
+
+      const visualizationMap: VisualizationMap = {
+        testVis: mockVisualization as any,
+      };
+
+      const extractFilterReferences = jest.fn((filters: Filter[]) => ({
+        state: filters,
+        references: [],
+      }));
+
+      return { datasourceMap, visualizationMap, extractFilterReferences };
+    };
+
+    const createMockState = () => ({
+      persistedDoc: {
+        savedObjectId: 'test-id',
+        title: 'Test Lens',
+        type: 'lens' as const,
+        visualizationType: 'testVis',
+        references: [],
+        state: {
+          visualization: {},
+          query: { query: '', language: 'kuery' as const },
+          filters: [],
+          datasourceStates: { testDatasource: {} },
+          internalReferences: [],
+          adHocDataViews: {},
+        },
+      },
+      visualization: {
+        state: {},
+        activeId: 'testVis',
+      },
+      datasourceStates: {
+        testDatasource: {
+          state: {},
+          isLoading: false,
+        },
+      },
+      query: { query: '', language: 'kuery' as const },
+      filters: [] as Filter[],
+      activeDatasourceId: 'testDatasource',
+      adHocDataViews: {},
+    });
+
+    it('should omit projectRouting when undefined', () => {
+      const deps = createMockDeps();
+      const state = createMockState();
+
+      const result = mergeToNewDoc(
+        state.persistedDoc,
+        state.visualization,
+        state.datasourceStates,
+        state.query,
+        state.filters,
+        state.activeDatasourceId,
+        state.adHocDataViews,
+        undefined, // projectRouting is undefined
+        deps
+      );
+
+      expect(result?.state.projectRouting).toBeUndefined();
+      // Verify it's not in the state object at all
+      expect(Object.keys(result?.state || {})).not.toContain('projectRouting');
+    });
+
+    it('should include projectRouting when set to _alias:_origin', () => {
+      const deps = createMockDeps();
+      const state = createMockState();
+
+      const result = mergeToNewDoc(
+        state.persistedDoc,
+        state.visualization,
+        state.datasourceStates,
+        state.query,
+        state.filters,
+        state.activeDatasourceId,
+        state.adHocDataViews,
+        '_alias:_origin', // projectRouting is explicitly set
+        deps
+      );
+
+      expect(result?.state.projectRouting).toBe('_alias:_origin');
+    });
+  });
+
   describe('#getActiveDataFromDatatable', () => {
     const defaultLayerId = 'default-layer';
     const firstTable: Datatable = {

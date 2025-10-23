@@ -12,6 +12,7 @@ import type { DashboardPanel } from '../../server';
 import { dataService, savedObjectsTaggingService } from '../services/kibana_services';
 import { getSampleDashboardState } from '../mocks';
 import { getSerializedState } from './get_serialized_state';
+import type { ProjectRouting } from '@kbn/es-query';
 
 dataService.search.searchSource.create = jest.fn().mockResolvedValue({
   setField: jest.fn(),
@@ -144,5 +145,39 @@ describe('getSerializedState', () => {
     });
 
     expect(result.references).toEqual(panelReferences);
+  });
+
+  describe('projectRouting serialization', () => {
+    it('should omit projectRouting from attributes when undefined', () => {
+      const dashboardState = {
+        ...getSampleDashboardState(),
+        projectRouting: undefined,
+      };
+      const result = getSerializedState({
+        controlGroupReferences: [],
+        generateNewIds: false,
+        dashboardState,
+        panelReferences: [],
+      });
+
+      expect(result.attributes.projectRouting).toBeUndefined();
+      // Verify it's not in the object at all
+      expect(Object.keys(result.attributes)).not.toContain('projectRouting');
+    });
+
+    it('should include projectRouting when set to _alias:_origin', () => {
+      const dashboardState = {
+        ...getSampleDashboardState(),
+        projectRouting: '_alias:_origin' as ProjectRouting,
+      };
+      const result = getSerializedState({
+        controlGroupReferences: [],
+        generateNewIds: false,
+        dashboardState,
+        panelReferences: [],
+      });
+
+      expect(result.attributes.projectRouting).toBe('_alias:_origin');
+    });
   });
 });
