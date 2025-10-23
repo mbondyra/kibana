@@ -18,6 +18,7 @@ export interface FetchContext {
   searchSessionId: string | undefined;
   timeRange: TimeRange | undefined;
   timeslice: [number, number] | undefined;
+  projectRouting: string | undefined;
 }
 
 export interface ReloadTimeFetchContext extends Omit<FetchContext, 'isReload'> {
@@ -33,11 +34,19 @@ export function isReloadTimeFetchContextEqual(
   return (
     isReloadTimestampEqualForFetch(currentContext.reloadTimestamp, lastContext.reloadTimestamp) &&
     areFiltersEqualForFetch(currentContext.filters, lastContext.filters) &&
+    isProjectRoutingEqualForFetch(currentContext.projectRouting, lastContext.projectRouting) &&
     isQueryEqualForFetch(currentContext.query, lastContext.query) &&
     isTimeRangeEqualForFetch(currentContext.timeRange, lastContext.timeRange) &&
     isTimeSliceEqualForFetch(currentContext.timeslice, lastContext.timeslice)
   );
 }
+
+export const isProjectRoutingEqualForFetch = (
+  currentProjectRouting: string | undefined,
+  lastProjectRouting: string | undefined
+) => {
+  return currentProjectRouting === lastProjectRouting;
+};
 
 export const areFiltersEqualForFetch = (currentFilters?: Filter[], lastFilters?: Filter[]) => {
   return onlyDisabledFiltersChanged(currentFilters, lastFilters, {

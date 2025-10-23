@@ -22,7 +22,7 @@ import {
 import { css } from '@emotion/react';
 import type { MountPoint } from '@kbn/core/public';
 import { useMemoCss } from '@kbn/css-utils/public/use_memo_css';
-import type { ProjectRouting, Query } from '@kbn/es-query';
+import type { Query } from '@kbn/es-query';
 import { FormattedMessage } from '@kbn/i18n-react';
 import { getManagedContentBadge } from '@kbn/managed-content-badge';
 import type { TopNavMenuBadgeProps, TopNavMenuProps } from '@kbn/navigation-plugin/public';
@@ -349,17 +349,6 @@ export function InternalDashboardTopNav({
     []
   );
 
-  const onProjectRoutingChange = useCallback(
-    (value: ProjectRouting) => {
-      if (value !== projectRouting) {
-        dashboardApi.setProjectRouting(value);
-        // Force refresh to trigger a new search with the updated project routing
-        dashboardApi.forceRefresh();
-      }
-    },
-    [dashboardApi, projectRouting]
-  );
-
   return (
     <div css={styles.container}>
       <EuiScreenReaderOnly>
@@ -372,7 +361,7 @@ export function InternalDashboardTopNav({
         {...visibilityProps}
         query={query as Query | undefined}
         projectRouting={projectRouting}
-        onProjectRoutingChange={onProjectRoutingChange}
+        onProjectRoutingChange={dashboardApi.setProjectRouting}
         badges={badges}
         screenTitle={title}
         useDefaultBehaviors={true}
