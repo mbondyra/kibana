@@ -30,7 +30,8 @@ const getPanelsGetError = (message: string) =>
     values: { message },
   });
 
-export type DashboardBackupState = Partial<DashboardState> & {
+export type DashboardBackupState = Partial<Omit<DashboardState, 'projectRouting'>> & {
+  projectRouting?: string | null;
   viewMode?: ViewMode;
 };
 

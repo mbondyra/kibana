@@ -114,10 +114,19 @@ export function initializeUnsavedChangesManager({
         }
 
         if (storeUnsavedChanges) {
-          const dashboardBackupState: DashboardBackupState = omit(dashboardChanges ?? {}, [
+          let dashboardBackupState: DashboardBackupState = omit(dashboardChanges ?? {}, [
             'timeRange',
             'refreshInterval',
           ]);
+
+          // JSON.stringify removes undefined values, so we need to handle projectRouting explicitly
+          // If projectRouting is explicitly set to undefined ("All projects"), we store it as a null
+          if (
+            'projectRouting' in dashboardBackupState &&
+            dashboardBackupState.projectRouting === undefined
+          ) {
+            dashboardBackupState = { ...dashboardBackupState, projectRouting: null };
+          }
 
           // always back up view mode. This allows us to know which Dashboards were last changed while in edit mode.
           dashboardBackupState.viewMode = viewMode;
