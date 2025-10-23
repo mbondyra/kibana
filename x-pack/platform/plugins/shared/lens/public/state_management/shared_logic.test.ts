@@ -8,7 +8,7 @@
 import type { Datatable } from '@kbn/expressions-plugin/common';
 import type { Filter } from '@kbn/es-query';
 import { getActiveDataFromDatatable, mergeToNewDoc } from './shared_logic';
-import type { DatasourceMap, VisualizationMap } from '../types';
+import type { Datasource, DatasourceMap, VisualizationMap } from '../types';
 
 describe('lens shared logic', () => {
   describe('#mergeToNewDoc - projectRouting', () => {
@@ -24,11 +24,11 @@ describe('lens shared logic', () => {
       };
 
       const datasourceMap: DatasourceMap = {
-        testDatasource: mockDatasource as any,
+        testDatasource: mockDatasource as unknown as Datasource,
       };
 
       const visualizationMap: VisualizationMap = {
-        testVis: mockVisualization as any,
+        testVis: mockVisualization as unknown as VisualizationMap[string],
       };
 
       const extractFilterReferences = jest.fn((filters: Filter[]) => ({
