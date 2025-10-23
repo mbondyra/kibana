@@ -15,8 +15,7 @@
  * Examples:
  * - undefined - Search across all projects (default)
  * - '_alias:_origin' - Search only in the current project
- * - '_alias:*' - Search across all projects (explicit)
  *
  * @public
  */
-export type ProjectRouting = undefined | '_alias:_origin' | '_alias:*';
+export type ProjectRouting = undefined | '_alias:_origin';

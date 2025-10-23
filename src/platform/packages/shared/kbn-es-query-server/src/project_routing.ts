@@ -9,6 +9,4 @@
 
 import { schema } from '@kbn/config-schema';
 
-export const projectRoutingSchema = schema.maybe(
-  schema.oneOf([schema.literal('_alias:_origin'), schema.literal('_alias:*')])
-);
+export const projectRoutingSchema = schema.maybe(schema.literal('_alias:_origin'));

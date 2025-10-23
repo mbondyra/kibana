@@ -297,14 +297,12 @@ export const ProjectPicker = ({ projectRouting, onProjectRoutingChange }: Projec
             options={[
               {
                 id: '_alias:*',
-                value: '_alias:*',
                 label: i18n.translate('unifiedSearch.projectPicker.allProjectsLabel', {
                   defaultMessage: 'All projects',
                 }),
               },
               {
                 id: '_alias:_origin',
-                value: '_alias:_origin',
                 label: strings.getOriginProjectLabel(),
               },
             ]}
