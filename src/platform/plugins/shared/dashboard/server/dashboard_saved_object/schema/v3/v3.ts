@@ -8,7 +8,7 @@
  */
 
 import { schema } from '@kbn/config-schema';
-import { projectRoutingSchema } from '@kbn/es-query-server';
+import { projectRoutingSchema } from '@kbn/es-query';
 import { dashboardAttributesSchema as dashboardAttributesSchemaV2 } from '../v2';
 
 // sections only include y + i for grid data

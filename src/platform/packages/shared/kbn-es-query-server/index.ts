@@ -10,7 +10,6 @@
 export { timeRangeSchema } from './src/time_range';
 export { querySchema } from './src/query';
 export { filterSchema } from './src/filter';
-export { projectRoutingSchema } from './src/project_routing';
 
 export type {
   TimeRange,

@@ -12,14 +12,9 @@ import { schema } from '@kbn/config-schema';
 import { refreshIntervalSchema } from '@kbn/data-service-server';
 import { controlsGroupSchema } from '@kbn/controls-schemas';
 import { referenceSchema } from '@kbn/content-management-utils';
-import {
-  filterSchema,
-  projectRoutingSchema,
-  querySchema,
-  timeRangeSchema,
-} from '@kbn/es-query-server';
+import { filterSchema, querySchema, timeRangeSchema } from '@kbn/es-query-server';
+import { projectRoutingSchema } from '@kbn/es-query';
 import { embeddableService } from '../../../kibana_services';
-
 import {
   DASHBOARD_GRID_COLUMN_COUNT,
   DEFAULT_PANEL_HEIGHT,
