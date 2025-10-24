@@ -63,6 +63,11 @@ export const createVegaFn = (
     const { createVegaRequestHandler } = await import('./async_services');
     const vegaRequestHandler = createVegaRequestHandler(dependencies, context);
 
+    // Get projectRouting from input (Dashboard) or searchContext (Visualize app)
+    const projectRouting = get(input, 'projectRouting') ?? context.getSearchContext().projectRouting;
+
+    console.log('projectRouting', input, projectRouting);
+
     const response = await vegaRequestHandler({
       timeRange: get(input, 'timeRange') as TimeRange,
       query: get(input, 'query') as Query,
@@ -70,6 +75,7 @@ export const createVegaFn = (
       visParams: { spec: args.spec },
       searchSessionId: context.getSearchSessionId(),
       executionContext: context.getExecutionContext(),
+      projectRouting,
     });
 
     return {

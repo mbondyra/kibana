@@ -683,7 +683,7 @@ export class SearchSource {
       case 'projectRouting':
         // eslint-disable-next-line no-console
         console.log('TODO: request will be sent with a custom project_routing param:', val);
-        // return addToBody('project_routing', val); // TODO uncomment when supported
+        return addToBody('project_routing', val); // TODO uncomment when supported
         return;
       case 'aggs':
         if ((val as unknown) instanceof AggConfigs) {

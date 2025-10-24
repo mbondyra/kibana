@@ -61,6 +61,7 @@ export const visStateToEditorState = (
     filters: (vis.data.searchSource?.getOwnField('filter') as Filter[]) || [],
     vis: { ...savedVisState.visState, title: vis.title },
     linked: savedVis && savedVis.id ? !!savedVis.savedSearchId : !!savedVisState.savedSearchId,
+    projectRouting: vis.data.searchSource?.getOwnField('projectRouting'),
   };
 };
 

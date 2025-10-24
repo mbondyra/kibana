@@ -14,6 +14,7 @@ import type { DataView } from '@kbn/data-views-plugin/public';
 import type { EmbeddableEnhancedPluginStart } from '@kbn/embeddable-enhanced-plugin/public';
 import type { EmbeddableStart, EmbeddableFactory } from '@kbn/embeddable-plugin/public';
 import { SELECT_RANGE_TRIGGER } from '@kbn/embeddable-plugin/public';
+import type { ProjectRouting } from '@kbn/es-query';
 import type { ExpressionRendererParams } from '@kbn/expressions-plugin/public';
 import { useExpressionRenderer } from '@kbn/expressions-plugin/public';
 import { i18n } from '@kbn/i18n';
@@ -323,6 +324,7 @@ export const getVisualizeEmbeddableFactory: (deps: {
             ? {
                 query: data.query,
                 filters: data.filters,
+                projectRouting: data.projectRouting as ProjectRouting,
               }
             : {};
           const searchSessionId = apiPublishesSearchSession(parentApi) ? data.searchSessionId : '';

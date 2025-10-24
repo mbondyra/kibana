@@ -22,6 +22,7 @@ import { css } from '@emotion/react';
 import { euiBreakpoint, type UseEuiTheme } from '@elastic/eui';
 import { useMemoCss } from '@kbn/css-utils/public/use_memo_css';
 import { VISUALIZE_APP_NAME } from '@kbn/visualizations-common';
+import type { ProjectRouting } from '@kbn/es-query';
 import type {
   VisualizeServices,
   VisualizeAppState,
@@ -134,6 +135,23 @@ const TopNav = ({
       }
     },
     [doReload]
+  );
+
+  const onProjectRoutingChange = useCallback(
+    (value: ProjectRouting) => {
+      const currentProjectRouting = currentAppState.projectRouting;
+      if (value !== currentProjectRouting) {
+        // Update state
+        stateContainer.transitions.set('projectRouting', value);
+        // Update embeddable input
+        embeddableHandler.updateInput({
+          projectRouting: value,
+        });
+        // Force refresh to fetch data with new project routing
+        doReload();
+      }
+    },
+    [currentAppState.projectRouting, stateContainer.transitions, embeddableHandler, doReload]
   );
 
   useEffect(() => {
@@ -353,6 +371,9 @@ const TopNav = ({
       showDatePicker={showDatePicker()}
       showFilterBar={showFilterBar}
       showQueryInput={showQueryInput}
+      showProjectPicker
+      projectRouting={currentAppState.projectRouting}
+      onProjectRoutingChange={onProjectRoutingChange}
       badges={
         managed
           ? [
@@ -407,6 +428,8 @@ const TopNav = ({
       showSearchBar
       showDatePicker={false}
       showQueryInput={false}
+      projectRouting={currentAppState.projectRouting}
+      onProjectRoutingChange={onProjectRoutingChange}
     />
   ) : null;
 };

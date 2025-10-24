@@ -32,7 +32,7 @@ import type {
 import type { DataViewEditorStart } from '@kbn/data-view-editor-plugin/public';
 
 import type { NavigationPublicPluginStart as NavigationStart } from '@kbn/navigation-plugin/public';
-import type { Filter, Query, TimeRange } from '@kbn/es-query';
+import type { Filter, Query, TimeRange, ProjectRouting } from '@kbn/es-query';
 import type { DataPublicPluginStart } from '@kbn/data-plugin/public';
 import type { DataViewsPublicPluginStart } from '@kbn/data-views-plugin/public';
 import type { SharePluginStart } from '@kbn/share-plugin/public';
@@ -59,6 +59,7 @@ export interface VisualizeAppState {
   query: Query;
   savedQuery?: string;
   linked: boolean;
+  projectRouting?: ProjectRouting;
 }
 
 export interface VisualizeAppStateTransitions {

@@ -45,6 +45,8 @@ export const useEditorUpdates = (
       setCurrentAppState(initialState);
 
       const reloadVisualization = () => {
+        const currentState = appState.getState();
+        console.log('use_editor_updates reloadVisualization - currentState.projectRouting:', currentState.projectRouting);
         if (visEditorController) {
           visEditorController.render({
             core: services,
@@ -58,11 +60,13 @@ export const useEditorUpdates = (
             unifiedSearch: services.unifiedSearch,
           });
         } else {
+          console.log('use_editor_updates calling embeddableHandler.updateInput with projectRouting:', currentState.projectRouting);
           embeddableHandler.updateInput({
             timeRange: timefilter.getTime(),
             filters: filterManager.getFilters(),
             query: queryString.getQuery() as Query,
             searchSessionId: services.data.search.session.getSessionId(),
+            projectRouting: currentState.projectRouting,
           });
         }
       };
@@ -94,6 +98,15 @@ export const useEditorUpdates = (
       // update persisted state from initial state
       if (initialState.uiState) {
         vis.uiState.setSilent(initialState.uiState);
+      }
+
+      // Set initial projectRouting on embeddable and searchSource
+      console.log('use_editor_updates initial setup - initialState.projectRouting:', initialState.projectRouting);
+      embeddableHandler.updateInput({
+        projectRouting: initialState.projectRouting,
+      });
+      if (vis.data.searchSource) {
+        vis.data.searchSource.setField('projectRouting', initialState.projectRouting);
       }
 
       // update the appState when the stateful instance changes
@@ -152,6 +165,7 @@ export const useEditorUpdates = (
         if (vis.data.searchSource) {
           vis.data.searchSource.setField('query', state.query);
           vis.data.searchSource.setField('filter', state.filters);
+          vis.data.searchSource.setField('projectRouting', state.projectRouting);
         }
         reloadVisualization();
         setHasUnsavedChanges(true);
