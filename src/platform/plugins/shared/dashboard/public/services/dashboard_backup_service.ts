@@ -17,6 +17,7 @@ import { set } from '@kbn/safer-lodash-set';
 import type { ViewMode } from '@kbn/presentation-publishing';
 import { coreServices, spacesService } from './kibana_services';
 import type { DashboardState } from '../../common';
+import { ProjectRouting } from '@kbn/es-query';
 
 export const DASHBOARD_PANELS_UNSAVED_ID = 'unsavedDashboard';
 const DASHBOARD_VIEWMODE_LOCAL_KEY = 'dashboardViewMode';
@@ -31,7 +32,7 @@ const getPanelsGetError = (message: string) =>
   });
 
 export type DashboardBackupState = Partial<Omit<DashboardState, 'projectRouting'>> & {
-  projectRouting?: string | null;
+  projectRouting?: ProjectRouting | null;
   viewMode?: ViewMode;
 };
 
@@ -113,7 +114,7 @@ class DashboardBackupService implements DashboardBackupServiceType {
       const { projectRouting, ...rest } = backupState;
       return {
         ...rest,
-        ...(projectRouting === null ? { projectRouting: undefined } : {}),
+        ...(projectRouting ? { projectRouting } : projectRouting === null ? { projectRouting: undefined } : {}),
       };
     } catch (e) {
       coreServices.notifications.toasts.addDanger({
