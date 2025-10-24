@@ -103,10 +103,18 @@ class DashboardBackupService implements DashboardBackupServiceType {
     }
   }
 
-  public getState(id = DASHBOARD_PANELS_UNSAVED_ID) {
+  public getState(id = DASHBOARD_PANELS_UNSAVED_ID): Partial<DashboardState> | undefined {
     try {
       const dashboards = this.getDashboards();
-      return dashboards[id];
+      const backupState = dashboards[id];
+      if (!backupState) {
+        return;
+      }
+      const { projectRouting, ...rest } = backupState;
+      return {
+        ...rest,
+        ...(projectRouting === null ? { projectRouting: undefined } : {}),
+      };
     } catch (e) {
       coreServices.notifications.toasts.addDanger({
         title: getPanelsGetError(e.message),

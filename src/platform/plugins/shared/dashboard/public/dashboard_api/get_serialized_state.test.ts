@@ -10,7 +10,6 @@
 import { dataService, savedObjectsTaggingService } from '../services/kibana_services';
 import { getSampleDashboardState } from '../mocks';
 import { getSerializedState } from './get_serialized_state';
-import type { ProjectRouting } from '@kbn/es-query';
 
 dataService.search.searchSource.create = jest.fn().mockResolvedValue({
   setField: jest.fn(),
@@ -113,7 +112,6 @@ describe('getSerializedState', () => {
       };
       const result = getSerializedState({
         controlGroupReferences: [],
-        generateNewIds: false,
         dashboardState,
         panelReferences: [],
       });
@@ -126,11 +124,10 @@ describe('getSerializedState', () => {
     it('should include projectRouting when set to _alias:_origin', () => {
       const dashboardState = {
         ...getSampleDashboardState(),
-        projectRouting: '_alias:_origin' as ProjectRouting,
+        projectRouting: '_alias:_origin' as const,
       };
       const result = getSerializedState({
         controlGroupReferences: [],
-        generateNewIds: false,
         dashboardState,
         panelReferences: [],
       });
