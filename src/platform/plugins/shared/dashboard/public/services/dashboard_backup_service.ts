@@ -15,9 +15,9 @@ import { Storage } from '@kbn/kibana-utils-plugin/public';
 import { set } from '@kbn/safer-lodash-set';
 
 import type { ViewMode } from '@kbn/presentation-publishing';
+import type { ProjectRouting } from '@kbn/es-query';
 import { coreServices, spacesService } from './kibana_services';
 import type { DashboardState } from '../../common';
-import { ProjectRouting } from '@kbn/es-query';
 
 export const DASHBOARD_PANELS_UNSAVED_ID = 'unsavedDashboard';
 const DASHBOARD_VIEWMODE_LOCAL_KEY = 'dashboardViewMode';
@@ -114,7 +114,11 @@ class DashboardBackupService implements DashboardBackupServiceType {
       const { projectRouting, ...rest } = backupState;
       return {
         ...rest,
-        ...(projectRouting ? { projectRouting } : projectRouting === null ? { projectRouting: undefined } : {}),
+        ...(projectRouting
+          ? { projectRouting }
+          : projectRouting === null
+          ? { projectRouting: undefined }
+          : {}),
       };
     } catch (e) {
       coreServices.notifications.toasts.addDanger({
