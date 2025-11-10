@@ -7,16 +7,17 @@
  * License v3.0 only", or the "Server Side Public License, v 1".
  */
 
-import type { PluginInitializerContext } from '@kbn/core/public';
-import { CpsPlugin } from './plugin';
+import type { ProjectRouting } from '@kbn/es-query';
+import type { PublishingSubject } from '../../publishing_subject';
 
-export function plugin(initContext: PluginInitializerContext) {
-  return new CpsPlugin(initContext);
+export interface PublishesProjectRouting {
+  projectRouting$: PublishingSubject<ProjectRouting | undefined>;
 }
 
-export type {
-  CPSPluginSetup,
-  CPSPluginStart,
-  CPSConfigType,
-} from './types';
-export type { CPSManager } from './services/cps_manager';
+export const apiPublishesProjectRouting = (
+  unknownApi: unknown
+): unknownApi is PublishesProjectRouting => {
+  return Boolean(
+    unknownApi && (unknownApi as PublishesProjectRouting)?.projectRouting$ !== undefined
+  );
+};

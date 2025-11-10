@@ -26,6 +26,7 @@ import { parse } from 'url';
 import { setEuiDevProviderWarning } from '@elastic/eui';
 import useObservable from 'react-use/lib/useObservable';
 import type { I18nStart } from '@kbn/core-i18n-browser';
+import type { ProjectRouting } from '@kbn/es-query';
 import type { ThemeServiceStart } from '@kbn/core-theme-browser';
 import type { UserProfileService } from '@kbn/core-user-profile-browser';
 import type { IUiSettingsClient } from '@kbn/core-ui-settings-browser';
@@ -59,6 +60,7 @@ import { RecentlyAccessedService } from '@kbn/recently-accessed';
 import type { Logger } from '@kbn/logging';
 import { Router } from '@kbn/shared-ux-router';
 import type { FeatureFlagsStart } from '@kbn/core-feature-flags-browser';
+import type { CPSPluginStart } from '@kbn/cps/public';
 import { isPrinting$ } from './utils/printing_observable';
 import { DocTitleService } from './doc_title';
 import { NavControlsService } from './nav_controls';
@@ -118,6 +120,7 @@ export class ChromeService {
     localStorage.getItem(IS_SIDENAV_COLLAPSED_KEY) === 'true'
   );
   private readonly isFeedbackBtnVisible$ = new BehaviorSubject(false);
+  private readonly cps$ = new BehaviorSubject<CPSPluginStart | undefined>(undefined);
   private logger: Logger;
   private isServerless = false;
 
@@ -256,6 +259,10 @@ export class ChromeService {
     registerAnalyticsContextProvider(analytics, docTitle.title$);
   }
 
+  public setCps(cps: CPSPluginStart | undefined) {
+    this.cps$.next(cps);
+  }
+
   public async start({
     application,
     docLinks,
@@ -294,6 +301,9 @@ export class ChromeService {
     const badge$ = new BehaviorSubject<ChromeBadge | undefined>(undefined);
     const customNavLink$ = new BehaviorSubject<ChromeNavLink | undefined>(undefined);
     const helpSupportUrl$ = new BehaviorSubject<string>(docLinks.links.kibana.askElastic);
+    const projectRouting$ = new BehaviorSubject<ProjectRouting | undefined>(
+      undefined
+    );
     // ChromeStyle is set to undefined by default, which means that no header will be rendered until
     // setChromeStyle(). This is to avoid a flickering between the "classic" and "project" header meanwhile
     // we load the user profile to check if the user opted out of the new solution navigation.
@@ -415,6 +425,10 @@ export class ChromeService {
     const setIsSideNavCollapsed = (isCollapsed: boolean) => {
       localStorage.setItem(IS_SIDENAV_COLLAPSED_KEY, JSON.stringify(isCollapsed));
       this.isSideNavCollapsed$.next(isCollapsed);
+    };
+
+    const setProjectRouting = (routing: ProjectRouting | undefined) => {
+      projectRouting$.next(routing);
     };
 
     if (!this.params.browserSupportsCsp && injectedMetadata.getCspConfig().warnLegacyBrowsers) {
@@ -553,6 +567,9 @@ export class ChromeService {
         docLinks={docLinks}
         kibanaVersion={injectedMetadata.getKibanaVersion()}
         prependBasePath={http.basePath.prepend}
+        projectRouting$={projectRouting$.pipe(takeUntil(this.stop$))}
+        onProjectRoutingChange={setProjectRouting}
+        cpsManager={this.cps$.getValue()?.cpsManager}
       >
         {includeSideNav ? (
           <Router history={application.history}>
@@ -769,6 +786,8 @@ export class ChromeService {
         updateSolutionNavigations: projectNavigation.updateSolutionNavigations,
         changeActiveSolutionNavigation: projectNavigation.changeActiveSolutionNavigation,
         navigationTourManager: projectNavigation.tourManager,
+        setProjectRouting,
+        getProjectRouting$: () => projectRouting$.pipe(takeUntil(this.stop$)),
       },
     };
   }
