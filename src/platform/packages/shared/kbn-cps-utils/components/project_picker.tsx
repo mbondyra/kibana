@@ -13,22 +13,23 @@ import type { CPSProject } from '@kbn/cps/common/types';
 import { ProjectPickerComponent } from './project_picker_component';
 
 export interface ProjectPickerProps {
-  projectRouting?: ProjectRouting;
-  onProjectRoutingChange?: (projectRouting: ProjectRouting) => void;
-  wrappingContainer?: (children: React.ReactNode) => React.ReactElement;
   cpsManager?: {
     fetchProjects: () => Promise<{ origin: CPSProject | null; linkedProjects: CPSProject[] }>;
+    getProjectRouting: () => ProjectRouting | undefined;
+    getProjectRouting$: () => {
+      subscribe: (callback: (routing: ProjectRouting | undefined) => void) => {
+        unsubscribe: () => void;
+      };
+    };
   };
 }
 
 export const ProjectPicker: React.FC<ProjectPickerProps> = ({
-  projectRouting,
-  onProjectRoutingChange,
-  wrappingContainer = (children) => children as React.ReactElement,
   cpsManager,
 }) => {
   const [originProject, setOriginProject] = useState<CPSProject | null>(null);
   const [linkedProjects, setLinkedProjects] = useState<CPSProject[]>([]);
+  const [projectRouting, setProjectRouting] = useState<ProjectRouting | undefined>(cpsManager?.getProjectRouting());
 
   useEffect(() => {
     // Only fetch projects in serverless environments where cpsManager is available
@@ -40,19 +41,22 @@ export const ProjectPicker: React.FC<ProjectPickerProps> = ({
         setLinkedProjects(projectsData.linkedProjects);
       }
     });
+    cpsManager.getProjectRouting$().subscribe((newRouting) => {
+      setProjectRouting(newRouting);
+    });
   }, [cpsManager]);
 
   // do not render the component if cpsManager is not available or required props are missing or there aren't linked projects
-  if (!cpsManager || !onProjectRoutingChange || !originProject || linkedProjects.length === 0) {
+  if (!cpsManager || !originProject || linkedProjects.length === 0) {
     return null;
   }
 
-  return wrappingContainer(
-    <ProjectPickerComponent
-      projectRouting={projectRouting}
-      onProjectRoutingChange={onProjectRoutingChange}
-      originProject={originProject}
-      linkedProjects={linkedProjects}
-    />
-  );
+  return <ProjectPickerComponent
+    projectRouting={projectRouting}
+    onProjectRoutingChange={(newRouting: ProjectRouting) => {
+    cpsManager?.setProjectRouting(newRouting);
+  }}
+    originProject={originProject}
+    linkedProjects={linkedProjects}
+  />
 };

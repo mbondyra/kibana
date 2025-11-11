@@ -12,14 +12,13 @@ import type { StateComparators } from '@kbn/presentation-publishing';
 import { diffComparators } from '@kbn/presentation-publishing';
 import type { Subscription } from 'rxjs';
 import { BehaviorSubject, combineLatestWith, debounceTime, map } from 'rxjs';
-import { coreServices } from '../services/kibana_services';
+import { cpsService } from '../services/kibana_services';
 import type { DashboardState } from '../../common';
-import type { InternalChromeStart } from '@kbn/core-chrome-browser-internal';
 
 export const COMPARE_DEBOUNCE = 100;
 
 export function initializeProjectRoutingManager(initialState: DashboardState) {
-  console.log('Dashboard: initializeProjectRoutingManager with projectRouting:', initialState.projectRouting);
+  console.log('Dashboard: initializeProjectRoutingManager with projectRouting:', initialState.projectRouting, cpsService);
 
   const projectRouting$ = new BehaviorSubject<ProjectRouting | undefined>(
     initialState.projectRouting
@@ -32,19 +31,20 @@ export function initializeProjectRoutingManager(initialState: DashboardState) {
     }
   }
 
-  // If the dashboard has a saved projectRouting value, set it in Chrome so the picker shows the correct value
-  if (initialState.projectRouting && (coreServices.chrome as InternalChromeStart).project) {
-    console.log('Dashboard: Setting Chrome projectRouting to saved value:', initialState.projectRouting);
-    (coreServices.chrome as InternalChromeStart).project.setProjectRouting(initialState.projectRouting);
+  // If the dashboard has a saved projectRouting value, set it in CPS so the picker shows the correct value
+  if (initialState.projectRouting && cpsService?.cpsManager) {
+    console.log('Dashboard: Setting CPS projectRouting to saved value:', initialState.projectRouting);
+    cpsService.cpsManager.setProjectRouting(initialState.projectRouting);
   }
 
-  // Subscribe to Chrome's projectRouting$ to sync changes from the project picker
-  const chromeProjectRoutingSubscription: Subscription | undefined = (coreServices.chrome as InternalChromeStart).project
+
+  // Subscribe to CPS's projectRouting$ to sync changes from the project picker
+  const cpsProjectRoutingSubscription: Subscription | undefined = cpsService?.cpsManager
     ?.getProjectRouting$()
-    .subscribe((chromeProjectRouting: ProjectRouting | undefined) => {
-      console.log('Dashboard: Chrome projectRouting changed to:', chromeProjectRouting);
-      // Always update when Chrome changes (user interacted with picker)
-      setProjectRouting(chromeProjectRouting);
+    .subscribe((cpsProjectRouting: ProjectRouting | undefined) => {
+      console.log('Dashboard: CPS projectRouting changed to:', cpsProjectRouting);
+      // Always update when CPS changes (user interacted with picker)
+      setProjectRouting(cpsProjectRouting);
     });
 
   const comparators = {
@@ -80,7 +80,7 @@ export function initializeProjectRoutingManager(initialState: DashboardState) {
       },
     },
     cleanup: () => {
-      chromeProjectRoutingSubscription?.unsubscribe();
+      cpsProjectRoutingSubscription?.unsubscribe();
     },
   };
 }

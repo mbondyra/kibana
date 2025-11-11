@@ -7,13 +7,15 @@
  * License v3.0 only", or the "Server Side Public License, v 1".
  */
 
+import React from 'react';
+import ReactDOM from 'react-dom';
 import type { CoreSetup, CoreStart, Plugin, PluginInitializerContext } from '@kbn/core/public';
+import { ProjectPicker } from '@kbn/cps-utils';
 import type { CPSPluginSetup, CPSPluginStart, CPSConfigType } from './types';
 import { CPSManager } from './services/cps_manager';
 
 export class CpsPlugin implements Plugin<CPSPluginSetup, CPSPluginStart> {
   private readonly initializerContext: PluginInitializerContext<CPSConfigType>;
-  private cpsManager?: CPSManager;
 
   constructor(initializerContext: PluginInitializerContext<CPSConfigType>) {
     this.initializerContext = initializerContext;
@@ -29,17 +31,38 @@ export class CpsPlugin implements Plugin<CPSPluginSetup, CPSPluginStart> {
 
   public start(core: CoreStart): CPSPluginStart {
     const { cpsEnabled } = this.initializerContext.config.get();
+    let cpsManager: CPSManager | undefined;
+
     // Only initialize cpsManager in serverless environments when CPS is enabled
     if (cpsEnabled) {
-      this.cpsManager = new CPSManager({
+      cpsManager = new CPSManager({
         http: core.http,
         logger: this.initializerContext.logger.get('cps'),
       });
+
+      this.registerProjectPicker(core, cpsManager);
     }
 
     return {
-      cpsManager: this.cpsManager,
+      cpsManager,
     };
+  }
+
+  private registerProjectPicker(coreStart: CoreStart, cpsManager: CPSManager) {
+    coreStart.chrome.navControls.registerLeft({
+      mount: (element) => {
+        ReactDOM.render(
+          <ProjectPicker cpsManager={cpsManager} />,
+          element,
+          () => {}
+        );
+
+        return () => {
+          ReactDOM.unmountComponentAtNode(element);
+        };
+      },
+      order: 1000,
+    });
   }
 
   public stop() {}

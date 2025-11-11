@@ -428,7 +428,7 @@ export class CoreSystem {
       const pluginContracts = await this.plugins.start(core);
 
       // Pass CPS plugin to Chrome if available
-      const cpsPlugin = pluginContracts.contracts.get('cps');
+      const cpsPlugin = pluginContracts.contracts.get('cps') as any;
       if (cpsPlugin) {
         this.chrome.setCps(cpsPlugin);
       }
