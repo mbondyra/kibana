@@ -21,6 +21,11 @@ export function initializeProjectRoutingManager(
   initialState: DashboardState,
   projectRoutingRestore$: PublishingSubject<boolean>
 ) {
+  const isCpsEnabled = Boolean(cpsService?.cpsManager);
+  if (!isCpsEnabled) {
+    return;
+  }
+
   const projectRouting$ = new BehaviorSubject<ProjectRouting>(initialState.projectRouting);
 
   function setProjectRouting(projectRouting: ProjectRouting) {
@@ -32,7 +37,8 @@ export function initializeProjectRoutingManager(
   // Set projectRouting in CPS: use saved value if exists (and not null), otherwise use default
   // This ensures the picker shows the correct value on dashboard load
   if (cpsService?.cpsManager) {
-    const routingValue = initialState.projectRouting ?? cpsService.cpsManager.getDefaultProjectRouting();
+    const routingValue =
+      initialState.projectRouting ?? cpsService.cpsManager.getDefaultProjectRouting();
     cpsService.cpsManager.setProjectRouting(routingValue);
   }
 

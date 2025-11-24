@@ -12,6 +12,18 @@ import { shallowWithI18nProvider } from '@kbn/test-jest-helpers';
 
 jest.mock('@kbn/saved-objects-plugin/public', () => ({
   SavedObjectSaveModal: () => null,
+  SavedObjectSaveModalWithSaveResult: ({
+    children,
+    renderOptions,
+  }: {
+    children: React.ReactNode;
+    renderOptions: () => React.ReactNode;
+  }) => (
+    <div data-test-subj="save-modal">
+      {children}
+      {renderOptions?.()}
+    </div>
+  ),
 }));
 
 import { DashboardSaveModal } from './save_modal';
@@ -32,4 +44,76 @@ test('renders DashboardSaveModal', () => {
     />
   );
   expect(component).toMatchSnapshot();
+});
+
+describe('projectRoutingRestore prop', () => {
+  test('should accept projectRoutingRestore prop as true', () => {
+    const component = shallowWithI18nProvider(
+      <DashboardSaveModal
+        onSave={mockSave}
+        onClose={mockClose}
+        title="dash title"
+        description="dash description"
+        timeRestore={false}
+        projectRoutingRestore={true}
+        showCopyOnSave={false}
+        showStoreProjectRoutingOnSave={true}
+      />
+    );
+
+    expect(component).toBeDefined();
+    // Verify component renders without errors
+    expect(component.find('SavedObjectSaveModalWithSaveResult').exists()).toBe(true);
+  });
+
+  test('should accept projectRoutingRestore prop as false', () => {
+    const component = shallowWithI18nProvider(
+      <DashboardSaveModal
+        onSave={mockSave}
+        onClose={mockClose}
+        title="dash title"
+        description="dash description"
+        timeRestore={false}
+        projectRoutingRestore={false}
+        showCopyOnSave={false}
+        showStoreProjectRoutingOnSave={false}
+      />
+    );
+
+    expect(component).toBeDefined();
+    // Verify component renders without errors
+    expect(component.find('SavedObjectSaveModalWithSaveResult').exists()).toBe(true);
+  });
+
+  test('should accept showStoreProjectRoutingOnSave prop', () => {
+    const componentWithShow = shallowWithI18nProvider(
+      <DashboardSaveModal
+        onSave={mockSave}
+        onClose={mockClose}
+        title="dash title"
+        description="dash description"
+        timeRestore={false}
+        projectRoutingRestore={false}
+        showCopyOnSave={false}
+        showStoreProjectRoutingOnSave={true}
+      />
+    );
+
+    const componentWithoutShow = shallowWithI18nProvider(
+      <DashboardSaveModal
+        onSave={mockSave}
+        onClose={mockClose}
+        title="dash title"
+        description="dash description"
+        timeRestore={false}
+        projectRoutingRestore={false}
+        showCopyOnSave={false}
+        showStoreProjectRoutingOnSave={false}
+      />
+    );
+
+    // Both should render without errors
+    expect(componentWithShow.find('SavedObjectSaveModalWithSaveResult').exists()).toBe(true);
+    expect(componentWithoutShow.find('SavedObjectSaveModalWithSaveResult').exists()).toBe(true);
+  });
 });
