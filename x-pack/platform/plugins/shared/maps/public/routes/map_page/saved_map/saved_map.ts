@@ -69,6 +69,11 @@ import type {
   MapByValueState,
   MapEmbeddableState,
 } from '../../../../common/embeddable/types';
+import {
+  initializeProjectRoutingManager,
+  type ProjectRoutingManager,
+} from './project_routing_manager';
+import { getCps } from '../../../kibana_services';
 
 function setMapSettingsFromEncodedState(settings: Partial<MapSettings>) {
   const decodedCustomIcons = settings.customIcons
@@ -100,6 +105,7 @@ export class SavedMap {
   private _tags: string[] = [];
   private _defaultLayerWizard: string;
   private _managed: boolean;
+  private _projectRoutingManager?: ProjectRoutingManager;
 
   constructor({
     defaultLayers = [],
@@ -163,6 +169,16 @@ export class SavedMap {
         : {
             title: '',
           };
+    }
+
+    // Initialize project routing manager with saved project_routing
+    const savedProjectRouting = this._attributes?.project_routing;
+    const cps = getCps();
+    if (cps?.cpsManager) {
+      this._projectRoutingManager = initializeProjectRoutingManager(
+        savedProjectRouting ?? undefined,
+        cps.cpsManager
+      );
     }
 
     this._reportUsage();
@@ -355,6 +371,18 @@ export class SavedMap {
     return this._tags;
   }
 
+  public getProjectRoutingForSave(projectRoutingRestore: boolean) {
+    return this._projectRoutingManager?.getStateForSave(projectRoutingRestore) ?? {};
+  }
+
+  public hasProjectRoutingRestore(): boolean {
+    return this._attributes?.project_routing !== undefined;
+  }
+
+  public getProjectRoutingManager() {
+    return this._projectRoutingManager;
+  }
+
   public hasSaveAndReturnConfig() {
     const hasOriginatingApp = this.hasOriginatingApp();
     return hasOriginatingApp;
@@ -403,12 +431,14 @@ export class SavedMap {
     saveByReference,
     dashboardId,
     history,
+    newProjectRoutingRestore,
   }: OnSaveProps & {
     returnToOrigin?: boolean;
     tags?: string[];
     saveByReference: boolean;
     dashboardId?: string | null;
     history: ScopedHistory;
+    newProjectRoutingRestore?: boolean;
   }) {
     if (!this._attributes) {
       throw new Error('Invalid usage, must await whenReady before calling save');
@@ -416,10 +446,20 @@ export class SavedMap {
 
     const prevTitle = this._attributes.title;
     const prevDescription = this._attributes.description;
+    
+    // Get project routing state for save
+    const projectRoutingRestore = newProjectRoutingRestore ?? false;
+    const projectRoutingState = this._projectRoutingManager?.getStateForSave(
+      projectRoutingRestore
+    ) ?? {};
+    
     this._attributes = {
       title: newTitle,
       ...(newDescription ? { description: newDescription } : {}),
       ...(await this._getStoreAttributes()),
+      ...(projectRoutingState.project_routing !== undefined
+        ? { project_routing: projectRoutingState.project_routing }
+        : {}),
     };
 
     let mapEmbeddableState: MapEmbeddableState | undefined;

@@ -501,6 +501,7 @@ function getExpressionForLayer(
           probability: getSamplingValue(layer),
           samplerSeed: seedrandom(searchSessionId).int32(),
           ignoreGlobalFilters: Boolean(layer.ignoreGlobalFilters),
+          projectRouting: layer.projectRouting ? JSON.stringify(layer.projectRouting) : undefined,
         }).toAst();
 
     return {

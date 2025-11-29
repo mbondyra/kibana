@@ -12,7 +12,6 @@ import {
   type PublishesSavedObjectId,
   type PublishesRendered,
 } from '@kbn/presentation-publishing';
-import { noop } from 'lodash';
 import type { Observable } from 'rxjs';
 import { BehaviorSubject, map, merge } from 'rxjs';
 import type {
@@ -21,6 +20,7 @@ import type {
   LensRuntimeState,
   LensSerializedState,
 } from '@kbn/lens-common';
+import type { PublishesLayerProjectRoutingOverrides } from '@kbn/lens-common-2';
 
 export interface StateManagementConfig {
   api: Pick<IntegrationCallbacks, 'updateAttributes' | 'updateSavedObjectId'> &
@@ -28,12 +28,51 @@ export interface StateManagementConfig {
     PublishesDataViews &
     PublishesDataLoading &
     PublishesRendered &
-    PublishesBlockingError;
+    PublishesBlockingError &
+    PublishesLayerProjectRoutingOverrides;
   anyStateChange$: Observable<void>;
   getComparators: () => StateComparators<Pick<LensSerializedState, 'attributes' | 'savedObjectId'>>;
   reinitializeRuntimeState: (lastSavedRuntimeState: LensRuntimeState) => void;
   getLatestState: () => Pick<LensRuntimeState, 'attributes' | 'savedObjectId'>;
   cleanup: () => void;
+}
+
+/**
+ * Helper function to check if there are layer-level project routing overrides
+ */
+function hasLayerProjectRoutingOverrides(attributes: LensRuntimeState['attributes']): boolean {
+  if (!attributes?.state) {
+    return false;
+  }
+
+  // Check form-based datasource layers
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const formBasedState = attributes.state.datasourceStates?.formBased as any;
+  if (formBasedState?.layers) {
+    const layers = Object.values(formBasedState.layers);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (layers.some((layer: any) => layer.projectRouting !== undefined)) {
+      return true;
+    }
+  }
+
+  // Check XY annotation layers
+  if (attributes.visualizationType === 'lnsXY' && attributes.state.visualization) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const xyState = attributes.state.visualization as any;
+    if (xyState?.layers) {
+      const annotationLayers = xyState.layers.filter(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (layer: any) => layer.layerType === 'annotations'
+      );
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (annotationLayers.some((layer: any) => layer.projectRouting !== undefined)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
 }
 
 /**
@@ -48,6 +87,16 @@ export function initializeStateManagement(
     initialState.savedObjectId
   );
 
+  // Create observable that tracks whether there are layer-level project routing overrides
+  const hasLayerProjectRoutingOverrides$ = new BehaviorSubject<boolean>(
+    hasLayerProjectRoutingOverrides(initialState.attributes)
+  );
+
+  // Subscribe to attributes changes to update hasLayerProjectRoutingOverrides$
+  const subscription = internalApi.attributes$.subscribe((attributes) => {
+    hasLayerProjectRoutingOverrides$.next(hasLayerProjectRoutingOverrides(attributes));
+  });
+
   return {
     api: {
       updateAttributes: internalApi.updateAttributes,
@@ -58,6 +107,7 @@ export function initializeStateManagement(
       dataLoading$: internalApi.dataLoading$,
       blockingError$: internalApi.blockingError$,
       rendered$: internalApi.hasRenderCompleted$,
+      hasLayerProjectRoutingOverrides$,
     },
     anyStateChange$: merge(internalApi.attributes$).pipe(map(() => undefined)),
     getComparators: () => {
@@ -75,6 +125,8 @@ export function initializeStateManagement(
     reinitializeRuntimeState: (lastSavedRuntimeState: LensRuntimeState) => {
       internalApi.updateAttributes(lastSavedRuntimeState.attributes);
     },
-    cleanup: noop,
+    cleanup: () => {
+      subscription.unsubscribe();
+    },
   };
 }

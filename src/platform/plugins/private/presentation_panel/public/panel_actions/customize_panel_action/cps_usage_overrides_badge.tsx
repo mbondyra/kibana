@@ -17,10 +17,8 @@ import React, { useState } from 'react';
 import { EuiPopover, EuiText, EuiButton, EuiSpacer } from '@elastic/eui';
 
 import type { EmbeddableApiContext } from '@kbn/presentation-publishing';
-import {
-  apiPublishesProjectRouting,
-  apiHasParentApi,
-} from '@kbn/presentation-publishing';
+import { apiPublishesProjectRouting, apiHasParentApi } from '@kbn/presentation-publishing';
+import { apiPublishesLayerProjectRoutingOverrides } from '@kbn/lens-common-2';
 import { combineLatest, map } from 'rxjs';
 import { i18n } from '@kbn/i18n';
 import { CPS_USAGE_OVERRIDES_BADGE } from './constants';
@@ -38,6 +36,16 @@ export class CpsUsageOverridesBadge
   public getDisplayName({ embeddable }: EmbeddableApiContext) {
     if (!this.hasOverride(embeddable)) throw new IncompatibleActionError();
 
+    // Check for layer-level overrides
+    if (apiPublishesLayerProjectRoutingOverrides(embeddable)) {
+      if (embeddable.hasLayerProjectRoutingOverrides$.value) {
+        return i18n.translate('presentationPanel.badge.cpsUsageOverrides.displayName.layers', {
+          defaultMessage: 'This panel has layer-level CPS scope overrides',
+        });
+      }
+    }
+
+    // Check for panel-level overrides
     if (!apiPublishesProjectRouting(embeddable)) {
       throw new IncompatibleActionError();
     }
@@ -58,15 +66,21 @@ export class CpsUsageOverridesBadge
 
     if (!this.hasOverride(embeddable)) throw new IncompatibleActionError();
 
-    if (!apiPublishesProjectRouting(embeddable)) {
-      throw new IncompatibleActionError();
-    }
+    // Check if this is a layer-level override
+    const hasLayerOverrides =
+      apiPublishesLayerProjectRoutingOverrides(embeddable) &&
+      embeddable.hasLayerProjectRoutingOverrides$.value;
 
-    const overrideValue = embeddable.projectRouting$.value;
-    const dashboardValue =
-      apiHasParentApi(embeddable) && apiPublishesProjectRouting(embeddable.parentApi)
-        ? embeddable.parentApi.projectRouting$.value
-        : undefined;
+    // Get panel-level values if available
+    const hasPanelOverride =
+      apiPublishesProjectRouting(embeddable) &&
+      apiHasParentApi(embeddable) &&
+      apiPublishesProjectRouting(embeddable.parentApi);
+
+    const overrideValue = hasPanelOverride ? embeddable.projectRouting$.value : undefined;
+    const dashboardValue = hasPanelOverride
+      ? embeddable.parentApi.projectRouting$.value
+      : undefined;
 
     const badgeLabel = i18n.translate('presentationPanel.badge.cpsUsageOverrides.label', {
       defaultMessage: 'CPS overrides',
@@ -92,11 +106,21 @@ export class CpsUsageOverridesBadge
       }
     };
 
+    const handleToggle = () => setIsPopoverOpen(!isPopoverOpen);
+
     return (
       <EuiPopover
         button={
           <span
-            onClick={() => setIsPopoverOpen(!isPopoverOpen)}
+            onClick={handleToggle}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handleToggle();
+              }
+            }}
+            role="button"
+            tabIndex={0}
             style={{ cursor: 'pointer' }}
             data-test-subj="cpsUsageOverridesBadgeButton"
           >
@@ -115,29 +139,48 @@ export class CpsUsageOverridesBadge
               })}
             </strong>
           </p>
-           <p>
-            <strong>
-              {i18n.translate('presentationPanel.badge.cpsUsageOverrides.popover.panelScope', {
-                defaultMessage: 'Panel scope:',
-              })}
-            </strong>
-            {formatProjectRoutingValue(overrideValue)}
-            <br/>
-            <strong>
-              {i18n.translate('presentationPanel.badge.cpsUsageOverrides.popover.dashboardScope', {
-                defaultMessage: 'Dashboard scope:',
-              })}
-            </strong>{' '}
-            {formatProjectRoutingValue(dashboardValue) ?? i18n.translate('presentationPanel.badge.cpsUsageOverrides.popover.notSet', {
-              defaultMessage: 'Not set',
-            })}
-          </p>
-          <p>
-            {i18n.translate('presentationPanel.badge.cpsUsageOverrides.popover.description', {
-              defaultMessage:
-                "To use the dashboard's CPS scope, remove the override from panel settings.",
-            })}
-          </p>
+          {hasLayerOverrides && (
+            <p>
+              {i18n.translate(
+                'presentationPanel.badge.cpsUsageOverrides.popover.layerDescription',
+                {
+                  defaultMessage:
+                    'This panel has one or more layers with CPS scope overrides. Edit the panel to modify layer-specific settings.',
+                }
+              )}
+            </p>
+          )}
+          {hasPanelOverride && (
+            <>
+              <p>
+                <strong>
+                  {i18n.translate('presentationPanel.badge.cpsUsageOverrides.popover.panelScope', {
+                    defaultMessage: 'Panel scope:',
+                  })}
+                </strong>
+                {formatProjectRoutingValue(overrideValue)}
+                <br />
+                <strong>
+                  {i18n.translate(
+                    'presentationPanel.badge.cpsUsageOverrides.popover.dashboardScope',
+                    {
+                      defaultMessage: 'Dashboard scope:',
+                    }
+                  )}
+                </strong>{' '}
+                {formatProjectRoutingValue(dashboardValue) ??
+                  i18n.translate('presentationPanel.badge.cpsUsageOverrides.popover.notSet', {
+                    defaultMessage: 'Not set',
+                  })}
+              </p>
+              <p>
+                {i18n.translate('presentationPanel.badge.cpsUsageOverrides.popover.description', {
+                  defaultMessage:
+                    "To use the dashboard's CPS scope, remove the override from panel settings.",
+                })}
+              </p>
+            </>
+          )}
         </EuiText>
         <EuiSpacer size="s" />
         <EuiButton
@@ -156,6 +199,12 @@ export class CpsUsageOverridesBadge
   };
 
   public couldBecomeCompatible({ embeddable }: EmbeddableApiContext) {
+    // Could become compatible if embeddable supports layer-level overrides
+    if (apiPublishesLayerProjectRoutingOverrides(embeddable)) {
+      return true;
+    }
+
+    // Or if it supports panel-level project routing
     return (
       apiPublishesProjectRouting(embeddable) &&
       apiHasParentApi(embeddable) &&
@@ -164,15 +213,26 @@ export class CpsUsageOverridesBadge
   }
 
   public getCompatibilityChangesSubject({ embeddable }: EmbeddableApiContext) {
+    const observables = [];
+
+    // Subscribe to layer-level overrides changes
+    if (apiPublishesLayerProjectRoutingOverrides(embeddable)) {
+      observables.push(embeddable.hasLayerProjectRoutingOverrides$);
+    }
+
+    // Subscribe to panel-level project routing changes
     if (
       apiPublishesProjectRouting(embeddable) &&
       apiHasParentApi(embeddable) &&
       apiPublishesProjectRouting(embeddable.parentApi)
     ) {
-      return combineLatest([embeddable.projectRouting$, embeddable.parentApi.projectRouting$]).pipe(
-        map(() => undefined)
-      );
+      observables.push(embeddable.projectRouting$, embeddable.parentApi.projectRouting$);
     }
+
+    if (observables.length > 0) {
+      return combineLatest(observables).pipe(map(() => undefined));
+    }
+
     return undefined;
   }
 
@@ -190,6 +250,14 @@ export class CpsUsageOverridesBadge
   }
 
   private hasOverride(embeddable: unknown): boolean {
+    // Check for layer-level overrides (e.g., Lens layers)
+    if (apiPublishesLayerProjectRoutingOverrides(embeddable)) {
+      if (embeddable.hasLayerProjectRoutingOverrides$.value) {
+        return true;
+      }
+    }
+
+    // Check for panel-level overrides
     if (
       !apiPublishesProjectRouting(embeddable) ||
       !apiHasParentApi(embeddable) ||
@@ -203,8 +271,7 @@ export class CpsUsageOverridesBadge
 
     // Only show badge if embeddable has an explicit (non-undefined) override that differs from dashboard
     return (
-      embeddableProjectRouting !== undefined &&
-      embeddableProjectRouting !== parentProjectRouting
+      embeddableProjectRouting !== undefined && embeddableProjectRouting !== parentProjectRouting
     );
   }
 }

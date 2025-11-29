@@ -19,6 +19,8 @@ export type StoredMapAttributes = SerializableRecord & {
   mapStateJSON?: string;
   layerListJSON?: string;
   uiStateJSON?: string;
+  // projectRouting can be null to explicitly clear the value in storage
+  project_routing?: string | null;
 };
 
 export interface StoredRefreshInterval {

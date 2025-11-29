@@ -21,6 +21,11 @@ export function transformMapAttributesIn(mapState: MapAttributes): {
 
   if (mapState.description) storedMapAttributes.description = mapState.description;
   if (mapState.layers) storedMapAttributes.layerListJSON = JSON.stringify(mapState.layers);
+  
+  // Handle project_routing separately (not stored in JSON)
+  if ('project_routing' in mapState && mapState.project_routing !== undefined) {
+    storedMapAttributes.project_routing = mapState.project_routing as string | null;
+  }
 
   const mapStateJSON = getJSONString(
     {

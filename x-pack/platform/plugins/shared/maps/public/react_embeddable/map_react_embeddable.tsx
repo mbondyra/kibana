@@ -19,6 +19,7 @@ import {
   titleComparators,
   useBatchedPublishingSubjects,
 } from '@kbn/presentation-publishing';
+import type { ProjectRouting } from '@kbn/es-query';
 import { BehaviorSubject, merge } from 'rxjs';
 import { apiPublishesSettings } from '@kbn/presentation-containers/interfaces/publishes_settings';
 import { initializeUnsavedChanges } from '@kbn/presentation-containers';
@@ -76,6 +77,12 @@ export const mapEmbeddableFactory: EmbeddableFactory<MapEmbeddableState, MapApi>
     const defaultDescription$ = new BehaviorSubject<string | undefined>(
       savedMap.getAttributes().description
     );
+    
+    // Initialize projectRouting$ for Maps with saved project_routing
+    // This allows the map to override dashboard project routing
+    const savedProjectRouting = savedMap.getAttributes().project_routing;
+    const projectRouting$ = new BehaviorSubject<ProjectRouting | undefined>(savedProjectRouting ?? undefined);
+    
     const reduxSync = initializeReduxSync({
       savedMap,
       state,
@@ -164,6 +171,9 @@ export const mapEmbeddableFactory: EmbeddableFactory<MapEmbeddableState, MapApi>
       ...(dynamicActionsManager?.api ?? {}),
       ...titleManager.api,
       ...reduxSync.api,
+      // Publish projectRouting$ for Maps with saved project_routing
+      // This allows the map to override dashboard project routing
+      ...(savedProjectRouting !== undefined ? { projectRouting$ } : {}),
       ...initializeEditApi(
         uuid,
         () => {

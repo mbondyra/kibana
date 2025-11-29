@@ -27,6 +27,10 @@ export function transformMapAttributesOut(
     ...parseLayerListJSON(injectedAttributes.layerListJSON),
     ...parseMapStateJSON(injectedAttributes.mapStateJSON),
     ...parseUiStateJSON(injectedAttributes.uiStateJSON),
+    // Handle project_routing separately (not stored in JSON)
+    ...(injectedAttributes.project_routing !== undefined
+      ? { project_routing: injectedAttributes.project_routing }
+      : {}),
   };
 }
 

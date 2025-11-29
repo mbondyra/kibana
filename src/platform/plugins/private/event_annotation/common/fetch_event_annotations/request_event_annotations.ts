@@ -52,6 +52,7 @@ interface QueryGroup {
   dataView: DataView;
   allFields?: string[];
   ignoreGlobalFilters: boolean;
+  projectRouting?: string;
 }
 
 export function getTimeZone(uiSettings: IUiSettingsClient) {
@@ -116,11 +117,13 @@ export const requestEventAnnotations = (
       aggConfigs,
       timeFields,
       ignoreGlobalFilters,
+      projectRouting,
     }: {
       dataView: DataView;
       aggConfigs: AggConfigs;
       timeFields: string[];
       ignoreGlobalFilters: boolean;
+      projectRouting?: string;
     }) =>
       lastValueFrom(
         handleRequest({
@@ -149,6 +152,7 @@ export const requestEventAnnotations = (
                 'This request queries Elasticsearch to fetch the data for the annotations.',
             }
           ),
+          projectRouting: projectRouting ? JSON.parse(projectRouting) : undefined,
         })
       );
 
@@ -290,6 +294,7 @@ const prepareEsaggsForQueryGroups = (
         aggConfigs,
         timeFields: [group.timeField],
         ignoreGlobalFilters: Boolean(group.ignoreGlobalFilters),
+        projectRouting: group.projectRouting,
       },
       fieldsColIdMap:
         group.allFields?.reduce<Record<string, string>>(
@@ -329,7 +334,7 @@ function regroupForRequestOptimization(
             (dataView.timeFieldName ||
               dataView.fields.find((field) => field.type === 'date' && field.displayName)?.name);
 
-          const key = `${g.dataView.value.id}-${timeField}-${Boolean(g.ignoreGlobalFilters)}`;
+          const key = `${g.dataView.value.id}-${timeField}-${Boolean(g.ignoreGlobalFilters)}-${g.projectRouting}`;
           const subGroup = acc[key] as QueryGroup;
           if (subGroup) {
             let allFields = [...(subGroup.allFields || []), ...(current.extraFields || [])];
@@ -358,6 +363,7 @@ function regroupForRequestOptimization(
               allFields,
               annotations: [current],
               ignoreGlobalFilters: Boolean(g.ignoreGlobalFilters),
+              projectRouting: g.projectRouting,
             },
           };
         }

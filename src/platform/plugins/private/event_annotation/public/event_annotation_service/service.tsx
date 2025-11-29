@@ -303,36 +303,44 @@ export function getEventAnnotationService(
 
       const groupsExpressions = groups
         .filter((g) => g.annotations.some((a) => !a.isHidden))
-        .map(({ annotations, indexPatternId, ignoreGlobalFilters }): ExpressionAstExpression => {
-          const indexPatternExpression: ExpressionAstExpression = {
-            type: 'expression',
-            chain: [
-              {
-                type: 'function',
-                function: 'indexPatternLoad',
-                arguments: {
-                  id: [indexPatternId],
-                  includeFields: [false],
+        .map(
+          ({
+            annotations,
+            indexPatternId,
+            ignoreGlobalFilters,
+            projectRouting,
+          }): ExpressionAstExpression => {
+            const indexPatternExpression: ExpressionAstExpression = {
+              type: 'expression',
+              chain: [
+                {
+                  type: 'function',
+                  function: 'indexPatternLoad',
+                  arguments: {
+                    id: [indexPatternId],
+                    includeFields: [false],
+                  },
                 },
-              },
-            ],
-          };
-          const annotationExpressions = annotationsToExpression(annotations);
-          return {
-            type: 'expression',
-            chain: [
-              {
-                type: 'function',
-                function: 'event_annotation_group',
-                arguments: {
-                  dataView: [indexPatternExpression],
-                  annotations: [...annotationExpressions],
-                  ignoreGlobalFilters: [Boolean(ignoreGlobalFilters)],
+              ],
+            };
+            const annotationExpressions = annotationsToExpression(annotations);
+            return {
+              type: 'expression',
+              chain: [
+                {
+                  type: 'function',
+                  function: 'event_annotation_group',
+                  arguments: {
+                    dataView: [indexPatternExpression],
+                    annotations: [...annotationExpressions],
+                    ignoreGlobalFilters: [Boolean(ignoreGlobalFilters)],
+                    ...(projectRouting ? { projectRouting: [projectRouting] } : {}),
+                  },
                 },
-              },
-            ],
-          };
-        });
+              ],
+            };
+          }
+        );
 
       const fetchExpression: ExpressionAstExpression = {
         type: 'expression',

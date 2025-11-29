@@ -7,6 +7,8 @@
 
 import React from 'react';
 import { i18n } from '@kbn/i18n';
+import { FormattedMessage } from '@kbn/i18n-react';
+import { EuiFormRow, EuiFlexGroup, EuiFlexItem, EuiSwitch } from '@elastic/eui';
 import type { Adapters } from '@kbn/inspector-plugin/public';
 import type {
   OnSaveProps,
@@ -25,6 +27,7 @@ import {
   getInspector,
   getCoreOverlays,
   getSavedObjectsTagging,
+  getCps,
 } from '../../kibana_services';
 import { MAP_EMBEDDABLE_NAME } from '../../../common/constants';
 import type { SavedMap } from './saved_map';
@@ -33,6 +36,62 @@ import { checkForDuplicateTitle } from '../../content_management';
 const SavedObjectSaveModalDashboardWithSaveResult = withSuspense(
   LazySavedObjectSaveModalDashboardWithSaveResult
 );
+
+// Component for the project routing toggle
+interface ProjectRoutingToggleProps {
+  show: boolean;
+  initialValue: boolean;
+  onValueChange: (value: boolean) => void;
+  objectType: string;
+}
+
+const ProjectRoutingToggle: React.FC<ProjectRoutingToggleProps> = ({
+  show,
+  initialValue,
+  onValueChange,
+  objectType,
+}) => {
+  const [checked, setChecked] = React.useState(initialValue);
+
+  // Sync initial value and notify parent when checked changes
+  React.useEffect(() => {
+    setChecked(initialValue);
+  }, [initialValue]);
+
+  React.useEffect(() => {
+    onValueChange(checked);
+  }, [checked, onValueChange]);
+
+  if (!show) {
+    return null;
+  }
+
+  const handleChange = (event: { target: { checked: boolean } }) => {
+    const newValue = event.target.checked;
+    setChecked(newValue);
+  };
+
+  return (
+    <EuiFormRow>
+      <EuiFlexGroup responsive={false} gutterSize="s" alignItems="center">
+        <EuiFlexItem grow={false}>
+          <EuiSwitch
+            data-test-subj="storeProjectRoutingWithMap"
+            checked={checked}
+            onChange={handleChange}
+            label={
+              <FormattedMessage
+                id="savedObjects.saveModalOrigin.storeProjectRoutingFormRowLabel"
+                defaultMessage="Store project routing with {objectType}"
+                values={{ objectType }}
+              />
+            }
+          />
+        </EuiFlexItem>
+      </EuiFlexGroup>
+    </EuiFormRow>
+  );
+};
 
 export function getTopNavConfig({
   savedMap,
@@ -166,6 +225,29 @@ export function getTopNavConfig({
           />
         ) : undefined;
 
+        // Project routing toggle state - use a regular variable instead of useRef
+        // since we're not in a React component
+        const showProjectRoutingToggle = Boolean(getCps()?.cpsManager);
+        const projectRoutingRestore = savedMap.hasProjectRoutingRestore();
+        let projectRoutingState = projectRoutingRestore;
+
+        // Combine tag options with project routing toggle
+        const combinedOptions = (
+          <>
+            {tagSelector}
+            <ProjectRoutingToggle
+              show={showProjectRoutingToggle}
+              initialValue={projectRoutingRestore}
+              onValueChange={(value) => {
+                projectRoutingState = value;
+              }}
+              objectType={i18n.translate('xpack.maps.topNav.saveModalType', {
+                defaultMessage: 'map',
+              })}
+            />
+          </>
+        );
+
         const saveModalProps = {
           onSave: async (
             props: OnSaveProps & {
@@ -198,7 +280,10 @@ export function getTopNavConfig({
               tags,
               saveByReference: props.addToLibrary,
               history,
-            });
+              newProjectRoutingRestore: showProjectRoutingToggle
+                ? projectRoutingState
+                : undefined,
+            } as any);
             // showSaveModal wrapper requires onSave to return an object with an id to close the modal after successful save
             return { id: 'id' };
           },
@@ -232,7 +317,7 @@ export function getTopNavConfig({
                     })
                   : undefined
               }
-              options={tagSelector}
+              options={combinedOptions}
             />
           );
         } else {
@@ -247,7 +332,7 @@ export function getTopNavConfig({
                     })
                   : undefined
               }
-              tagOptions={tagSelector}
+              tagOptions={combinedOptions}
             />
           );
         }

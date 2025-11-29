@@ -77,6 +77,8 @@ export const mapAttributesSchema = schema.object(
         min: 0,
       })
     ),
+    // projectRouting can be null to explicitly clear the value in storage
+    project_routing: schema.maybe(schema.nullable(schema.string())),
   },
   { unknowns: 'forbid' }
 );

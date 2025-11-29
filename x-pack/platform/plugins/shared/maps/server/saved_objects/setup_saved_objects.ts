@@ -37,6 +37,7 @@ export function setupSavedObjects(
         mapStateJSON: { type: 'text' },
         layerListJSON: { type: 'text' },
         uiStateJSON: { type: 'text' },
+        project_routing: { type: 'keyword' },
         bounds: { dynamic: false, properties: {} }, // Disable removed field
       },
     },

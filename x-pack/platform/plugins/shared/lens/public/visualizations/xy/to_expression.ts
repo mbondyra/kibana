@@ -219,6 +219,7 @@ export const buildXYExpression = (
       return {
         ...layer,
         ignoreGlobalFilters: layer.ignoreGlobalFilters,
+        projectRouting: layer.projectRouting ? JSON.stringify(layer.projectRouting) : undefined,
         annotations: layer.annotations.map((c) => ({
           ...c,
           label: uniqueLabels[c.id],
@@ -390,6 +391,7 @@ export const buildXYExpression = (
                     ignoreGlobalFilters: layer.ignoreGlobalFilters,
                     indexPatternId: layer.indexPatternId,
                     annotations: layer.annotations.filter(isValidAnnotation),
+                    projectRouting: layer.projectRouting,
                   })),
                 }),
               }),

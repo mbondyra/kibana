@@ -34,7 +34,9 @@ export interface EventAnnotationServiceType {
   toFetchExpression: (props: {
     interval: string;
     groups: Array<
-      Pick<EventAnnotationGroupConfig, 'annotations' | 'ignoreGlobalFilters' | 'indexPatternId'>
+      Pick<EventAnnotationGroupConfig, 'annotations' | 'ignoreGlobalFilters' | 'indexPatternId'> & {
+        projectRouting?: string;
+      }
     >;
   }) => ExpressionAstExpression[];
   renderEventAnnotationGroupSavedObjectFinder: (props: {

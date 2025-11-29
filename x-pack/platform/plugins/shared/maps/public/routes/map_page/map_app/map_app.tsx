@@ -42,6 +42,7 @@ import {
   getSpacesApi,
   getTimeFilter,
   getToasts,
+  getCps,
 } from '../../../kibana_services';
 import { AppStateManager, startAppStateSyncing } from '../url_state';
 import { MapContainer } from '../../../connected_components/map_container';
@@ -98,12 +99,14 @@ export interface Props {
     query,
     timeFilters,
     searchSessionId,
+    projectRouting,
   }: {
     filters?: Filter[];
     query?: Query;
     timeFilters?: TimeRange;
     forceRefresh?: boolean;
     searchSessionId?: string;
+    projectRouting?: any;
   }) => void;
   timeFilters: TimeRange;
   isSaveDisabled: boolean;
@@ -126,6 +129,7 @@ export class MapApp extends React.Component<Props, State> {
   _globalSyncUnsubscribe: (() => void) | null = null;
   _globalSyncChangeMonitorSubscription: Subscription | null = null;
   _appSyncUnsubscribe: (() => void) | null = null;
+  _cpsProjectRoutingSubscription: Subscription | undefined = undefined;
   _appStateManager = new AppStateManager();
   _prevIndexPatternIds: string[] | null = null;
   _isMounted: boolean = false;
@@ -186,6 +190,20 @@ export class MapApp extends React.Component<Props, State> {
       this._updateFromGlobalState
     );
 
+    // Subscribe to CPS project routing changes for Maps
+    const cps = getCps();
+    this._cpsProjectRoutingSubscription =
+      cps?.cpsManager
+        ? cps.cpsManager.getProjectRouting$().subscribe((projectRouting) => {
+            if (this._isMounted && projectRouting !== undefined) {
+              this.props.setQuery({
+                projectRouting,
+                forceRefresh: true,
+              });
+            }
+          })
+        : undefined;
+
     // savedQuery must be fetched from savedQueryId
     // const initialSavedQuery = this._appStateManager.getAppState().savedQuery;
     // if (initialSavedQuery) {
@@ -220,6 +238,9 @@ export class MapApp extends React.Component<Props, State> {
     }
     if (this._globalSyncChangeMonitorSubscription) {
       this._globalSyncChangeMonitorSubscription.unsubscribe();
+    }
+    if (this._cpsProjectRoutingSubscription) {
+      this._cpsProjectRoutingSubscription.unsubscribe();
     }
 
     this.props.onAppLeave((actions) => {

@@ -46,7 +46,8 @@
       "security",
       "spaces",
       "usageCollection",
-      "serverless"
+      "serverless",
+      "cps"
     ],
     "requiredBundles": [
       "kibanaReact",

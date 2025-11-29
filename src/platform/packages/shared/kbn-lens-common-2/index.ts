@@ -36,6 +36,7 @@ import type {
 } from '@kbn/lens-common';
 import type { PublishesSearchSession } from '@kbn/presentation-publishing/interfaces/fetch/publishes_search_session';
 import type { DefaultEmbeddableApi } from '@kbn/embeddable-plugin/public';
+import type { PublishesLayerProjectRoutingOverrides } from './publishes_layer_project_routing_overrides';
 
 type LensByValueAPIConfigBase = Omit<LensByValueBase, 'attributes'> & {
   // Temporarily allow both old and new attributes until all are new types are supported and feature flag removed
@@ -100,10 +101,15 @@ export type LensApi = Simplify<
     LensRequestHandlersProps &
     LensApiCallbacks &
     LensHasEditPanel &
-    LegacyLensStateApi
+    LegacyLensStateApi &
+    // Let actions know if there are layer-level project routing overrides
+    PublishesLayerProjectRoutingOverrides
 >;
 
 /**
  * Backward compatibility types
  */
 export type LensEmbeddableOutput = LensApi;
+
+export type { PublishesLayerProjectRoutingOverrides } from './publishes_layer_project_routing_overrides';
+export { apiPublishesLayerProjectRoutingOverrides } from './publishes_layer_project_routing_overrides';

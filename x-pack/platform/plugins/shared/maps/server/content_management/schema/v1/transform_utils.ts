@@ -35,9 +35,18 @@ export function savedObjectToItem(
   partial: boolean
 ): MapItem | PartialMapsItem {
   const { references, attributes, ...rest } = savedObject;
+  const transformedAttributes = transformMapAttributesOut(attributes as MapAttributes, references ?? []);
+  
+  // Filter out project_routing if it's null - null means the value was explicitly cleared
+  // and shouldn't be returned in the response
+  const finalAttributes = { ...transformedAttributes };
+  if ('project_routing' in finalAttributes && (finalAttributes as any).project_routing === null) {
+    delete (finalAttributes as any).project_routing;
+  }
+  
   return {
     ...rest,
-    attributes: transformMapAttributesOut(attributes as MapAttributes, references ?? []),
+    attributes: finalAttributes,
     references: (references ?? []).filter(({ type }) => type === 'tag'),
   };
 }

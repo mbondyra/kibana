@@ -47,12 +47,14 @@ function mapDispatchToProps(dispatch: ThunkDispatch<MapStoreState, void, AnyActi
       query,
       timeFilters,
       searchSessionId,
+      projectRouting,
     }: {
       filters?: Filter[];
       query?: Query;
       timeFilters?: TimeRange;
       forceRefresh?: boolean;
       searchSessionId?: string;
+      projectRouting?: any;
     }) => {
       dispatch(
         setQuery({
@@ -61,6 +63,7 @@ function mapDispatchToProps(dispatch: ThunkDispatch<MapStoreState, void, AnyActi
           timeFilters,
           forceRefresh,
           searchSessionId,
+          projectRouting,
         })
       );
     },

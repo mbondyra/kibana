@@ -103,6 +103,7 @@ export const isScreenshotMode = () => {
 };
 export const getServerless = () => pluginsStart.serverless;
 export const getEmbeddableEnhanced = () => pluginsStart.embeddableEnhanced;
+export const getCps = () => pluginsStart.cps;
 
 // xpack.maps.* kibana.yml settings from this plugin
 let mapAppConfig: MapsConfigType;
