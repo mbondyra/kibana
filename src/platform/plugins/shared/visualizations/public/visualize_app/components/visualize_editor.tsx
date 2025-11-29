@@ -21,6 +21,7 @@ import {
   useLinkedSearchUpdates,
   useDataViewUpdates,
 } from '../utils';
+import { useProjectRouting } from '../utils/use/use_project_routing';
 import type { VisualizeServices } from '../types';
 import { VisualizeEditorCommon } from './visualize_editor_common';
 import type { VisualizeAppProps } from '../app';
@@ -89,6 +90,13 @@ export const VisualizeEditor = ({ onAppLeave }: VisualizeAppProps) => {
   useLinkedSearchUpdates(services, eventEmitter, appState, savedVisInstance);
   useDataViewUpdates(services, eventEmitter, appState, savedVisInstance);
 
+  // Initialize project routing for Vega visualizations
+  const { getProjectRoutingForSave, hasProjectRoutingRestore } = useProjectRouting(
+    services,
+    savedVisInstance?.savedVis,
+    savedVisInstance?.vis.type.name
+  );
+
   useEffect(() => {
     // clean up all registered listeners if any is left
     return () => {
@@ -114,6 +122,8 @@ export const VisualizeEditor = ({ onAppLeave }: VisualizeAppProps) => {
       onAppLeave={onAppLeave}
       embeddableId={embeddableIdValue}
       eventEmitter={eventEmitter}
+      getProjectRoutingForSave={getProjectRoutingForSave}
+      hasProjectRoutingRestore={hasProjectRoutingRestore}
     />
   );
 };

@@ -20,6 +20,7 @@ import type {
   UpdateResult,
 } from '@kbn/content-management-plugin/common';
 import type { ContentManagementCrudTypes, Reference } from '@kbn/content-management-utils';
+import type { ProjectRouting } from '@kbn/es-query';
 
 import type { VisualizationContentType } from '../types';
 
@@ -35,6 +36,8 @@ export type VisualizationSavedObjectAttributes = {
   uiStateJSON?: string;
   savedSearchRefName?: string;
   typeName?: string;
+  // projectRouting can be null to explicitly clear the value in storage
+  project_routing?: ProjectRouting | null;
 };
 
 export interface VisualizationSavedObject {

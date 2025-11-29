@@ -29,6 +29,7 @@ import type {
   VisualizeEditorVisInstance,
 } from '../types';
 import { getTopNavConfig, isFallbackDataView } from '../utils';
+import type { VisualizationSavedObjectAttributes } from '../../../common/content_management/v1/types';
 
 const LOCAL_STORAGE_EDIT_IN_LENS_BADGE = 'EDIT_IN_LENS_BADGE_VISIBLE';
 
@@ -74,10 +75,14 @@ interface VisualizeTopNavProps {
   embeddableId?: string;
   onAppLeave: AppMountParameters['onAppLeave'];
   eventEmitter?: EventEmitter;
+  getProjectRoutingForSave?: (projectRoutingRestore: boolean) => Pick<VisualizationSavedObjectAttributes, 'project_routing'>;
+  hasProjectRoutingRestore?: () => boolean;
 }
 
 const TopNav = ({
   currentAppState,
+  getProjectRoutingForSave,
+  hasProjectRoutingRestore,
   isChromeVisible,
   isEmbeddableRendered,
   hasUnsavedChanges,
@@ -170,6 +175,8 @@ const TopNav = ({
           setNavigateToLens,
           showBadge: !hideTryInLensBadge && displayEditInLensItem,
           eventEmitter,
+          getProjectRoutingForSave,
+          hasProjectRoutingRestore,
         },
         services
       );
@@ -177,6 +184,8 @@ const TopNav = ({
   }, [
     isEmbeddableRendered,
     hasUnsavedChanges,
+    getProjectRoutingForSave,
+    hasProjectRoutingRestore,
     setHasUnsavedChanges,
     hasUnappliedChanges,
     openInspector,

@@ -14,6 +14,7 @@ import type { DataView } from '@kbn/data-views-plugin/public';
 import type { EmbeddableEnhancedPluginStart } from '@kbn/embeddable-enhanced-plugin/public';
 import type { EmbeddableStart, EmbeddableFactory } from '@kbn/embeddable-plugin/public';
 import { SELECT_RANGE_TRIGGER } from '@kbn/embeddable-plugin/public';
+import type { ProjectRouting } from '@kbn/es-query';
 import type { ExpressionRendererParams } from '@kbn/expressions-plugin/public';
 import { useExpressionRenderer } from '@kbn/expressions-plugin/public';
 import { i18n } from '@kbn/i18n';
@@ -23,7 +24,6 @@ import {
   apiHasDisableTriggers,
   apiHasExecutionContext,
   apiIsOfType,
-  apiPublishesProjectRouting,
   apiPublishesTimeRange,
   apiPublishesTimeslice,
   apiPublishesUnifiedSearch,
@@ -129,6 +129,16 @@ export const getVisualizeEmbeddableFactory: (deps: {
     const timeRangeManager = initializeTimeRangeManager(runtimeState);
 
     const searchSessionId$ = new BehaviorSubject<string | undefined>('');
+
+    // Initialize projectRouting$ for Vega visualizations with saved project_routing
+    // This allows the visualization to override dashboard project routing
+    const savedProjectRouting =
+      runtimeState.serializedVis.type === 'vega' &&
+      runtimeState.savedObjectProperties &&
+      (runtimeState.savedObjectProperties as any).project_routing !== undefined
+        ? (runtimeState.savedObjectProperties as any).project_routing
+        : undefined;
+    const projectRouting$ = new BehaviorSubject<ProjectRouting | undefined>(savedProjectRouting);
 
     const executionContext = apiHasExecutionContext(parentApi)
       ? parentApi.executionContext
@@ -236,6 +246,9 @@ export const getVisualizeEmbeddableFactory: (deps: {
       dataLoading$,
       dataViews$: new BehaviorSubject<DataView[] | undefined>(initialDataViews),
       rendered$: hasRendered$,
+      // Publish projectRouting$ for Vega visualizations with saved project_routing
+      // This allows the visualization to override dashboard project routing
+      ...(savedProjectRouting !== undefined ? { projectRouting$ } : {}),
       supportedTriggers: () => [ACTION_CONVERT_TO_LENS, APPLY_FILTER_TRIGGER, SELECT_RANGE_TRIGGER],
       serializeState: () => {
         // In the visualize editor, linkedToLibrary should always be false to force the full state to be serialized,
@@ -326,9 +339,9 @@ export const getVisualizeEmbeddableFactory: (deps: {
                 filters: data.filters,
               }
             : {};
-          const projectRouting = apiPublishesProjectRouting(parentApi)
-            ? data.projectRouting
-            : undefined;
+          // fetch$ already handles the override: it uses embeddable's projectRouting$ if available,
+          // otherwise falls back to parent (dashboard) projectRouting
+          const projectRouting = data.projectRouting;
           const searchSessionId = apiPublishesSearchSession(parentApi) ? data.searchSessionId : '';
           searchSessionId$.next(searchSessionId);
           const settings = apiPublishesSettings(parentApi)
