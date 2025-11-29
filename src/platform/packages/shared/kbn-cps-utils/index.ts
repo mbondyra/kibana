@@ -7,7 +7,7 @@
  * License v3.0 only", or the "Server Side Public License, v 1".
  */
 
-export type { ProjectPickerProps } from './components/project_picker';
+export type { ProjectPickerProps, ProjectPickerButtonProps } from './components/project_picker';
 export type { ProjectPickerContentProps } from './components/project_picker_content';
 export type {
   CPSProject,
@@ -17,7 +17,7 @@ export type {
   ProjectPickerAccessInfo,
 } from './types';
 export type { ProjectRoutingValue } from './constants';
-export { ProjectPicker } from './components/project_picker';
+export { ProjectPicker, ProjectPickerButton } from './components/project_picker';
 export { ProjectPickerContent } from './components/project_picker_content';
 export { ProjectPickerContainer } from './components/project_picker_container';
 export { PROJECT_ROUTING } from './constants';

@@ -53,6 +53,7 @@ export function FlyoutContainer({
   customFooter,
   isInlineEditing,
   overrideContainerCss,
+  customHeaderAction,
 }: {
   isOpen: boolean;
   handleClose: () => void;
@@ -64,6 +65,7 @@ export function FlyoutContainer({
   customFooter?: React.ReactElement;
   isInlineEditing?: boolean;
   overrideContainerCss?: Interpolation<Theme>;
+  customHeaderAction?: React.ReactElement;
 }) {
   const [focusTrapIsEnabled, setFocusTrapIsEnabled] = useState(false);
   const euiThemeContext = useEuiTheme();
@@ -148,7 +150,11 @@ export function FlyoutContainer({
                 </EuiTitle>
               </EuiFlexItem>
 
-              {!isInlineEditing && (
+              {customHeaderAction && (
+                <EuiFlexItem grow={false}>{customHeaderAction}</EuiFlexItem>
+              )}
+
+              {!isInlineEditing && !customHeaderAction && (
                 <EuiFlexItem grow={false}>
                   <EuiButtonIcon
                     color="text"

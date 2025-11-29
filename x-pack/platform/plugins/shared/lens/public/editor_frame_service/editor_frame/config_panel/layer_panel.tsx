@@ -478,6 +478,7 @@ export function LayerPanel(props: LayerPanelProps) {
                   dataViews,
                   onChangeIndexPattern: (indexPatternId) =>
                     onChangeIndexPattern({ indexPatternId, layerId, datasourceId }),
+                  setState: (newState: unknown) => updateDatasource(datasourceId, newState),
                 }}
               />
             )}

@@ -34,42 +34,67 @@ export interface ProjectPickerProps {
   onProjectRoutingChange: (projectRouting: ProjectRouting) => void;
   fetchProjects: () => Promise<ProjectsData | null>;
   isReadonly?: boolean;
-  readonlyCustomTitle?: string;
+  readonlyTitle?: string;
 }
 
-export const ProjectPicker = ({
+export interface ProjectPickerButtonProps {
+  projectRouting?: ProjectRouting;
+  linkedProjectsCount: number;
+  onClick: () => void;
+  variant?: 'header' | 'lens';
+  hasOverride?: boolean;
+}
+
+export const ProjectPickerButton = ({
   projectRouting,
-  onProjectRoutingChange,
-  fetchProjects,
-  isReadonly = false,
-  readonlyCustomTitle,
-}: ProjectPickerProps) => {
-  const [showPopover, setShowPopover] = useState(false);
+  linkedProjectsCount,
+  onClick,
+  variant = 'header',
+  hasOverride = false,
+}: ProjectPickerButtonProps) => {
   const styles = useMemoCss(projectPickerStyles);
-  const { isTourOpen, closeTour } = useProjectPickerTour();
 
-  const { originProject, linkedProjects } = useFetchProjects(fetchProjects);
-
-  // do not render the component if there aren't linked projects
-  if (!originProject || linkedProjects.length === 0) {
-    return null;
+  if (variant === 'lens') {
+    return (
+      <EuiToolTip
+        delay="long"
+        content={strings.getProjectPickerButtonLabel(
+          projectRouting === PROJECT_ROUTING.ORIGIN ? 1 : linkedProjectsCount + 1,
+          linkedProjectsCount + 1
+        )}
+        disableScreenReaderOutput
+      >
+        <div css={styles.lensButtonWrapper}>
+          <EuiButtonIcon
+            aria-label={strings.getProjectPickerButtonAriaLabel()}
+            data-test-subj="project-picker-button"
+            onClick={onClick}
+            size="s"
+            iconType={CPSIcon}
+            display="base"
+            color="text"
+          />
+          {hasOverride && <span css={styles.overrideBadge} data-test-subj="project-picker-override-badge" />}
+        </div>
+      </EuiToolTip>
+    );
   }
 
-  const button = (
+  return (
     <EuiToolTip
       delay="long"
       content={strings.getProjectPickerButtonLabel(
-        projectRouting === PROJECT_ROUTING.ORIGIN ? 1 : linkedProjects.length + 1,
-        linkedProjects.length + 1
+        projectRouting === PROJECT_ROUTING.ORIGIN ? 1 : linkedProjectsCount + 1,
+        linkedProjectsCount + 1
       )}
       disableScreenReaderOutput
     >
       <EuiHeaderSectionItemButton
         aria-label={strings.getProjectPickerButtonAriaLabel()}
         data-test-subj="project-picker-button"
-        onClick={() => setShowPopover(!showPopover)}
+        onClick={onClick}
         size="s"
-        notification={projectRouting !== PROJECT_ROUTING.ALL ? 1 : undefined}
+        notification={projectRouting === PROJECT_ROUTING.ORIGIN ? 1 : undefined}
         notificationColor="success"
         css={styles.button}
       >
@@ -77,6 +102,25 @@ export const ProjectPicker = ({
       </EuiHeaderSectionItemButton>
     </EuiToolTip>
   );
+};
+
+export const ProjectPicker = ({
+  projectRouting,
+  onProjectRoutingChange,
+  fetchProjects,
+  isReadonly = false,
+  readonlyTitle,
+}: ProjectPickerProps) => {
+  const [showPopover, setShowPopover] = useState(false);
+  const styles = useMemoCss(projectPickerStyles);
+  const { isTourOpen, closeTour } = useProjectPickerTour();
+
+  const { originProject, linkedProjects } = useFetchProjects(fetchProjects);
+
+  // do not render the component if originProject is not loaded yet
+  if (!originProject) {
+    return null;
+  }
 
   return (
     <EuiTourStep
@@ -106,7 +150,13 @@ export const ProjectPicker = ({
       }}
     >
       <EuiPopover
-        button={button}
+        button={
+          <ProjectPickerButton
+            projectRouting={projectRouting}
+            linkedProjectsCount={linkedProjects.length}
+            onClick={() => setShowPopover(!showPopover)}
+          />
+        }
         isOpen={showPopover}
         closePopover={() => setShowPopover(false)}
         repositionOnScroll
@@ -120,7 +170,7 @@ export const ProjectPicker = ({
           onProjectRoutingChange={onProjectRoutingChange}
           fetchProjects={fetchProjects}
           isReadonly={isReadonly}
-          readonlyCustomTitle={readonlyCustomTitle}
+          readonlyTitle={readonlyTitle}
         />
       </EuiPopover>
     </EuiTourStep>
@@ -161,5 +211,22 @@ const projectPickerStyles = {
       '.euiNotificationBadge': {
         insetInlineEnd: `-${euiTheme.size.s}`,
       },
+    }),
+  lensButtonWrapper: () =>
+    css({
+      position: 'relative',
+      display: 'inline-block',
+    }),
+  overrideBadge: ({ euiTheme }: UseEuiTheme) =>
+    css({
+      position: 'absolute',
+      top: 0,
+      right: 0,
+      width: '8px',
+      height: '8px',
+      borderRadius: '50%',
+      backgroundColor: euiTheme.colors.success,
+      border: `2px solid #FFFFFF`,
+      pointerEvents: 'none',
     }),
 };

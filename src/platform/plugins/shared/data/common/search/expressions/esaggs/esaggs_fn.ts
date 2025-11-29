@@ -37,6 +37,7 @@ interface Arguments {
   probability?: number;
   samplerSeed?: number;
   ignoreGlobalFilters?: boolean;
+  projectRouting?: string;
 }
 
 export type EsaggsExpressionFunctionDefinition = ExpressionFunctionDefinition<
@@ -118,6 +119,12 @@ export const getEsaggsMeta: () => Omit<EsaggsExpressionFunctionDefinition, 'fn'>
       types: ['boolean'],
       help: i18n.translate('data.search.functions.esaggs.ignoreGlobalFilters.help', {
         defaultMessage: 'Whether to ignore or use global query and filters',
+      }),
+    },
+    projectRouting: {
+      types: ['string'],
+      help: i18n.translate('data.search.functions.esaggs.projectRouting.help', {
+        defaultMessage: 'Project routing configuration for cross-project search',
       }),
     },
   },

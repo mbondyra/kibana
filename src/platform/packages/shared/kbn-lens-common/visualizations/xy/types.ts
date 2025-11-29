@@ -27,6 +27,7 @@ import type {
   EventAnnotationConfig,
   EventAnnotationGroupConfig,
 } from '@kbn/event-annotation-common';
+import type { ProjectRouting } from '@kbn/es-query';
 import type { YAxisModes } from './constants';
 import { SeriesTypes } from './constants';
 import type { ValueLabelConfig } from '../../types';
@@ -92,6 +93,7 @@ export interface XYByValueAnnotationLayerConfig {
   annotations: EventAnnotationConfig[];
   indexPatternId: string;
   ignoreGlobalFilters: boolean;
+  projectRouting?: ProjectRouting;
   // populated only when the annotation has been forked from the
   // version saved in the library (persisted as XYPersistedLinkedByValueAnnotationLayerConfig)
   cachedMetadata?: {

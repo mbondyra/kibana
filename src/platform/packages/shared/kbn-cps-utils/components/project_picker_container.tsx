@@ -44,7 +44,7 @@ export const ProjectPickerContainer: React.FC<ProjectPickerContainerProps> = ({ 
       onProjectRoutingChange={updateProjectRouting}
       fetchProjects={fetchProjects}
       isReadonly={accessInfo.access === ProjectRoutingAccess.READONLY}
-      readonlyCustomTitle={accessInfo.readonlyMessage}
+      readonlyTitle={accessInfo.readonlyMessage}
     />
   );
 };

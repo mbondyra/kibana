@@ -17,12 +17,14 @@ export interface EventAnnotationGroupOutput {
   annotations: EventAnnotationOutput[];
   ignoreGlobalFilters: boolean;
   dataView: IndexPatternExpressionType;
+  projectRouting?: string;
 }
 
 export interface EventAnnotationGroupArgs {
   annotations: EventAnnotationOutput[];
   dataView: IndexPatternExpressionType;
   ignoreGlobalFilters: boolean;
+  projectRouting?: string;
 }
 
 export function eventAnnotationGroup(): ExpressionFunctionDefinition<
@@ -57,6 +59,12 @@ export function eventAnnotationGroup(): ExpressionFunctionDefinition<
           }
         ),
       },
+      projectRouting: {
+        types: ['string'],
+        help: i18n.translate('eventAnnotation.group.args.projectRouting.help', {
+          defaultMessage: 'Project routing configuration for cross-project search',
+        }),
+      },
       annotations: {
         types: [
           'manual_point_event_annotation',
@@ -76,6 +84,7 @@ export function eventAnnotationGroup(): ExpressionFunctionDefinition<
         annotations: args.annotations.filter((annotation) => !annotation.isHidden),
         dataView: args.dataView,
         ignoreGlobalFilters: args.ignoreGlobalFilters,
+        projectRouting: args.projectRouting,
       };
     },
   };

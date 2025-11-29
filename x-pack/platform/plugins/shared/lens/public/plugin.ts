@@ -78,6 +78,7 @@ import type { SavedObjectTaggingPluginStart } from '@kbn/saved-objects-tagging-p
 import type { ServerlessPluginStart } from '@kbn/serverless/public';
 import type { SpacesPluginStart } from '@kbn/spaces-plugin/public';
 import type { UnifiedSearchPublicPluginStart } from '@kbn/unified-search-plugin/public';
+import type { CPSPluginStart } from '@kbn/cps/public';
 import type { EditorFrameService as EditorFrameServiceType } from './editor_frame_service';
 import type {
   FormBasedDatasource as FormBasedDatasourceType,
@@ -139,6 +140,7 @@ import type { Visualization, LensSerializedState, TypedLensByValueInput, Suggest
 import type { LensEmbeddableStartServices } from './react_embeddable/types';
 import type { EditorFrameServiceValue } from './editor_frame_service/editor_frame_service_context';
 import { setLensBuilder } from './lazy_builder';
+import { setCpsService } from './cps_service';
 
 export type { SaveProps } from './app_plugin';
 
@@ -184,6 +186,7 @@ export interface LensPluginStartDependencies {
   licensing?: LicensingPluginStart;
   embeddableEnhanced?: EmbeddableEnhancedPluginStart;
   fieldsMetadata?: FieldsMetadataPublicStart;
+  cps?: CPSPluginStart;
 }
 
 export interface LensPublicSetup {
@@ -633,6 +636,7 @@ export class LensPlugin {
   }
 
   start(core: CoreStart, startDependencies: LensPluginStartDependencies): LensPublicStart {
+    setCpsService(startDependencies.cps);
     this.hasDiscoverAccess = core.application.capabilities.discover_v2.show as boolean;
     this.dataViewsService = startDependencies.dataViews;
     // unregisters the Visualize action and registers the lens one

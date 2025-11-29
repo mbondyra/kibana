@@ -8,7 +8,7 @@
  */
 
 import type { DataView } from '@kbn/data-views-plugin/public';
-import type { AggregateQuery, Query } from '@kbn/es-query';
+import type { AggregateQuery, ProjectRouting, Query } from '@kbn/es-query';
 import type { Datatable, DatatableColumn } from '@kbn/expressions-plugin/common';
 import type { VisualizeFieldContext } from '@kbn/ui-actions-plugin/public';
 import type { $Values } from '@kbn/utility-types';
@@ -74,6 +74,7 @@ export interface FormBasedLayer {
   incompleteColumns?: Record<string, IncompleteColumn | undefined>;
   sampling?: number;
   ignoreGlobalFilters?: boolean;
+  projectRouting?: ProjectRouting;
 }
 
 export interface FormBasedPersistedState {

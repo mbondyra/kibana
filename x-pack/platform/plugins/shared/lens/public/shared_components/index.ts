@@ -10,6 +10,7 @@ export { ToolbarPopover } from './toolbar_popover';
 export { LegendSettingsPopover, LegendSettings } from './legend/legend_settings';
 export { PalettePicker } from './palette_picker';
 export { ChangeIndexPattern, fieldContainsData } from './dataview_picker';
+export { FlyoutContainer } from './flyout_container';
 export { RangeInputField } from './range_input_field';
 export {
   AxisBoundsControl,
