@@ -19,6 +19,8 @@ import { EuiPopover, EuiText, EuiButton, EuiSpacer } from '@elastic/eui';
 import type { EmbeddableApiContext } from '@kbn/presentation-publishing';
 import { apiPublishesProjectRouting, apiHasParentApi } from '@kbn/presentation-publishing';
 import { apiPublishesLayerProjectRoutingOverrides } from '@kbn/lens-common-2';
+import type { LensSerializedState } from '@kbn/lens-common';
+import { PROJECT_ROUTING } from '@kbn/cps-utils';
 import { combineLatest, map } from 'rxjs';
 import { i18n } from '@kbn/i18n';
 import { CPS_USAGE_OVERRIDES_BADGE } from './constants';
@@ -250,10 +252,27 @@ export class CpsUsageOverridesBadge
   }
 
   private hasOverride(embeddable: unknown): boolean {
+    // Get the comparison value (panel or dashboard override) for layer comparison
+    let comparisonValue: string | undefined;
+    if (
+      apiPublishesProjectRouting(embeddable) &&
+      apiHasParentApi(embeddable) &&
+      apiPublishesProjectRouting(embeddable.parentApi)
+    ) {
+      // Use panel override if it exists, otherwise use dashboard override
+      comparisonValue = embeddable.projectRouting$.value ?? embeddable.parentApi.projectRouting$.value;
+    } else if (apiPublishesProjectRouting(embeddable)) {
+      comparisonValue = embeddable.projectRouting$.value;
+    }
+
     // Check for layer-level overrides (e.g., Lens layers)
     if (apiPublishesLayerProjectRoutingOverrides(embeddable)) {
       if (embeddable.hasLayerProjectRoutingOverrides$.value) {
-        return true;
+        // Check if layer overrides are actually different from the comparison value
+        const hasDifferentLayerOverrides = this.hasDifferentLayerOverrides(embeddable, comparisonValue);
+        if (hasDifferentLayerOverrides) {
+          return true;
+        }
       }
     }
 
@@ -273,5 +292,96 @@ export class CpsUsageOverridesBadge
     return (
       embeddableProjectRouting !== undefined && embeddableProjectRouting !== parentProjectRouting
     );
+  }
+
+  /**
+   * Normalizes project routing values for comparison.
+   * Both undefined and 'ALL' represent the default (all projects), so they should be treated as equal.
+   */
+  private normalizeProjectRouting(value: string | undefined): string | undefined {
+    // Both undefined and 'ALL' represent "all projects" (the default)
+    if (value === PROJECT_ROUTING.ALL || value === undefined) {
+      return undefined;
+    }
+    return value;
+  }
+
+  /**
+   * Checks if any layer has a project routing override that differs from the comparison value
+   */
+  private hasDifferentLayerOverrides(
+    embeddable: { getLegacySerializedState?: () => LensSerializedState },
+    comparisonValue: string | undefined
+  ): boolean {
+    // Check if this is a Lens embeddable with getLegacySerializedState method
+    if (!embeddable.getLegacySerializedState) {
+      // If we can't access the state, we can't verify if overrides are different
+      // Return false to avoid showing the badge when we can't verify
+      return false;
+    }
+
+    // Normalize the comparison value (undefined and 'ALL' are equivalent)
+    const normalizedComparison = this.normalizeProjectRouting(comparisonValue);
+
+    try {
+      const serializedState = embeddable.getLegacySerializedState();
+      
+      // For by-reference panels, attributes might not be available
+      if (!serializedState || !('attributes' in serializedState) || !serializedState.attributes) {
+        return false;
+      }
+
+      const attributes = serializedState.attributes;
+      if (!attributes?.state) {
+        return false;
+      }
+
+      // Check form-based datasource layers
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const formBasedState = attributes.state.datasourceStates?.formBased as any;
+      if (formBasedState?.layers) {
+        const layers = Object.values(formBasedState.layers);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const hasDifferentOverride = layers.some((layer: any) => {
+          const layerProjectRouting = layer.projectRouting;
+          // Normalize layer value and compare
+          const normalizedLayerValue = this.normalizeProjectRouting(layerProjectRouting);
+          // Only consider it an override if it's defined and different from comparison value
+          return layerProjectRouting !== undefined && normalizedLayerValue !== normalizedComparison;
+        });
+        if (hasDifferentOverride) {
+          return true;
+        }
+      }
+
+      // Check XY annotation layers
+      if (attributes.visualizationType === 'lnsXY' && attributes.state.visualization) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const xyState = attributes.state.visualization as any;
+        if (xyState?.layers) {
+          const annotationLayers = xyState.layers.filter(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (layer: any) => layer.layerType === 'annotations'
+          );
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const hasDifferentOverride = annotationLayers.some((layer: any) => {
+            const layerProjectRouting = layer.projectRouting;
+            // Normalize layer value and compare
+            const normalizedLayerValue = this.normalizeProjectRouting(layerProjectRouting);
+            // Only consider it an override if it's defined and different from comparison value
+            return layerProjectRouting !== undefined && normalizedLayerValue !== normalizedComparison;
+          });
+          if (hasDifferentOverride) {
+            return true;
+          }
+        }
+      }
+
+      return false;
+    } catch (error) {
+      // If we can't access the state, we can't verify if overrides are different
+      // Return false to avoid showing the badge when we can't verify
+      return false;
+    }
   }
 }
