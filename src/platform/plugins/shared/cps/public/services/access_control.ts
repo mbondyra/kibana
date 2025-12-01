@@ -82,10 +82,7 @@ export const DEFAULT_ACCESS_CONTROL_CONFIG: AccessControlConfig = {
     ],
   },
   lens: {
-    defaultAccess: ProjectRoutingAccess.READONLY,
-    readonlyMessage: i18n.translate('cps.accessControl.lensReadonlyMessage', {
-      defaultMessage: 'Please adjust project scope for each layer in the Lens editor.',
-    }),
+    defaultAccess: ProjectRoutingAccess.EDITABLE,
   },
   maps: {
     defaultAccess: ProjectRoutingAccess.EDITABLE,
