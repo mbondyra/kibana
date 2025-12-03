@@ -14,7 +14,6 @@
     ],
     "requiredPlugins": [
       "actions",
-      "dashboard",
       "data",
       "dataViews",
       "uiActions",

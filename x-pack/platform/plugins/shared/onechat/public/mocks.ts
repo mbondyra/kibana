@@ -9,7 +9,9 @@ import type { OnechatPluginSetup, OnechatPluginStart, ConversationFlyoutRef } fr
 import type { OpenConversationFlyoutOptions } from './flyout/types';
 
 const createSetupContractMock = (): jest.Mocked<OnechatPluginSetup> => {
-  return {};
+  return {
+    registerToolResultRenderer: jest.fn(),
+  };
 };
 
 const createStartContractMock = (): jest.Mocked<OnechatPluginStart> => {

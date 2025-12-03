@@ -83,3 +83,4 @@ export const DashboardFlyout: React.FC<DashboardFlyoutProps> = ({
     </EuiFlyout>
   );
 };
+
