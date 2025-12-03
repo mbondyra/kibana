@@ -6,7 +6,7 @@
  */
 
 import type { AgentBuilderAccessChecker } from './access/access';
-import type { OnechatStartDependencies } from '../types';
+import type { OnechatStartDependencies, ToolResultRendererRegistration } from '../types';
 import type { AgentService } from './agents';
 import type { ChatService } from './chat';
 import type { ConversationsService } from './conversations';
@@ -21,4 +21,5 @@ export interface OnechatInternalService {
   toolsService: ToolsService;
   startDependencies: OnechatStartDependencies;
   accessChecker: AgentBuilderAccessChecker;
+  customRenderers: Map<string, ToolResultRendererRegistration>;
 }
