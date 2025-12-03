@@ -130,7 +130,7 @@ export function ChatMessageText({ content, steps: stepsFromCurrentRound }: Props
     // Add custom renderers from registered plugins
     const customParsers: PluggableList = [];
     customRenderers.forEach((registration) => {
-      customParsers.push(registration.tagParser);
+      customParsers.push(registration.tagParser());
       const RendererComponent = registration.createRenderer({
         stepsFromCurrentRound,
         stepsFromPrevRounds,

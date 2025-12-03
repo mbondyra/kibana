@@ -17,6 +17,12 @@ import { OnechatPlugin } from './plugin';
 
 export type { OnechatPluginSetup, OnechatPluginStart };
 
+// Export generic helpers for use by other plugins
+export {
+  createTagParser,
+  findToolResult,
+} from './application/components/conversations/conversation_rounds/round_response/markdown_plugins';
+
 export const plugin: PluginInitializer<
   OnechatPluginSetup,
   OnechatPluginStart,

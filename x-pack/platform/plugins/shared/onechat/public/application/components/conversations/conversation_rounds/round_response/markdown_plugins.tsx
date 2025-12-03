@@ -10,12 +10,9 @@ import { css } from '@emotion/css';
 import React from 'react';
 import {
   visualizationElement,
-  dashboardElement,
   type VisualizationElementAttributes,
-  type DashboardElementAttributes,
   type TabularDataResult,
   type VisualizationResult,
-  type DashboardResult,
   ToolResultType,
 } from '@kbn/onechat-common/tools/tool_result';
 import type { ConversationRoundStep } from '@kbn/onechat-common';
@@ -24,19 +21,11 @@ import {
   EuiCode,
   EuiText,
   useEuiTheme,
-  EuiPanel,
-  EuiFlexGroup,
-  EuiFlexItem,
-  EuiLink,
-  EuiIcon,
 } from '@elastic/eui';
 
 import type { OnechatStartDependencies } from '../../../../../types';
 import { VisualizeESQL } from '../../../tools/esql/visualize_esql';
 import { VisualizeLens } from '../../../tools/esql/visualize_lens';
-import { openLazyFlyout } from '@kbn/presentation-util';
-import { useKibana } from '@kbn/kibana-react-plugin/public';
-import type { CoreStart } from '@kbn/core/public';
 
 type MutableNode = Node & {
   value?: string;
@@ -224,151 +213,6 @@ export function createVisualizationRenderer({
   };
 }
 
-export const dashboardTagParser = createTagParser({
-  tagName: dashboardElement.tagName,
-  getAttributes: (value, extractAttr) => ({
-    toolResultId: extractAttr(value, dashboardElement.attributes.toolResultId),
-  }),
-  assignAttributes: (node, attributes) => {
-    node.type = dashboardElement.tagName;
-    node.toolResultId = attributes.toolResultId;
-    delete node.value;
-  },
-  createNode: (attributes, position) => ({
-    type: dashboardElement.tagName,
-    toolResultId: attributes.toolResultId,
-    position,
-  }),
-});
-
-const DashboardCard: React.FC<{
-  title: string;
-  url?: string;
-  dashboardId: string;
-}> = ({ title, url, dashboardId }) => {
-  const { euiTheme } = useEuiTheme();
-  const { services } = useKibana<CoreStart>();
-
-  const handleClick = () => {
-    openLazyFlyout({
-      core: services,
-      loadContent: async ({ closeFlyout, ariaLabelledBy }) => {
-        const { DashboardFlyout } = await import('./dashboard_flyout');
-        return (
-          <DashboardFlyout
-            dashboardId={dashboardId}
-            dashboardTitle={title}
-            dashboardUrl={url}
-            ariaLabelledBy={ariaLabelledBy}
-            closeFlyout={closeFlyout}
-          />
-        );
-      },
-      flyoutProps: {
-        size: 'l',
-        maxWidth: 1000,
-      },
-    });
-  };
-
-  const iconContainerStyles = css`
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: ${euiTheme.size.xxl};
-    height: ${euiTheme.size.xxl};
-    border-radius: ${euiTheme.border.radius.medium};
-    background-color: ${euiTheme.colors.primary};
-  `;
-
-  const panelStyles = css`
-    border: ${euiTheme.border.width.thin} solid ${euiTheme.colors.primary};
-    cursor: pointer;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-
-    &:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    }
-
-    &:active {
-      transform: translateY(0);
-    }
-  `;
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      handleClick();
-    }
-  };
-
-  return (
-    <div
-      onClick={handleClick}
-      onKeyPress={handleKeyPress}
-      role="button"
-      tabIndex={0}
-      aria-label={`Open dashboard: ${title}`}
-    >
-      <EuiPanel hasShadow={false} paddingSize="m" color="primary" className={panelStyles}>
-        <EuiFlexGroup alignItems="center" gutterSize="m" responsive={false}>
-          <EuiFlexItem grow={false}>
-            <div className={iconContainerStyles}>
-              <EuiIcon type="dashboardApp" size="l" color="ghost" />
-            </div>
-          </EuiFlexItem>
-          <EuiFlexItem>
-            <EuiText size="s" color="default">
-              <strong>{title}</strong>
-            </EuiText>
-            <EuiText size="xs" color="subdued">
-              Dashboard (Temporary)
-            </EuiText>
-          </EuiFlexItem>
-        </EuiFlexGroup>
-      </EuiPanel>
-    </div>
-  );
-};
-
-export function createDashboardRenderer({
-  stepsFromCurrentRound,
-  stepsFromPrevRounds,
-}: {
-  stepsFromCurrentRound: ConversationRoundStep[];
-  stepsFromPrevRounds: ConversationRoundStep[];
-}) {
-  return (props: DashboardElementAttributes) => {
-    const { toolResultId } = props;
-
-    if (!toolResultId) {
-      return <EuiText>Dashboard missing {dashboardElement.attributes.toolResultId}.</EuiText>;
-    }
-
-    const steps = [...stepsFromPrevRounds, ...stepsFromCurrentRound];
-    const toolResult = findToolResult<DashboardResult>(
-      steps,
-      toolResultId,
-      ToolResultType.dashboard
-    );
-
-    if (!toolResult) {
-      const ToolResultAttribute = (
-        <EuiCode>
-          {dashboardElement.attributes.toolResultId}={toolResultId}
-        </EuiCode>
-      );
-      return <EuiText>Unable to find dashboard for {ToolResultAttribute}.</EuiText>;
-    }
-
-    const { title, content, id } = toolResult.data;
-    const dashboardUrl = content?.url as string | undefined;
-
-    return <DashboardCard title={title || 'Dashboard'} url={dashboardUrl} dashboardId={id} />;
-  };
-}
-
 const CURSOR = ` ᠎  `;
 export const loadingCursorPlugin = () => {
   const visitor = (node: Node, parent?: Parent) => {
@@ -453,3 +297,7 @@ export const esqlLanguagePlugin = () => {
     visitor(tree);
   };
 };
+
+// Export generic helpers for use by other plugins
+export { createTagParser };
+export { findToolResult };
