@@ -22,16 +22,14 @@ import {
 } from '@elastic/eui';
 import { type PluggableList } from 'unified';
 import type { ConversationRoundStep } from '@kbn/onechat-common';
-import { visualizationElement, dashboardElement } from '@kbn/onechat-common/tools/tool_result';
+import { visualizationElement } from '@kbn/onechat-common/tools/tool_result';
 import { useOnechatServices } from '../../../../hooks/use_onechat_service';
 import {
   Cursor,
   esqlLanguagePlugin,
   createVisualizationRenderer,
-  createDashboardRenderer,
   loadingCursorPlugin,
   visualizationTagParser,
-  dashboardTagParser,
 } from './markdown_plugins';
 import { useStepsFromPrevRounds } from '../../../../hooks/use_conversation';
 
@@ -60,7 +58,7 @@ export function ChatMessageText({ content, steps: stepsFromCurrentRound }: Props
     }
   `;
 
-  const { startDependencies } = useOnechatServices();
+  const { startDependencies, customRenderers } = useOnechatServices();
   const stepsFromPrevRounds = useStepsFromPrevRounds();
 
   const { parsingPluginList, processingPluginList } = useMemo(() => {
@@ -127,23 +125,30 @@ export function ChatMessageText({ content, steps: stepsFromCurrentRound }: Props
         stepsFromCurrentRound,
         stepsFromPrevRounds,
       }),
-      [dashboardElement.tagName]: createDashboardRenderer({
+    };
+
+    // Add custom renderers from registered plugins
+    const customParsers: PluggableList = [];
+    customRenderers.forEach((registration) => {
+      customParsers.push(registration.tagParser);
+      const RendererComponent = registration.createRenderer({
         stepsFromCurrentRound,
         stepsFromPrevRounds,
-      }),
-    };
+      });
+      rehypeToReactOptions.components[registration.tagName] = RendererComponent;
+    });
 
     return {
       parsingPluginList: [
         loadingCursorPlugin,
         esqlLanguagePlugin,
         visualizationTagParser,
-        dashboardTagParser,
+        ...customParsers,
         ...parsingPlugins,
       ],
       processingPluginList: processingPlugins,
     };
-  }, [startDependencies, stepsFromCurrentRound, stepsFromPrevRounds]);
+  }, [startDependencies, stepsFromCurrentRound, stepsFromPrevRounds, customRenderers]);
 
   return (
     <EuiText size="s" className={containerClassName}>
