@@ -94,5 +94,7 @@
     "@kbn/usage-collection-plugin",
     "@kbn/core-notifications-browser",
     "@kbn/deeplinks-agent-builder",
+    "@kbn/dashboard-plugin",
+    "@kbn/presentation-util",
   ]
 }
