@@ -9,7 +9,6 @@ import React from 'react';
 import {
   EuiFlyoutHeader,
   EuiFlyoutBody,
-  EuiFlyoutFooter,
   EuiTitle,
   EuiButton,
   EuiFlexGroup,
@@ -31,7 +30,6 @@ export const DashboardFlyout: React.FC<DashboardFlyoutProps> = ({
   dashboardTitle,
   dashboardUrl,
   ariaLabelledBy,
-  closeFlyout,
 }) => {
   const handleOpenFullPage = () => {
     if (dashboardUrl) {
@@ -42,9 +40,22 @@ export const DashboardFlyout: React.FC<DashboardFlyoutProps> = ({
   return (
     <>
       <EuiFlyoutHeader hasBorder>
-        <EuiTitle size="m">
-          <h2 id={ariaLabelledBy}>{dashboardTitle}</h2>
-        </EuiTitle>
+        <EuiFlexGroup justifyContent="spaceBetween">
+          <EuiFlexItem grow={false}>
+            <EuiTitle size="m">
+              <h2 id={ariaLabelledBy}>{dashboardTitle}</h2>
+            </EuiTitle>
+          </EuiFlexItem>
+          {dashboardUrl && (
+            <EuiFlexItem grow={false}>
+              <EuiButton onClick={handleOpenFullPage} iconType="popout" iconSide="right" fill>
+                {i18n.translate('xpack.onechat.dashboardFlyout.openFullPageButton', {
+                  defaultMessage: 'Open in dashboards',
+                })}
+              </EuiButton>
+            </EuiFlexItem>
+          )}
+        </EuiFlexGroup>
       </EuiFlyoutHeader>
       <EuiFlyoutBody>
         <DashboardRenderer
@@ -57,28 +68,6 @@ export const DashboardFlyout: React.FC<DashboardFlyoutProps> = ({
           })}
         />
       </EuiFlyoutBody>
-
-      <EuiFlyoutFooter>
-        <EuiFlexGroup justifyContent="spaceBetween">
-          <EuiFlexItem grow={false}>
-            <EuiButton onClick={closeFlyout}>
-              {i18n.translate('xpack.onechat.dashboardFlyout.closeButton', {
-                defaultMessage: 'Close',
-              })}
-            </EuiButton>
-          </EuiFlexItem>
-          {dashboardUrl && (
-            <EuiFlexItem grow={false}>
-              <EuiButton onClick={handleOpenFullPage} iconType="popout" iconSide="right" fill>
-                {i18n.translate('xpack.onechat.dashboardFlyout.openFullPageButton', {
-                  defaultMessage: 'Open in dashboards',
-                })}
-              </EuiButton>
-            </EuiFlexItem>
-          )}
-        </EuiFlexGroup>
-      </EuiFlyoutFooter>
     </>
   );
 };
-
