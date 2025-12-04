@@ -58,7 +58,7 @@ export function ChatMessageText({ content, steps: stepsFromCurrentRound }: Props
     }
   `;
 
-  const { startDependencies } = useOnechatServices();
+  const { startDependencies, customRenderers } = useOnechatServices();
   const stepsFromPrevRounds = useStepsFromPrevRounds();
 
   const { parsingPluginList, processingPluginList } = useMemo(() => {
@@ -127,16 +127,28 @@ export function ChatMessageText({ content, steps: stepsFromCurrentRound }: Props
       }),
     };
 
+    // Add custom renderers from registered plugins
+    const customParsers: PluggableList = [];
+    customRenderers.forEach((registration) => {
+      customParsers.push(registration.tagParser());
+      const RendererComponent = registration.createRenderer({
+        stepsFromCurrentRound,
+        stepsFromPrevRounds,
+      });
+      rehypeToReactOptions.components[registration.tagName] = RendererComponent;
+    });
+
     return {
       parsingPluginList: [
         loadingCursorPlugin,
         esqlLanguagePlugin,
         visualizationTagParser,
+        ...customParsers,
         ...parsingPlugins,
       ],
       processingPluginList: processingPlugins,
     };
-  }, [startDependencies, stepsFromCurrentRound, stepsFromPrevRounds]);
+  }, [startDependencies, stepsFromCurrentRound, stepsFromPrevRounds, customRenderers]);
 
   return (
     <EuiText size="s" className={containerClassName}>

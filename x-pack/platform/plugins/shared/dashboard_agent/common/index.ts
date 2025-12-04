@@ -6,3 +6,4 @@
  */
 
 export { DASHBOARD_NAMESPACE, dashboardTools } from './constants';
+export { dashboardElement } from './dashboard_element';

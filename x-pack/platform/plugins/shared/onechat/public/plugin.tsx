@@ -43,7 +43,7 @@ import type {
 import { openConversationFlyout } from './flyout/open_conversation_flyout';
 import type { EmbeddableConversationProps } from './embeddable/types';
 import type { OpenConversationFlyoutOptions } from './flyout/types';
-import type { ConversationFlyoutRef } from './types';
+import type { ConversationFlyoutRef, ToolResultRendererRegistration } from './types';
 
 export class OnechatPlugin
   implements
@@ -62,6 +62,7 @@ export class OnechatPlugin
   };
   private activeFlyoutRef: ConversationFlyoutRef | null = null;
   private updateFlyoutPropsCallback: ((props: EmbeddableConversationProps) => void) | null = null;
+  private customRenderers: Map<string, ToolResultRendererRegistration> = new Map();
 
   constructor(context: PluginInitializerContext<ConfigSchema>) {
     this.logger = context.logger.get();
@@ -108,7 +109,15 @@ export class OnechatPlugin
       this.logger.error('Error registering Agent Builder management section', error);
     }
 
-    return {};
+    return {
+      registerToolResultRenderer: (registration: ToolResultRendererRegistration) => {
+        this.logger.debug(`Registering tool result renderer: ${registration.id}`);
+        if (this.customRenderers.has(registration.id)) {
+          this.logger.warn(`Renderer with id "${registration.id}" is already registered. Overwriting.`);
+        }
+        this.customRenderers.set(registration.id, registration);
+      },
+    };
   }
 
   start(core: CoreStart, startDependencies: OnechatStartDependencies): OnechatPluginStart {
@@ -136,6 +145,7 @@ export class OnechatPlugin
       toolsService,
       startDependencies,
       accessChecker,
+      customRenderers: this.customRenderers,
     };
 
     this.internalServices = internalServices;

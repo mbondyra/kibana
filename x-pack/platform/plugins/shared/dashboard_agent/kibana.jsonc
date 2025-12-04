@@ -7,7 +7,7 @@
   "plugin": {
     "id": "dashboardAgent",
     "server": true,
-    "browser": false,
+    "browser": true,
     "configPath": [
       "xpack",
       "dashboardAgent"
@@ -15,6 +15,9 @@
     "requiredPlugins": [
       "onechat",
       "dashboard"
+    ],
+    "requiredBundles": [
+      "kibanaReact"
     ],
     "optionalPlugins": [
       "share",

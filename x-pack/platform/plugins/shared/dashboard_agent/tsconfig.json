@@ -3,7 +3,7 @@
   "compilerOptions": {
     "outDir": "target/types"
   },
-  "include": ["common/**/*", "server/**/*"],
+  "include": ["common/**/*", "server/**/*", "public/**/*"],
   "kbn_references": [
     "@kbn/core",
     "@kbn/logging",
@@ -11,6 +11,10 @@
     "@kbn/onechat-common",
     "@kbn/onechat-server",
     "@kbn/dashboard-plugin",
+    "@kbn/presentation-util",
+    "@kbn/kibana-react-plugin",
+    "@kbn/react-kibana-mount",
+    "@kbn/i18n",
     "@kbn/zod",
     "@kbn/spaces-plugin",
     "@kbn/management-settings-ids",
