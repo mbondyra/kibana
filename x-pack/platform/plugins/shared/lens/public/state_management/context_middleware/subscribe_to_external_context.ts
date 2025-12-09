@@ -7,17 +7,17 @@
 
 import { delay, finalize, switchMap, tap } from 'rxjs';
 import { debounce, isEqual } from 'lodash';
-import type { DataPublicPluginStart } from '@kbn/data-plugin/public';
 import { waitUntilNextSessionCompletes$ } from '@kbn/data-plugin/public';
+import type { LensAppServices } from '@kbn/lens-common';
 import type { LensGetState, LensDispatch } from '..';
 import { setExecutionContext } from '..';
 import { getResolvedDateRange } from '../../utils';
 
 /**
- * subscribes to external changes for filters, searchSessionId, timerange and autorefresh
+ * subscribes to external changes for filters, searchSessionId, timerange, autorefresh and projectRouting
  */
 export function subscribeToExternalContext(
-  data: DataPublicPluginStart,
+  { data, cps }: LensAppServices,
   getState: LensGetState,
   dispatch: LensDispatch
 ) {
@@ -75,10 +75,19 @@ export function subscribeToExternalContext(
       )
     )
     .subscribe();
+
+  // Subscribe to CPS projectRouting changes
+  // When projectRouting changes, trigger refresh like filters/time changes
+  // Data plugin will automatically inject the new value from CPS Manager
+  const cpsProjectRoutingSubscription = cps?.cpsManager?.getProjectRouting$().subscribe(() => {
+    debounceDispatchFromExternal();
+  });
+
   return () => {
     filterSubscription.unsubscribe();
     timeSubscription.unsubscribe();
     autoRefreshSubscription.unsubscribe();
     sessionSubscription.unsubscribe();
+    cpsProjectRoutingSubscription?.unsubscribe();
   };
 }

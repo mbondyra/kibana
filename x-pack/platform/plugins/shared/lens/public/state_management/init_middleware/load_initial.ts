@@ -114,6 +114,38 @@ type PreloadedState = Omit<
   'resolvedDateRange' | 'searchSessionId' | 'isLinkedToOriginatingApp'
 >;
 
+/**
+ * Initialize project routing in CPS Manager
+ * Determines whether to preserve or reset the project routing based on the context
+ */
+function initProjectRouting({
+  cps,
+  lens,
+  initialInput,
+  isLinkedToOriginatingApp = false,
+}: {
+  cps: LensAppServices['cps'];
+  lens: LensAppState;
+  initialInput?: LensSerializedState;
+  isLinkedToOriginatingApp?: boolean;
+}): void {
+  if (!cps?.cpsManager) {
+    return;
+  }
+
+  // Check if dataSources have been initialized already to detect save/save-as scenarios
+  const hasActiveLensSession = !Object.values(lens.datasourceStates).every(
+    (ds) => ds.state === null
+  );
+
+  // Reset when: NOT linked to originating app, NOT active session, NOT embeddable
+  const shouldReset = !isLinkedToOriginatingApp && !hasActiveLensSession && !initialInput;
+
+  if (shouldReset) {
+    cps.cpsManager.setProjectRouting(cps.cpsManager.getDefaultProjectRouting());
+  }
+}
+
 async function loadFromLocatorState(
   store: MiddlewareAPI,
   initialState: NonNullable<LensStoreDeps['initialStateFromLocator']>,
@@ -337,8 +369,16 @@ export async function loadInitial(
     storeDeps;
   const { resolvedDateRange, searchSessionId, isLinkedToOriginatingApp, ...emptyState } =
     getPreloadedState(storeDeps);
-  const { notifications, data } = lensServices;
+  const { notifications, data, cps } = lensServices;
   const { lens } = store.getState();
+
+  // Initialize CPS projectRouting (sets value directly in CPS Manager)
+  initProjectRouting({
+    cps,
+    lens,
+    initialInput,
+    isLinkedToOriginatingApp,
+  });
 
   const loaderSharedArgs: LoaderSharedArgs = {
     visualizationMap,
