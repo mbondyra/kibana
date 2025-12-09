@@ -321,13 +321,11 @@ export function createUnifiedSearchApi(
   },
   filters: Filter[] = [],
   timeRange: TimeRange = { from: 'now-7d', to: 'now' },
-  projectRouting?: string
 ) {
   return {
     filters$: new BehaviorSubject<Filter[] | undefined>(filters),
     query$: new BehaviorSubject<Query | AggregateQuery | undefined>(query),
     timeRange$: new BehaviorSubject<TimeRange | undefined>(timeRange),
-    projectRouting$: new BehaviorSubject<string | undefined>(projectRouting),
   };
 }
 

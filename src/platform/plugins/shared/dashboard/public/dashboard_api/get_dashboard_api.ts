@@ -114,7 +114,8 @@ export function getDashboardApi({
   );
   const projectRoutingManager = initializeProjectRoutingManager(
     initialState,
-    settingsManager.api.projectRoutingRestore$
+    settingsManager.api.projectRoutingRestore$,
+    unifiedSearchManager.api.reload$
   );
 
   const unsavedChangesManager = initializeUnsavedChangesManager({

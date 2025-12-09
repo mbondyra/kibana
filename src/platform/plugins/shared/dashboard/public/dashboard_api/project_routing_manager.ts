@@ -11,7 +11,7 @@ import type { ProjectRouting } from '@kbn/es-query';
 import type { PublishingSubject, StateComparators } from '@kbn/presentation-publishing';
 import { diffComparators } from '@kbn/presentation-publishing';
 import type { Subscription } from 'rxjs';
-import { BehaviorSubject, combineLatestWith, debounceTime, map } from 'rxjs';
+import { BehaviorSubject, combineLatestWith, debounceTime, map, Subject } from 'rxjs';
 import { cpsService } from '../services/kibana_services';
 import type { DashboardState } from '../../common';
 
@@ -19,7 +19,8 @@ export const COMPARE_DEBOUNCE = 100;
 
 export function initializeProjectRoutingManager(
   initialState: DashboardState,
-  projectRoutingRestore$: PublishingSubject<boolean>
+  projectRoutingRestore$: PublishingSubject<boolean>,
+  reload$: Subject<void>
 ) {
   if (!cpsService?.cpsManager) {
     return;
@@ -27,32 +28,31 @@ export function initializeProjectRoutingManager(
 
   const cpsManager = cpsService.cpsManager;
 
-  const projectRouting$ = new BehaviorSubject<ProjectRouting>(initialState.project_routing);
-
   // pass the initial state to CPS manager from dashboard state or just reset to default on dashboard init
   cpsManager.setProjectRouting(
     initialState.project_routing ?? cpsManager.getDefaultProjectRouting()
   );
 
   function setProjectRouting(projectRouting: ProjectRouting) {
-    if (projectRouting !== projectRouting$.value) {
-      projectRouting$.next(projectRouting);
+    if (projectRouting !== cpsManager.getProjectRouting()) {
       cpsManager.setProjectRouting(projectRouting);
     }
   }
 
-  // Subscribe to CPS's projectRouting$ to sync changes from the project picker
+  // Subscribe to CPS projectRouting changes
+  // When projectRouting changes, trigger reload like filters/time changes
+  // Data plugin will automatically inject the new value from CPS Manager
   const cpsProjectRoutingSubscription: Subscription | undefined = cpsManager
     .getProjectRouting$()
-    .subscribe((cpsProjectRouting: ProjectRouting | undefined) => {
-      setProjectRouting(cpsProjectRouting);
+    .subscribe(() => {
+      reload$.next();
     });
 
   const comparators = {
     project_routing: (_a, _b, lastSavedState, _latestState) => {
       if (!projectRoutingRestore$.value) return true;
       const savedValue = lastSavedState?.project_routing;
-      return savedValue === projectRouting$.value;
+      return savedValue === cpsManager.getProjectRouting();
     },
   } as StateComparators<Pick<DashboardState, 'project_routing'>>;
 
@@ -62,20 +62,19 @@ export function initializeProjectRoutingManager(
       return {};
     }
 
-    // Read from CPS if available, otherwise use internal state
     return {
-      project_routing: projectRouting$.value,
+      project_routing: cpsManager.getProjectRouting(),
     };
   };
 
   return {
     api: {
-      projectRouting$,
+      projectRouting$: cpsManager.getProjectRouting$(),
       setProjectRouting,
     },
     internalApi: {
       startComparing$: (lastSavedState$: BehaviorSubject<DashboardState>) => {
-        return projectRouting$.pipe(
+        return cpsManager.getProjectRouting$().pipe(
           debounceTime(COMPARE_DEBOUNCE),
           map(() => getState()),
           combineLatestWith(lastSavedState$),

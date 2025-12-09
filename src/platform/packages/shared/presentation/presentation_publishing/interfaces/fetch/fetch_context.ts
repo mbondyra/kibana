@@ -18,7 +18,7 @@ export interface FetchContext {
   searchSessionId: string | undefined;
   timeRange: TimeRange | undefined;
   timeslice: [number, number] | undefined;
-  projectRouting: ProjectRouting | undefined;
+  // projectRouting: ProjectRouting | undefined;
 }
 
 export interface ReloadTimeFetchContext extends Omit<FetchContext, 'isReload'> {

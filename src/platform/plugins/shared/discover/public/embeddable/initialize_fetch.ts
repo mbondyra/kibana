@@ -235,7 +235,6 @@ export function initializeFetch({
               scopedProfilesManager,
               searchSessionId,
               esqlVariables,
-              projectRouting: fetchContext.projectRouting,
             });
             return {
               columnsMeta: result.esqlQueryColumns

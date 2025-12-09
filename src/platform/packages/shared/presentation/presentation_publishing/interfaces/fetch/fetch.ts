@@ -53,7 +53,7 @@ function getFetchContext$(api: unknown): Observable<Omit<FetchContext, 'isReload
     searchSessionId: of(undefined),
     timeRange: of(undefined),
     timeslice: of(undefined),
-    projectRouting: of(undefined),
+    // projectRouting: of(undefined),
   };
 
   if (apiHasParentApi(api) && apiPublishesUnifiedSearch(api.parentApi)) {
@@ -61,9 +61,9 @@ function getFetchContext$(api: unknown): Observable<Omit<FetchContext, 'isReload
     observables.query = api.parentApi.query$;
   }
 
-  if (apiHasParentApi(api) && apiPublishesProjectRouting(api.parentApi)) {
-    observables.projectRouting = api.parentApi.projectRouting$;
-  }
+  // if (apiHasParentApi(api) && apiPublishesProjectRouting(api.parentApi)) {
+  //   observables.projectRouting = api.parentApi.projectRouting$;
+  // }
 
   observables.timeRange = combineLatest({
     local: apiPublishesTimeRange(api) ? api.timeRange$ : of(undefined),
@@ -148,7 +148,7 @@ export const useFetchContext = (api: unknown): FetchContext => {
       timeRange: typeApi?.timeRange$?.value ?? typeApi?.parentApi?.timeRange$?.value,
       timeslice: typeApi?.timeRange$?.value ? undefined : typeApi?.parentApi?.timeslice$?.value,
       isReload: false,
-      projectRouting: undefined,
+      // projectRouting: undefined,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

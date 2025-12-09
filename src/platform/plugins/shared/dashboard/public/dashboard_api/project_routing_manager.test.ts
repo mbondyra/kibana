@@ -7,7 +7,7 @@
  * License v3.0 only", or the "Server Side Public License, v 1".
  */
 
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, Subject } from 'rxjs';
 import { getSampleDashboardState } from '../mocks';
 import type { DashboardState } from '../../common';
 import { initializeProjectRoutingManager } from './project_routing_manager';
@@ -29,13 +29,15 @@ describe('projectRouting', () => {
 
   const initManager = (projectRoutingRestore: boolean, initialProjectRouting?: string) => {
     const projectRoutingRestore$ = new BehaviorSubject<boolean>(projectRoutingRestore);
+    const reload$ = new Subject<void>();
     const dashboardState = initialProjectRouting
       ? { ...getSampleDashboardState({ project_routing: initialProjectRouting }) }
       : getSampleDashboardState();
 
     return {
-      manager: initializeProjectRoutingManager(dashboardState, projectRoutingRestore$),
+      manager: initializeProjectRoutingManager(dashboardState, projectRoutingRestore$, reload$),
       projectRoutingRestore$,
+      reload$,
     };
   };
 
@@ -176,6 +178,19 @@ describe('projectRouting', () => {
     manager!.api.setProjectRouting('ALL');
   });
 
+  test('Should trigger reload when projectRouting changes in CPS Manager', (done) => {
+    const { reload$ } = initManager(true, '_alias:_origin');
+
+    // Subscribe to reload$ to verify it triggers
+    reload$.subscribe(() => {
+      done();
+    });
+
+    // Trigger CPS Manager change via setProjectRouting
+    // This should cause the CPS subscription to fire and call reload$.next()
+    cpsService.cpsManager!.setProjectRouting('ALL');
+  });
+
   test('Should return undefined when CPS is not enabled', () => {
     // Mock cpsService as disabled (no cpsManager)
     const originalCpsManager = cpsService?.cpsManager;
@@ -184,9 +199,11 @@ describe('projectRouting', () => {
     }
 
     const projectRoutingRestore$ = new BehaviorSubject<boolean>(true);
+    const reload$ = new Subject<void>();
     const projectRoutingManager = initializeProjectRoutingManager(
       getSampleDashboardState(),
-      projectRoutingRestore$
+      projectRoutingRestore$,
+      reload$
     );
 
     // Should return undefined when CPS is not enabled
