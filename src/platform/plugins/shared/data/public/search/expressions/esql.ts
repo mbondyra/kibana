@@ -34,14 +34,19 @@ export function getEsql({
     async getStartDependencies() {
       const [
         { uiSettings },
-        ,
+        { cps },
         {
           nowProvider,
           search: { search },
         },
       ] = await getStartServices();
 
-      return { nowProvider, search, uiSettings: uiSettings as unknown as UiSettingsCommon };
+      return {
+        nowProvider,
+        search,
+        uiSettings: uiSettings as unknown as UiSettingsCommon,
+        getCPSProjectRouting: cps?.cpsManager ? () => cps.cpsManager?.getProjectRouting() : undefined,
+      };
     },
   });
 }

@@ -26,7 +26,7 @@ import { getIndexPatternFromESQLQuery, fixESQLQueryWithVariables } from '@kbn/es
 import { zipObject } from 'lodash';
 import type { Observable } from 'rxjs';
 import { catchError, defer, map, switchMap, tap, throwError } from 'rxjs';
-import { buildEsQuery, sanitizeProjectRoutingForES, type Filter } from '@kbn/es-query';
+import { buildEsQuery, sanitizeProjectRoutingForES, type Filter, type ProjectRouting } from '@kbn/es-query';
 import type { ESQLSearchParams, ESQLSearchResponse } from '@kbn/es-types';
 import DateMath from '@kbn/datemath';
 import { getEsQueryConfig } from '../../es_query';
@@ -83,6 +83,7 @@ interface EsqlFnArguments {
 interface EsqlStartDependencies {
   search: ISearchGeneric;
   uiSettings: UiSettingsCommon;
+  getCPSProjectRouting?: () => ProjectRouting | undefined;
 }
 
 function extractTypeAndReason(attributes: any): { type?: string; reason?: string } {
@@ -186,7 +187,7 @@ export const getEsqlFn = ({ getStartDependencies }: EsqlFnArguments) => {
           return request;
         })
       ).pipe(
-        switchMap(({ search, uiSettings }) => {
+        switchMap(({ search, uiSettings, getCPSProjectRouting }) => {
           // this is for backward compatibility, if the query is of fields or functions type
           // and the query is not set with ?? in the query, we should set it
           // https://github.com/elastic/elasticsearch/pull/122459
@@ -240,8 +241,9 @@ export const getEsqlFn = ({ getStartDependencies }: EsqlFnArguments) => {
 
             params.filter = buildEsQuery(undefined, input.query || [], filters, esQueryConfigs);
 
-            if (input.projectRouting) {
-              const sanitizedProjectRouting = sanitizeProjectRoutingForES(input.projectRouting);
+            const projectRouting = getCPSProjectRouting?.();
+            if (projectRouting) {
+              const sanitizedProjectRouting = sanitizeProjectRoutingForES(projectRouting);
               if (sanitizedProjectRouting) {
                 params.project_routing = sanitizedProjectRouting;
               }

@@ -17,6 +17,7 @@ import type {
   PluginInitializerContext,
   StartServicesAccessor,
 } from '@kbn/core/public';
+import { CPSPluginStart } from '@kbn/cps/public';
 import type { ISearchGeneric } from '@kbn/search-types';
 import { RequestAdapter } from '@kbn/inspector-plugin/common/adapters/request';
 import type { DataViewsContract } from '@kbn/data-views-plugin/common';
@@ -95,6 +96,7 @@ export interface SearchServiceStartDependencies {
   screenshotMode: ScreenshotModePluginStart;
   share: SharePluginStart;
   scriptedFieldsEnabled: boolean;
+  cps?: CPSPluginStart;
 }
 
 export class SearchService implements Plugin<ISearchSetup, ISearchStart> {
@@ -241,6 +243,7 @@ export class SearchService implements Plugin<ISearchSetup, ISearchStart> {
       screenshotMode,
       scriptedFieldsEnabled,
       share,
+      cps,
     }: SearchServiceStartDependencies
   ): ISearchStart {
     const { http, uiSettings, chrome, application, notifications, ...startServices } = coreStart;
@@ -297,6 +300,8 @@ export class SearchService implements Plugin<ISearchSetup, ISearchStart> {
         return response;
       },
       scriptedFieldsEnabled,
+      // Provide global CPS project routing getter if CPS plugin is available
+      getCPSProjectRouting: cps?.cpsManager ? () => cps.cpsManager?.getProjectRouting() : undefined,
     };
     const config = this.initializerContext.config.get();
 

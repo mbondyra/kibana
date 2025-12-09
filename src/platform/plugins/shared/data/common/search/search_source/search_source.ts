@@ -76,7 +76,7 @@ import {
 import { catchError, finalize, first, last, map, shareReplay, switchMap, tap } from 'rxjs';
 import { defer, EMPTY, from, lastValueFrom, Observable } from 'rxjs';
 import type { estypes } from '@elastic/elasticsearch';
-import type { Filter } from '@kbn/es-query';
+import type { Filter, ProjectRouting } from '@kbn/es-query';
 import {
   buildEsQuery,
   isOfQueryType,
@@ -137,6 +137,12 @@ export interface SearchSourceDependencies extends FetchHandlers {
   search: ISearchGeneric;
   dataViews: DataViewsContract;
   scriptedFieldsEnabled: boolean;
+  /**
+   * Optional function to get the current global CPS project routing.
+   * When provided, this will be used as a fallback when projectRouting
+   * is not explicitly set on the search source.
+   */
+  getCPSProjectRouting?: () => ProjectRouting | undefined;
 }
 
 interface ExpressionAstOptions {
@@ -957,6 +963,16 @@ export class SearchSource {
         sourceFieldsProvided,
       }),
     };
+
+    // This ensures all search requests include project routing when CPS is active,
+    // while still allowing explicit overrides via searchSource.setField('projectRouting', ...)
+    const projectRouting = this.dependencies.getCPSProjectRouting?.();
+    if (projectRouting) {
+      const sanitized = sanitizeProjectRoutingForES(projectRouting);
+      if (sanitized) {
+        bodyToReturn.project_routing = sanitized;
+      }
+    }
 
     return omitByIsNil({
       ...omit(searchRequest, ['query', 'filters', 'nonHighlightingFilters', 'fieldsFromSource']),
