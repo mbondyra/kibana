@@ -7,7 +7,6 @@
 
 import type { DefaultInspectorAdapters } from '@kbn/expressions-plugin/common';
 import {
-  apiPublishesProjectRouting,
   apiPublishesUnifiedSearch,
   fetch$,
 } from '@kbn/presentation-publishing';
@@ -71,17 +70,12 @@ function getSearchContext(parentApi: unknown, esqlVariables: ESQLControlVariable
         timeRange$: new BehaviorSubject(undefined),
       };
 
-  const { projectRouting$ } = apiPublishesProjectRouting(parentApi)
-    ? parentApi
-    : { projectRouting$: undefined };
-
   return {
     esqlVariables,
     filters: unifiedSearch$.filters$.getValue(),
     query: unifiedSearch$.query$.getValue(),
     timeRange: unifiedSearch$.timeRange$.getValue(),
     timeslice: unifiedSearch$.timeslice$?.getValue(),
-    projectRouting: projectRouting$?.getValue(),
   };
 }
 
