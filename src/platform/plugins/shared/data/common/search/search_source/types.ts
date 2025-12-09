@@ -123,11 +123,6 @@ export interface SearchSourceFields {
    * Allow querying to use a point-in-time ID for paging results
    */
   pit?: estypes.SearchPointInTimeReference;
-  /**
-   * {@link ProjectRouting}
-   */
-  projectRouting?: ProjectRouting;
-
   parent?: SearchSourceFields;
 }
 
@@ -185,7 +180,6 @@ export type SerializedSearchSourceFields = {
   /**
    * {@link ProjectRouting}
    */
-  projectRouting?: ProjectRouting;
 
   parent?: SerializedSearchSourceFields;
 };
