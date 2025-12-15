@@ -147,6 +147,19 @@ export const getVisualizationInstance = async (
     vis,
     visualizeServices
   );
+  
+  // Restore project routing for Vega visualizations
+  if (vis.type.name === 'vega' && savedVis && (savedVis as any).project_routing !== undefined) {
+    const projectRouting = (savedVis as any).project_routing;
+    if (vis.data.searchSource && projectRouting) {
+      vis.data.searchSource.setField('projectRouting', projectRouting);
+    }
+    // Initialize CPS manager with saved project routing
+    if (visualizeServices.cps?.cpsManager) {
+      visualizeServices.cps.cpsManager.setProjectRouting(projectRouting);
+    }
+  }
+  
   return {
     vis,
     embeddableHandler,

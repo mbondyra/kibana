@@ -7,7 +7,7 @@
  * License v3.0 only", or the "Server Side Public License, v 1".
  */
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import moment from 'moment';
 import type EventEmitter from 'events';
 import { i18n } from '@kbn/i18n';
@@ -19,14 +19,15 @@ import type { TopNavMenuData } from '@kbn/navigation-plugin/public';
 import type {
   SavedObjectSaveOpts,
   OnSaveProps,
-  ShowSaveModalMinimalSaveModalProps,
   SaveResult,
 } from '@kbn/saved-objects-plugin/public';
-import { showSaveModal, SavedObjectSaveModalOrigin } from '@kbn/saved-objects-plugin/public';
+import { showSaveModal } from '@kbn/saved-objects-plugin/public';
 import {
   LazySavedObjectSaveModalDashboardWithSaveResult,
   withSuspense,
 } from '@kbn/presentation-util-plugin/public';
+import { EuiFormRow, EuiFlexGroup, EuiFlexItem, EuiSwitch } from '@elastic/eui';
+import { FormattedMessage } from '@kbn/i18n-react';
 import { unhashUrl } from '@kbn/kibana-utils-plugin/public';
 import type { EmbeddableStateTransfer } from '@kbn/embeddable-plugin/public';
 import { VISUALIZE_APP_LOCATOR } from '@kbn/deeplinks-analytics';
@@ -34,6 +35,7 @@ import { VISUALIZE_APP_LOCATOR } from '@kbn/deeplinks-analytics';
 import { VisualizeConstants, VISUALIZE_EMBEDDABLE_TYPE } from '@kbn/visualizations-common';
 import { saveVisualization } from '../../utils/saved_visualize_utils';
 import { getFullPath } from '../..';
+import type { VisualizationSavedObjectAttributes } from '../../../common/content_management/v1/types';
 
 import type {
   VisualizeServices,
@@ -73,11 +75,54 @@ export interface TopNavConfigParams {
   setNavigateToLens: (flag: boolean) => void;
   showBadge: boolean;
   eventEmitter?: EventEmitter;
+  getProjectRoutingForSave?: (projectRoutingRestore: boolean) => Pick<VisualizationSavedObjectAttributes, 'project_routing'>;
+  hasProjectRoutingRestore?: () => boolean;
 }
 
 const SavedObjectSaveModalDashboardWithSaveResult = withSuspense(
   LazySavedObjectSaveModalDashboardWithSaveResult
 );
+
+// Component to manage project routing toggle state
+const ProjectRoutingToggle: React.FC<{
+  show: boolean;
+  initialValue: boolean;
+  onValueChange: (value: boolean) => void;
+  objectType: string;
+}> = ({ show, initialValue, onValueChange, objectType }) => {
+  const [checked, setChecked] = useState(initialValue);
+
+  useEffect(() => {
+    onValueChange(checked);
+  }, [checked, onValueChange]);
+
+  if (!show) {
+    return null;
+  }
+
+  return (
+    <EuiFormRow>
+      <EuiFlexGroup responsive={false} gutterSize="s" alignItems="center">
+        <EuiFlexItem grow={false}>
+          <EuiSwitch
+            data-test-subj="storeProjectRoutingWithVisualization"
+            checked={checked}
+            onChange={(event) => {
+              setChecked(event.target.checked);
+            }}
+            label={
+              <FormattedMessage
+                id="savedObjects.saveModalOrigin.storeProjectRoutingFormRowLabel"
+                defaultMessage="Store project routing with {objectType}"
+                values={{ objectType }}
+              />
+            }
+          />
+        </EuiFlexItem>
+      </EuiFlexGroup>
+    </EuiFormRow>
+  );
+};
 
 export const showPublicUrlSwitch = (anonymousUserCapabilities: Capabilities) => {
   if (!anonymousUserCapabilities.visualize_v2) return false;
@@ -106,6 +151,8 @@ export const getTopNavConfig = (
     setNavigateToLens,
     showBadge,
     eventEmitter,
+    getProjectRoutingForSave,
+    hasProjectRoutingRestore,
   }: TopNavConfigParams,
   {
     data,
@@ -131,7 +178,7 @@ export const getTopNavConfig = (
    * Called when the user clicks "Save" button.
    */
   async function doSave(
-    saveOptions: SavedObjectSaveOpts & { dashboardId?: string; copyOnSave?: boolean }
+    saveOptions: SavedObjectSaveOpts & { dashboardId?: string; copyOnSave?: boolean; projectRoutingRestore?: boolean }
   ) {
     const newlyCreated = !Boolean(savedVis.id) || saveOptions.copyOnSave;
     // vis.title was not bound and it's needed to reflect title into visState
@@ -143,6 +190,15 @@ export const getTopNavConfig = (
     savedVis.searchSourceFields = vis.data.searchSource?.getSerializedFields();
     savedVis.visState = stateContainer.getState().vis;
     savedVis.uiStateJSON = vis.uiState.toString();
+
+    // Include project routing if available (for Vega visualizations)
+    if (getProjectRoutingForSave) {
+      const projectRoutingState = getProjectRoutingForSave(
+        saveOptions.projectRoutingRestore ?? false
+      );
+      // Always set project_routing, even if undefined (to clear it when toggle is off)
+      (savedVis as any).project_routing = projectRoutingState.project_routing;
+    }
 
     setHasUnsavedChanges(false);
 
@@ -529,6 +585,9 @@ export const getTopNavConfig = (
               }
             },
             run: () => {
+              // Track project routing toggle state using a ref-like object
+              const projectRoutingState = { value: hasProjectRoutingRestore?.() ?? false };
+
               const onSave = async ({
                 newTitle,
                 newCopyOnSave,
@@ -538,9 +597,11 @@ export const getTopNavConfig = (
                 returnToOrigin,
                 dashboardId,
                 addToLibrary,
+                newProjectRoutingRestore,
               }: OnSaveProps & { returnToOrigin?: boolean } & {
                 dashboardId?: string | null;
                 addToLibrary?: boolean;
+                newProjectRoutingRestore?: boolean;
               }): Promise<SaveResult> => {
                 const currentTitle = savedVis.title;
                 savedVis.title = newTitle;
@@ -591,6 +652,7 @@ export const getTopNavConfig = (
                   returnToOrigin,
                   dashboardId: !!dashboardId ? dashboardId : undefined,
                   copyOnSave: newCopyOnSave,
+                  projectRoutingRestore: newProjectRoutingRestore ?? false,
                 });
                 // If the save wasn't successful, put the original values back.
                 if (!response.id || response.error) {
@@ -616,64 +678,66 @@ export const getTopNavConfig = (
                 );
               }
 
-              let saveModal: React.ReactElement<ShowSaveModalMinimalSaveModalProps>;
+              const isVega = vis.type.name === 'vega';
+              const showProjectRoutingToggle = isVega && Boolean(startServices.cps?.cpsManager);
 
-              if (originatingApp) {
-                saveModal = (
-                  <SavedObjectSaveModalOrigin
-                    documentInfo={savedVis || { title: '' }}
-                    onSave={onSave}
-                    options={tagOptions}
-                    getAppNameFromId={stateTransfer.getAppNameFromId}
-                    objectType={i18n.translate(
-                      'visualizations.topNavMenu.saveVisualizationObjectType',
-                      {
-                        defaultMessage: 'visualization',
-                      }
-                    )}
-                    onClose={() => {}}
-                    originatingApp={originatingApp}
-                    returnToOriginSwitchLabel={
-                      originatingApp && embeddableId
-                        ? i18n.translate('visualizations.topNavMenu.updatePanel', {
-                            defaultMessage: 'Update panel on {originatingAppName}',
-                            values: {
-                              originatingAppName: stateTransfer.getAppNameFromId(originatingApp),
-                            },
-                          })
-                        : undefined
-                    }
-                  />
+              // Combine tag options with project routing toggle
+              const combinedOptions = (state: any) => {
+                return (
+                  <>
+                    {tagOptions}
+                    <ProjectRoutingToggle
+                      show={showProjectRoutingToggle}
+                      initialValue={projectRoutingState.value}
+                      onValueChange={(value) => {
+                        projectRoutingState.value = value;
+                      }}
+                      objectType={i18n.translate(
+                        'visualizations.topNavMenu.saveVisualizationObjectType',
+                        {
+                          defaultMessage: 'visualization',
+                        }
+                      )}
+                    />
+                  </>
                 );
-              } else {
-                saveModal = (
-                  <SavedObjectSaveModalDashboardWithSaveResult
-                    documentInfo={{
-                      id: visualizeCapabilities.save ? savedVis?.id : undefined,
-                      title: savedVis?.title || '',
-                      description: savedVis?.description || '',
-                    }}
-                    canSaveByReference={Boolean(visualizeCapabilities.save)}
-                    onSave={onSave}
-                    tagOptions={tagOptions}
-                    objectType={i18n.translate(
-                      'visualizations.topNavMenu.saveVisualizationObjectType',
-                      {
-                        defaultMessage: 'visualization',
-                      }
-                    )}
-                    onClose={() => {}}
-                    mustCopyOnSaveMessage={
-                      savedVis.managed
-                        ? i18n.translate('visualizations.topNavMenu.mustCopyOnSave', {
-                            defaultMessage:
-                              'Elastic manages this visualization. Save any changes to a new visualization.',
-                          })
-                        : undefined
+              };
+
+              const saveModal = (
+                <SavedObjectSaveModalDashboardWithSaveResult
+                  documentInfo={{
+                    id: visualizeCapabilities.save ? savedVis?.id : undefined,
+                    title: savedVis?.title || '',
+                    description: savedVis?.description || '',
+                  }}
+                  canSaveByReference={Boolean(visualizeCapabilities.save)}
+                  onSave={async (saveProps: OnSaveProps & { dashboardId?: string | null; addToLibrary?: boolean }) => {
+                    const result = await onSave({
+                      ...saveProps,
+                      newProjectRoutingRestore: showProjectRoutingToggle
+                        ? projectRoutingState.value
+                        : undefined,
+                    });
+                    return result;
+                  }}
+                  tagOptions={combinedOptions}
+                  objectType={i18n.translate(
+                    'visualizations.topNavMenu.saveVisualizationObjectType',
+                    {
+                      defaultMessage: 'visualization',
                     }
-                  />
-                );
-              }
+                  )}
+                  onClose={() => {}}
+                  mustCopyOnSaveMessage={
+                    savedVis.managed
+                      ? i18n.translate('visualizations.topNavMenu.mustCopyOnSave', {
+                          defaultMessage:
+                            'Elastic manages this visualization. Save any changes to a new visualization.',
+                        })
+                      : undefined
+                  }
+                />
+              );
 
               showSaveModal(saveModal);
             },

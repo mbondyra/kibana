@@ -30,6 +30,7 @@ import type {
   VisualizeAppStateContainer,
   VisualizeEditorVisInstance,
 } from '../types';
+import type { VisualizationSavedObjectAttributes } from '../../../common/content_management/v1/types';
 import {
   CHARTS_CONFIG_TOKENS,
   CHARTS_WITHOUT_SMALL_MULTIPLES,
@@ -121,6 +122,8 @@ interface VisualizeEditorCommonProps {
   visualizationIdFromUrl?: string;
   embeddableId?: string;
   eventEmitter?: EventEmitter;
+  getProjectRoutingForSave?: (projectRoutingRestore: boolean) => Pick<VisualizationSavedObjectAttributes, 'project_routing'>;
+  hasProjectRoutingRestore?: () => boolean;
 }
 
 export const VisualizeEditorCommon = ({
@@ -140,6 +143,8 @@ export const VisualizeEditorCommon = ({
   embeddableId,
   visEditorRef,
   eventEmitter,
+  getProjectRoutingForSave,
+  hasProjectRoutingRestore,
 }: VisualizeEditorCommonProps) => {
   const styles = useMemoCss(visEditorCommonStyles);
   const { services } = useKibana<VisualizeServices>();
@@ -227,6 +232,8 @@ export const VisualizeEditorCommon = ({
           embeddableId={embeddableId}
           onAppLeave={onAppLeave}
           eventEmitter={eventEmitter}
+          getProjectRoutingForSave={getProjectRoutingForSave}
+          hasProjectRoutingRestore={hasProjectRoutingRestore}
         />
       )}
       {visInstance?.vis?.type?.stage === 'experimental' &&

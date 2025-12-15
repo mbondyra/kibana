@@ -52,6 +52,7 @@ export const getVisualizationSavedObjectType = (
       uiStateJSON: schema.maybe(schema.string()),
       visState: schema.maybe(schema.string()),
       savedSearchRefName: schema.maybe(schema.string()),
+      project_routing: schema.maybe(schema.nullable(schema.string())),
     }),
   },
   migrations: () => getAllMigrations(getSearchSourceMigrations()),

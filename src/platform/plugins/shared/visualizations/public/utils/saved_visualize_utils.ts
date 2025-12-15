@@ -247,6 +247,11 @@ export async function getSavedVisualization(
   Object.assign(savedObject, attributes);
   savedObject.lastSavedTitle = savedObject.title;
   savedObject.managed = Boolean(resp.managed);
+  
+  // Extract project_routing from saved object attributes
+  if (attributes.project_routing !== undefined) {
+    (savedObject as any).project_routing = attributes.project_routing;
+  }
 
   savedObject.sharingSavedObjectProps = {
     aliasTargetId,
@@ -268,6 +273,12 @@ export async function getSavedVisualization(
   if (meta && meta.searchSourceJSON) {
     try {
       let searchSourceValues = parseSearchSourceJSON(meta.searchSourceJSON as string);
+      
+      // Remove projectRouting from searchSourceValues if it exists
+      // We store it as a separate project_routing attribute, not in searchSourceJSON
+      if ('projectRouting' in searchSourceValues) {
+        delete (searchSourceValues as any).projectRouting;
+      }
 
       if (opts.searchSource) {
         searchSourceValues = injectSearchSourceReferences(
@@ -322,28 +333,48 @@ export async function saveVisualization(
     delete savedObject.id;
   }
 
-  const attributes = {
+  const attributes: VisualizationSavedObjectAttributes = {
     visState: JSON.stringify(savedObject.visState),
     title: savedObject.title,
     uiStateJSON: savedObject.uiStateJSON,
     description: savedObject.description,
-    savedSearchId: savedObject.savedSearchId,
     savedSearchRefName: savedObject.savedSearchRefName,
     version: savedObject.version ?? '1',
     kibanaSavedObjectMeta: {},
   };
+  
+  // Include project_routing if it exists on the saved object
+  if ((savedObject as any).project_routing !== undefined) {
+    attributes.project_routing = (savedObject as any).project_routing;
+  }
   let references: Reference[] = baseReferences;
 
   if (savedObject.searchSource) {
+    // Temporarily remove projectRouting from search source before serialization
+    // We save it as a separate attribute, not in searchSourceJSON
+    const projectRouting = savedObject.searchSource.getField('projectRouting');
+    if (projectRouting !== undefined) {
+      savedObject.searchSource.removeField('projectRouting');
+    }
+    
     const { searchSourceJSON, references: searchSourceReferences } =
       savedObject.searchSource.serialize();
     attributes.kibanaSavedObjectMeta = { searchSourceJSON };
     references.push(...searchSourceReferences);
+    
+    // Restore projectRouting to search source for runtime use
+    if (projectRouting !== undefined) {
+      savedObject.searchSource.setField('projectRouting', projectRouting);
+    }
   }
 
   if (savedObject.searchSourceFields) {
+    // Remove projectRouting from searchSourceFields before serialization
+    const searchSourceFieldsWithoutProjectRouting = { ...savedObject.searchSourceFields };
+    delete searchSourceFieldsWithoutProjectRouting.projectRouting;
+    
     const [searchSourceFields, searchSourceReferences] = extractSearchSourceReferences(
-      savedObject.searchSourceFields
+      searchSourceFieldsWithoutProjectRouting
     );
     const searchSourceJSON = JSON.stringify(searchSourceFields);
     attributes.kibanaSavedObjectMeta = { searchSourceJSON };
@@ -408,6 +439,12 @@ export async function saveVisualization(
 
     savedObject.id = resp.item.id;
     savedObject.lastSavedTitle = savedObject.title;
+    
+    // Update project_routing from the response
+    if (resp.item.attributes?.project_routing !== undefined) {
+      (savedObject as any).project_routing = resp.item.attributes.project_routing;
+    }
+    
     return savedObject.id;
   } catch (err: any) {
     savedObject.id = originalId;

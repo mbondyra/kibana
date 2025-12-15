@@ -58,11 +58,16 @@ export const useEditorUpdates = (
             unifiedSearch: services.unifiedSearch,
           });
         } else {
+          const projectRouting =
+            vis.type.name === 'vega' && services.cps?.cpsManager
+              ? services.cps.cpsManager.getProjectRouting()
+              : undefined;
           embeddableHandler.updateInput({
             timeRange: timefilter.getTime(),
             filters: filterManager.getFilters(),
             query: queryString.getQuery() as Query,
             searchSessionId: services.data.search.session.getSessionId(),
+            projectRouting,
           });
         }
       };
@@ -70,6 +75,11 @@ export const useEditorUpdates = (
       const subscriptions = state$.subscribe({
         next: () => {
           services.data.search.session.start();
+          // Update project routing on search source for Vega visualizations
+          if (vis.type.name === 'vega' && vis.data.searchSource && services.cps?.cpsManager) {
+            const projectRouting = services.cps.cpsManager.getProjectRouting();
+            vis.data.searchSource.setField('projectRouting', projectRouting);
+          }
           reloadVisualization();
         },
         error: services.fatalErrors.add,
@@ -113,6 +123,24 @@ export const useEditorUpdates = (
           }
         });
 
+      // Subscribe to CPS project routing changes for Vega visualizations
+      const cpsProjectRoutingSubscription =
+        vis.type.name === 'vega' && services.cps?.cpsManager
+          ? services.cps.cpsManager.getProjectRouting$().subscribe((projectRouting) => {
+              // Update search source with new project routing
+              if (vis.data.searchSource) {
+                vis.data.searchSource.setField('projectRouting', projectRouting);
+              }
+              // Update embeddable input with new project routing and reload
+              // The embeddable handler is always used for rendering, even when visEditorController exists
+              embeddableHandler.updateInput({
+                projectRouting,
+              });
+              // Force reload to fetch new data with updated project routing
+              embeddableHandler.reload();
+            })
+          : undefined;
+
       const unsubscribeStateUpdates = appState.subscribe((state) => {
         setCurrentAppState(state);
         if (savedVis && savedVis.id && !services.history.location.pathname.includes(savedVis.id)) {
@@ -152,6 +180,12 @@ export const useEditorUpdates = (
         if (vis.data.searchSource) {
           vis.data.searchSource.setField('query', state.query);
           vis.data.searchSource.setField('filter', state.filters);
+          
+          // Update project routing for Vega visualizations
+          if (vis.type.name === 'vega' && services.cps?.cpsManager) {
+            const projectRouting = services.cps.cpsManager.getProjectRouting();
+            vis.data.searchSource.setField('projectRouting', projectRouting);
+          }
         }
         reloadVisualization();
         setHasUnsavedChanges(true);
@@ -169,6 +203,7 @@ export const useEditorUpdates = (
         vis.uiState.off('change', updateOnChange);
         unsubscribeStateUpdates();
         sessionSubscription.unsubscribe();
+        cpsProjectRoutingSubscription?.unsubscribe();
       };
     }
   }, [appState, eventEmitter, visInstance, services, setHasUnsavedChanges, visEditorController]);
