@@ -10,13 +10,8 @@
 import type { ApplicationStart, HttpSetup } from '@kbn/core/public';
 import type { Logger } from '@kbn/logging';
 import type { ProjectRouting } from '@kbn/es-query';
-import { BehaviorSubject, combineLatest, switchMap } from 'rxjs';
-import {
-  type ICPSManager,
-  type ProjectsData,
-  PROJECT_ROUTING,
-  ProjectRoutingAccess,
-} from '@kbn/cps-utils';
+import { BehaviorSubject, combineLatest, switchMap, tap } from 'rxjs';
+import { type ICPSManager, type ProjectsData, PROJECT_ROUTING } from '@kbn/cps-utils';
 import type { ProjectFetcher } from './project_fetcher';
 
 /**
@@ -40,31 +35,34 @@ export class CPSManager implements ICPSManager {
   private readonly projectRouting$ = new BehaviorSubject<ProjectRouting | undefined>(
     DEFAULT_PROJECT_ROUTING
   );
-  private readonly projectPickerAccess$ = new BehaviorSubject<ProjectRoutingAccess>(
-    ProjectRoutingAccess.EDITABLE
-  );
+  private readonly projectPickerAccess$;
+  private readonly projectPickerAccessValue$ = new BehaviorSubject<string>('editable');
 
   constructor(deps: { http: HttpSetup; logger: Logger; application: ApplicationStart }) {
     this.http = deps.http;
     this.logger = deps.logger.get('cps_manager');
     this.application = deps.application;
 
-    combineLatest([this.application.currentAppId$, this.application.currentLocation$])
-      .pipe(
-        switchMap(async ([appId, location]) => {
-          return (await import('./async_services')).getProjectRoutingAccess(
-            appId ?? '',
-            location ?? ''
-          );
-        })
-      )
-      .subscribe((access) => {
-        this.projectPickerAccess$.next(access);
+    this.projectPickerAccess$ = combineLatest([
+      this.application.currentAppId$,
+      this.application.currentLocation$,
+    ]).pipe(
+      switchMap(async ([appId, location]) => {
+        // Lazy load access control only when observable is subscribed
+        const { getProjectRoutingAccess } = await import('./async_services');
+        return getProjectRoutingAccess(appId ?? '', location ?? '');
+      }),
+      tap((access) => {
+        this.projectPickerAccessValue$.next(access);
         // Reset project routing to default when access is disabled
-        if (access === ProjectRoutingAccess.DISABLED) {
+        if (access === 'disabled') {
           this.projectRouting$.next(DEFAULT_PROJECT_ROUTING);
         }
-      });
+      })
+    );
+
+    // Subscribe to keep the value updated
+    this.projectPickerAccess$.subscribe();
   }
 
   /**
@@ -77,7 +75,7 @@ export class CPSManager implements ICPSManager {
   /**
    * Set the current project routing
    */
-  public setProjectRouting(projectRouting: ProjectRouting) {
+  public setProjectRouting(projectRouting: ProjectRouting | undefined) {
     this.projectRouting$.next(projectRouting);
   }
 
@@ -85,14 +83,14 @@ export class CPSManager implements ICPSManager {
    * Get the current project routing value
    */
   public getProjectRouting() {
-    if (this.projectPickerAccess$.value === ProjectRoutingAccess.DISABLED) {
+    if (this.projectPickerAccessValue$.value === 'disabled') {
       return undefined;
     }
     return this.projectRouting$.value;
   }
 
   /**
-   * Get the default project routing value from a global space setting.
+   * Get the default project routing value.
    * This is the fallback value used when no app-specific or saved value exists.
    */
   public getDefaultProjectRouting(): ProjectRouting {
@@ -103,16 +101,10 @@ export class CPSManager implements ICPSManager {
    * Get the project picker access level as an observable.
    * This combines the current app ID and location to determine whether
    * the project picker should be editable, readonly, or disabled.
+   * Also returns the custom readonly message if applicable.
    */
   public getProjectPickerAccess$() {
     return this.projectPickerAccess$;
-  }
-
-  /**
-   * Get the current project picker access value
-   */
-  public getProjectPickerAccess() {
-    return this.projectPickerAccess$.value;
   }
 
   /**

@@ -8,7 +8,11 @@
  */
 
 import { ProjectRoutingAccess } from '@kbn/cps-utils';
-import { ACCESS_CONTROL_CONFIG, getProjectRoutingAccess } from './access_control';
+import {
+  getProjectRoutingAccess,
+  DEFAULT_ACCESS_CONTROL_CONFIG,
+  type AccessControlConfig,
+} from './access_control';
 
 describe('Access Control Configuration', () => {
   describe('getProjectRoutingAccess', () => {
@@ -61,33 +65,85 @@ describe('Access Control Configuration', () => {
       });
     });
 
-    describe('route rule priority', () => {
-      it('should check rules in order and match pattern before defaulting', () => {
-        // Rule matches: type:vega pattern -> EDITABLE (overrides DISABLED default)
-        expect(getProjectRoutingAccess('visualize', '#/edit/123?type:vega')).toBe(
+    describe('with custom configuration', () => {
+      const customConfig: AccessControlConfig = {
+        myApp: {
+          defaultAccess: ProjectRoutingAccess.EDITABLE,
+        },
+        customApp: {
+          defaultAccess: ProjectRoutingAccess.DISABLED,
+          routeRules: [
+            {
+              pattern: /^#\/special/,
+              access: ProjectRoutingAccess.EDITABLE,
+            },
+          ],
+        },
+      };
+
+      it('should use custom app configuration', () => {
+        expect(getProjectRoutingAccess('myApp', '#/anything', customConfig)).toBe(
           ProjectRoutingAccess.EDITABLE
         );
-        // No rule match: falls back to defaultAccess -> DISABLED
-        expect(getProjectRoutingAccess('visualize', '#/edit/456?type:lens')).toBe(
+      });
+
+      it('should match route rules before defaultAccess', () => {
+        expect(getProjectRoutingAccess('customApp', '#/special/page', customConfig)).toBe(
+          ProjectRoutingAccess.EDITABLE
+        );
+        expect(getProjectRoutingAccess('customApp', '#/normal/page', customConfig)).toBe(
           ProjectRoutingAccess.DISABLED
         );
-        expect(getProjectRoutingAccess('visualize', '#/create')).toBe(
+      });
+
+      it('should return DISABLED for unconfigured apps', () => {
+        expect(getProjectRoutingAccess('unknownApp', '#/', customConfig)).toBe(
+          ProjectRoutingAccess.DISABLED
+        );
+      });
+    });
+
+    describe('route rule priority', () => {
+      const config: AccessControlConfig = {
+        testApp: {
+          defaultAccess: ProjectRoutingAccess.DISABLED,
+          routeRules: [
+            {
+              pattern: /^#\/admin/,
+              access: ProjectRoutingAccess.READONLY,
+            },
+            {
+              pattern: /^#\/edit/,
+              access: ProjectRoutingAccess.EDITABLE,
+            },
+          ],
+        },
+      };
+
+      it('should check rules in order', () => {
+        expect(getProjectRoutingAccess('testApp', '#/admin/settings', config)).toBe(
+          ProjectRoutingAccess.READONLY
+        );
+        expect(getProjectRoutingAccess('testApp', '#/edit/document', config)).toBe(
+          ProjectRoutingAccess.EDITABLE
+        );
+        expect(getProjectRoutingAccess('testApp', '#/view/document', config)).toBe(
           ProjectRoutingAccess.DISABLED
         );
       });
     });
   });
 
-  describe('ACCESS_CONTROL_CONFIG', () => {
+  describe('DEFAULT_ACCESS_CONTROL_CONFIG', () => {
     it('should have configuration for expected apps', () => {
-      expect(ACCESS_CONTROL_CONFIG).toHaveProperty('dashboards');
-      expect(ACCESS_CONTROL_CONFIG).toHaveProperty('discover');
-      expect(ACCESS_CONTROL_CONFIG).toHaveProperty('visualize');
-      expect(ACCESS_CONTROL_CONFIG).toHaveProperty('lens');
+      expect(DEFAULT_ACCESS_CONTROL_CONFIG).toHaveProperty('dashboards');
+      expect(DEFAULT_ACCESS_CONTROL_CONFIG).toHaveProperty('discover');
+      expect(DEFAULT_ACCESS_CONTROL_CONFIG).toHaveProperty('visualize');
+      expect(DEFAULT_ACCESS_CONTROL_CONFIG).toHaveProperty('lens');
     });
 
     it('should have route rules for dashboards', () => {
-      expect(ACCESS_CONTROL_CONFIG.dashboards.routeRules).toHaveLength(1);
+      expect(DEFAULT_ACCESS_CONTROL_CONFIG.dashboards.routeRules).toHaveLength(1);
     });
   });
 });

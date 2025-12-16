@@ -13,7 +13,7 @@
  */
 export const PROJECT_ROUTING = {
   /** Search across all linked projects */
-  ALL: '_alias:*',
+  ALL: 'ALL',
   /** Search only the origin project */
   ORIGIN: '_alias:_origin',
 } as const;
