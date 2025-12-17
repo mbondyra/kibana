@@ -239,6 +239,10 @@ export const getEsqlFn = ({ getStartDependencies }: EsqlFnArguments) => {
             ];
 
             params.filter = buildEsQuery(undefined, input.query || [], filters, esQueryConfigs);
+
+            if (input.projectRouting) {
+              params.project_routing = input.projectRouting;
+            }
           }
 
           let startTime = Date.now();

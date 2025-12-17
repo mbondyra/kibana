@@ -14,6 +14,7 @@ import type { IKibanaSearchResponse, IKibanaSearchRequest } from '@kbn/search-ty
 import type { SqlQueryRequest } from '@elastic/elasticsearch/lib/api/types';
 import type { SqlGetAsyncResponse } from '@elastic/elasticsearch/lib/api/types';
 import type { ESQLSearchParams } from '@kbn/es-types';
+import { removeProjectRoutingFromESParams } from '@kbn/es-query/src/project_routing';
 import { toAsyncKibanaSearchResponse } from './response_utils';
 import {
   getCommonDefaultAsyncSubmitParams,
@@ -114,6 +115,7 @@ export const esqlAsyncSearchStrategyProvider = (
       ...(await getCommonDefaultAsyncSubmitParams(searchConfig, options)),
       ...requestParams,
     };
+    removeProjectRoutingFromESParams(params);
 
     return esClient.asCurrentUser.transport.request<SqlGetAsyncResponse>(
       {

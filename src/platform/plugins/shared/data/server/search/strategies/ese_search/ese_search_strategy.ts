@@ -13,6 +13,7 @@ import { catchError, tap } from 'rxjs';
 import { firstValueFrom, from } from 'rxjs';
 import type { ISearchOptions, IEsSearchRequest, IEsSearchResponse } from '@kbn/search-types';
 import { getKbnServerError } from '@kbn/kibana-utils-plugin/server';
+import { removeProjectRoutingFromESParams } from '@kbn/es-query/src/project_routing';
 import type { IAsyncSearchRequestParams } from '../..';
 import { getKbnSearchError, KbnSearchError } from '../../report_search_error';
 import type { ISearchStrategy, SearchStrategyDependencies } from '../../types';
@@ -104,6 +105,7 @@ export const enhancedEsSearchStrategyProvider = (
       ...(await getDefaultAsyncSubmitParams(uiSettingsClient, searchConfig, options, isServerless)),
       ...request.params,
     };
+    removeProjectRoutingFromESParams(params);
     const { body, headers, meta } = await client.asyncSearch.submit(params, {
       ...options.transport,
       signal: options.abortSignal,

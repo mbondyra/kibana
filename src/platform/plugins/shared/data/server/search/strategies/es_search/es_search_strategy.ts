@@ -13,6 +13,7 @@ import type { ConnectionRequestParams } from '@elastic/transport';
 import { tap } from 'rxjs';
 import type { Logger, SharedGlobalConfig } from '@kbn/core/server';
 import type { estypes } from '@elastic/elasticsearch';
+import { removeProjectRoutingFromESParams } from '@kbn/es-query/src/project_routing';
 import { shimHitsTotal, getTotalLoaded } from '../../../../common';
 import { sanitizeRequestParams } from '../../sanitize_request_params';
 import { getKbnSearchError, KbnSearchError } from '../../report_search_error';
@@ -73,6 +74,7 @@ export const esSearchStrategyProvider = (
           ...(options.projectRouting !== undefined && { project_routing: options.projectRouting }),
           ...requestParams,
         };
+        removeProjectRoutingFromESParams(params);
         const { body, meta } = await esClient.asCurrentUser.search(params, {
           signal: abortSignal,
           ...transport,

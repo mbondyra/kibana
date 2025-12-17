@@ -34,3 +34,17 @@ export function sanitizeProjectRoutingForES(value: ProjectRouting) {
     return value;
   }
 }
+
+// This won't be necessary once ES search supports project routing natively
+export function removeProjectRoutingFromESParams(params: any) {
+  const projectRouting = sanitizeProjectRoutingForES(
+    // @ts-ignore ES types have not yet been updated to include this param
+    params.project_routing ?? params.body.project_routing
+  );
+  if (!projectRouting) {
+    // @ts-ignore ES types have not yet been updated to include this param
+    delete params.project_routing;
+    // @ts-ignore ES types have not yet been updated to include this param
+    delete params.body?.project_routing;
+  }
+}

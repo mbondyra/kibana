@@ -127,7 +127,9 @@ export interface ISearchOptions {
   requestHash?: string;
 
   /**
-   * Project routing configuration for cross-project search (CPS).
+   * Project routing configuration for cross-project search (CPS). This is attached automatically by the search
+   * interceptor when CPS is enabled. The search strategy can use this information to route the search request to
+   * appropriate projects. Sending `project_routing` in the request body takes precedence over this value.
    */
   projectRouting?: ProjectRouting;
 }
