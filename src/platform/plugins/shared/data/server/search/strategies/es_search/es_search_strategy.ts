@@ -70,9 +70,15 @@ export const esSearchStrategyProvider = (
           ...defaults,
           ...getShardTimeout(config),
           ...(terminateAfter ? { terminate_after: terminateAfter } : {}),
-          ...(options.projectRouting !== undefined && { project_routing: options.projectRouting }),
           ...requestParams,
         };
+
+        // If project_routing is present, explicitly pass it to override
+        if (options.projectRouting !== undefined) {
+          // @ts-expect-error project_routing is not yet typed in SearchRequest
+          params.body.project_routing = options.projectRouting;
+        }
+
         const { body, meta } = await esClient.asCurrentUser.search(params, {
           signal: abortSignal,
           ...transport,
