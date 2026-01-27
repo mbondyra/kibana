@@ -59,7 +59,12 @@ export class CpsUsageOverridesBadge
     return (
       <EuiPopover
         button={
-          <button onClick={() => setIsPopoverOpen(!isPopoverOpen)}>{strings.badgeLabel}</button>
+          <button
+            onClick={() => setIsPopoverOpen(!isPopoverOpen)}
+            css={{ fontWeight: euiTheme.font.weight.semiBold }}
+          >
+            {strings.badgeLabel}
+          </button>
         }
         isOpen={isPopoverOpen}
         closePopover={() => setIsPopoverOpen(false)}
@@ -102,7 +107,13 @@ export class CpsUsageOverridesBadge
           {overrideValues.map((override, index) => (
             <div key={index} css={{ marginTop: index > 0 ? euiTheme.size.s : 0 }}>
               {override.name && (
-                <EuiText size="xs" css={{ marginBottom: euiTheme.size.xs }}>
+                <EuiText
+                  size="xs"
+                  css={{
+                    marginBottom: euiTheme.size.xs,
+                    fontWeight: euiTheme.font.weight.semiBold,
+                  }}
+                >
                   {override.name}
                 </EuiText>
               )}
