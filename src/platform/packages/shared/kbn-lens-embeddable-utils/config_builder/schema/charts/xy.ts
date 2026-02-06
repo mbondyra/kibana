@@ -24,7 +24,7 @@ import {
   mergeAllMetricsWithChartDimensionSchemaWithRefBasedOps,
   mergeAllMetricsWithChartDimensionSchemaWithStaticOps,
 } from './shared';
-import { esqlColumnSchema, esqlColumnOperationWithLabelAndFormatSchema } from '../metric_ops';
+import { esqlColumnOperationWithLabelAndFormatSchema } from '../metric_ops';
 import { colorMappingSchema, staticColorSchema } from '../color';
 import { filterSchema } from '../filter';
 import { builderEnums } from '../enums';
@@ -411,12 +411,12 @@ const xyDataLayerSchemaESQL = schema.object(
     ...datasetEsqlTableSchema,
     ...xyDataLayerSharedSchema,
     breakdown_by: schema.maybe(
-      esqlColumnSchema.extends(
+      esqlColumnOperationWithLabelAndFormatSchema.extends(
         {
           color: schema.maybe(colorMappingSchema),
           collapse_by: schema.maybe(collapseBySchema),
         },
-        { meta: { description: 'ES|QL column for breakdown' } }
+        { meta: { description: 'ES|QL column for breakdown with optional color mapping' } }
       )
     ),
     y: schema.arrayOf(
@@ -429,7 +429,7 @@ const xyDataLayerSchemaESQL = schema.object(
       ),
       { meta: { description: 'Array of ES|QL columns for Y-axis metrics' }, maxSize: 100 }
     ),
-    x: schema.maybe(esqlColumnSchema),
+    x: schema.maybe(esqlColumnOperationWithLabelAndFormatSchema),
   },
   {
     meta: { id: 'xyLayerESQL', description: 'Data layer for ES|QL queries with column references' },
@@ -530,11 +530,14 @@ const referenceLineLayerSchemaESQL = schema.object(
     ...layerSettingsSchema,
     ...datasetEsqlTableSchema,
     type: schema.literal('referenceLines'),
-    thresholds: schema.arrayOf(esqlColumnSchema.extends(referenceLineLayerShared), {
-      meta: { description: 'Array of ES|QL-based reference line thresholds' },
-      minSize: 1,
-      maxSize: 100,
-    }),
+    thresholds: schema.arrayOf(
+      esqlColumnOperationWithLabelAndFormatSchema.extends(referenceLineLayerShared),
+      {
+        meta: { description: 'Array of ES|QL-based reference line thresholds' },
+        minSize: 1,
+        maxSize: 100,
+      }
+    ),
   },
   {
     meta: { id: 'xyReferenceLineLayerESQL', description: 'Reference line layer for ES|QL queries' },
