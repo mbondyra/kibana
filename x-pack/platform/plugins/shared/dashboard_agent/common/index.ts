@@ -5,4 +5,5 @@
  * 2.0.
  */
 
-export { DASHBOARD_NAMESPACE, dashboardTools } from './constants';
+export { dashboardTools } from './constants';
+export { normalizePanels } from './panel_utils';
