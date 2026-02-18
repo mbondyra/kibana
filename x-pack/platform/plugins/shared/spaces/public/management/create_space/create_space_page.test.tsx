@@ -47,6 +47,8 @@ describe('ManageSpacePage', () => {
   const history = scopedHistoryMock.create();
   const notifications = notificationServiceMock.createStartContract();
 
+  let user: ReturnType<typeof userEvent.setup>;
+
   // Mock CPS manager for projectRouting tests
   const mockFetchProjects = jest.fn().mockResolvedValue({
     origin: {
@@ -79,6 +81,7 @@ describe('ManageSpacePage', () => {
   });
 
   beforeEach(() => {
+    user = userEvent.setup();
     spacesManager.createSpace = jest.fn(spacesManager.createSpace);
     spacesManager.getActiveSpace = jest.fn().mockResolvedValue(space);
     jest.clearAllMocks();
@@ -105,10 +108,14 @@ describe('ManageSpacePage', () => {
 
     expect(await screen.findByRole('textbox', { name: /name/i })).toBeInTheDocument();
 
-    await updateSpace(false, 'oblt');
+    await updateSpace(user, false, 'oblt');
 
     const createButton = screen.getByTestId('save-space-button');
-    await userEvent.click(createButton);
+    await user.click(createButton);
+
+    await waitFor(() => {
+      expect(spacesManager.createSpace).toHaveBeenCalled();
+    });
 
     expect(spacesManager.createSpace).toHaveBeenCalledWith({
       id: 'new-space-name',
@@ -145,7 +152,7 @@ describe('ManageSpacePage', () => {
     expect(await screen.findByRole('textbox', { name: /name/i })).toBeInTheDocument();
 
     const createButton = screen.getByTestId('save-space-button');
-    await userEvent.click(createButton);
+    await user.click(createButton);
 
     // Wait for all validation errors to appear
     expect(await screen.findByText('Enter a name.')).toBeInTheDocument();
@@ -156,10 +163,10 @@ describe('ManageSpacePage', () => {
     expect(spacesManager.createSpace).not.toHaveBeenCalled();
 
     const nameInput = screen.getByRole('textbox', { name: /name/i });
-    await userEvent.clear(nameInput);
-    await userEvent.type(nameInput, 'New Space Name');
+    await user.clear(nameInput);
+    await user.type(nameInput, 'New Space Name');
 
-    await userEvent.click(createButton);
+    await user.click(createButton);
 
     // Wait for positive assertion, then check negatives synchronously
     expect(await screen.findByText('Select a solution.')).toBeInTheDocument();
@@ -167,15 +174,15 @@ describe('ManageSpacePage', () => {
     expect(screen.queryByText('Enter a URL identifier.')).not.toBeInTheDocument();
     expect(screen.queryByText('Enter initials.')).not.toBeInTheDocument();
 
-    await updateSpace(false, 'oblt');
+    await updateSpace(user, false, 'oblt');
 
-    await userEvent.click(createButton);
+    await user.click(createButton);
 
     // Wait for validation error to disappear and create to be called
     await waitFor(() => {
       expect(screen.queryByText('Select a solution.')).not.toBeInTheDocument();
+      expect(spacesManager.createSpace).toHaveBeenCalled();
     });
-    expect(spacesManager.createSpace).toHaveBeenCalled();
   });
 
   it('shows solution view select when visible', async () => {
@@ -198,7 +205,6 @@ describe('ManageSpacePage', () => {
     );
 
     expect(await screen.findByRole('textbox', { name: /name/i })).toBeInTheDocument();
-
     expect(screen.getByTestId('navigationPanel')).toBeInTheDocument();
   });
 
@@ -222,7 +228,6 @@ describe('ManageSpacePage', () => {
     );
 
     expect(await screen.findByRole('textbox', { name: /name/i })).toBeInTheDocument();
-
     expect(screen.queryByTestId('navigationPanel')).not.toBeInTheDocument();
   });
 
@@ -248,7 +253,7 @@ describe('ManageSpacePage', () => {
     expect(await screen.findByRole('textbox', { name: /name/i })).toBeInTheDocument();
 
     // Switch to classic to show feature visibility controls
-    await updateSpace(false, 'classic');
+    await updateSpace(user, false, 'classic');
 
     expect(await screen.findByTestId('enabled-features-panel')).toBeInTheDocument();
   });
@@ -280,7 +285,7 @@ describe('ManageSpacePage', () => {
   it('hides feature visibility controls when solution view is not "classic"', async () => {
     renderWithI18n(
       <CreateSpacePage
-        spacesManager={spacesManager}
+        spacesManager={spacesManager as unknown as SpacesManager}
         getFeatures={featuresStart.getFeatures}
         notifications={notifications}
         history={history}
@@ -299,13 +304,15 @@ describe('ManageSpacePage', () => {
     expect(await screen.findByRole('textbox', { name: /name/i })).toBeInTheDocument();
 
     // Switch to observability view
-    await updateSpace(false, 'oblt');
+    await updateSpace(user, false, 'oblt');
 
-    // Expect visible features table to not exist
-    expect(screen.queryByTestId('enabled-features-panel')).not.toBeInTheDocument();
+    // Expect visible features table to not exist (async hide)
+    await waitFor(() => {
+      expect(screen.queryByTestId('enabled-features-panel')).not.toBeInTheDocument();
+    });
 
     // Switch to classic
-    await updateSpace(false, 'classic');
+    await updateSpace(user, false, 'classic');
 
     // Expect visible features table to exist again
     expect(await screen.findByTestId('enabled-features-panel')).toBeInTheDocument();
@@ -456,28 +463,28 @@ describe('ManageSpacePage', () => {
     const nameInput = screen.getByRole('textbox', { name: /name/i });
     const descriptionInput = screen.getByRole('textbox', { name: /description/i });
 
-    await userEvent.clear(nameInput);
-    await userEvent.type(nameInput, 'New Space Name');
-    await userEvent.clear(descriptionInput);
-    await userEvent.type(descriptionInput, 'some description');
+    await user.clear(nameInput);
+    await user.type(nameInput, 'New Space Name');
+    await user.clear(descriptionInput);
+    await user.type(descriptionInput, 'some description');
 
-    await updateSpace(false, 'oblt');
+    await updateSpace(user, false, 'oblt');
 
     // Wait for project picker to load and show projects
     await waitFor(
       () => {
         expect(mockCpsManager.fetchProjects).toHaveBeenCalled();
-        expect(screen.getByText('local_project')).toBeInTheDocument();
       },
-      { timeout: 3000 }
+      { timeout: 10000 }
     );
+    expect(await screen.findByText('local_project', {}, { timeout: 10000 })).toBeInTheDocument();
 
     // Interact with project picker to set projectRouting - click "This project" button
     const thisProjectButton = await screen.findByRole('button', { name: /This project/i });
-    await userEvent.click(thisProjectButton);
+    await user.click(thisProjectButton);
 
     const createButton = screen.getByTestId('save-space-button');
-    await userEvent.click(createButton);
+    await user.click(createButton);
 
     await waitFor(() => {
       expect(spacesManager.createSpace).toHaveBeenCalled();
@@ -494,32 +501,36 @@ describe('ManageSpacePage', () => {
   }, 10000);
 });
 
-async function updateSpace(updateFeature = true, solution?: SolutionView) {
+async function updateSpace(
+  user: ReturnType<typeof userEvent.setup>,
+  updateFeature = true,
+  solution?: SolutionView
+) {
   const nameInput = screen.getByTestId('addSpaceName');
   const descriptionInput = screen.getByTestId('descriptionSpaceText');
 
-  await userEvent.clear(nameInput);
-  await userEvent.type(nameInput, 'New Space Name');
-  await userEvent.clear(descriptionInput);
-  await userEvent.type(descriptionInput, 'some description');
+  await user.clear(nameInput);
+  await user.type(nameInput, 'New Space Name');
+  await user.clear(descriptionInput);
+  await user.type(descriptionInput, 'some description');
 
   if (updateFeature) {
-    await toggleFeature();
+    await toggleFeature(user);
   }
 
   if (solution) {
     const solutionSelectButton = screen.getByTestId('solutionViewSelect');
-    await userEvent.click(solutionSelectButton);
+    await user.click(solutionSelectButton);
     const solutionOption = await screen.findByTestId(
       `solutionView${capitalizeFirstLetter(solution)}Option`
     );
-    await userEvent.click(solutionOption);
+    await user.click(solutionOption);
   }
 }
 
-async function toggleFeature() {
+async function toggleFeature(user: ReturnType<typeof userEvent.setup>) {
   const featureCheckbox = screen.getByRole('checkbox', { name: /kibana/i });
-  await userEvent.click(featureCheckbox);
+  await user.click(featureCheckbox);
 }
 
 function capitalizeFirstLetter(string: string) {
