@@ -14,8 +14,8 @@ import type {
   SavedObject,
 } from '@kbn/core/server';
 import type { LegacyUrlAliasTarget } from '@kbn/core-saved-objects-common';
-import { PROJECT_ROUTING } from '@kbn/cps/server/constants';
 import type { INpreClient } from '@kbn/cps/server/npre';
+import { PROJECT_ROUTING } from '@kbn/cps-common';
 import type { KibanaFeature } from '@kbn/features-plugin/common';
 import type { FeaturesPluginStart } from '@kbn/features-plugin/server';
 

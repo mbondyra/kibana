@@ -25,8 +25,8 @@ import {
 } from '@elastic/eui';
 import { css } from '@emotion/react';
 import type { ProjectRouting } from '@kbn/es-query';
+import { PROJECT_ROUTING } from '@kbn/cps-common';
 import type { ProjectsData } from '../types';
-import { PROJECT_ROUTING } from '../constants';
 import { ProjectPickerContent } from './project_picker_content';
 import { useFetchProjects } from './use_fetch_projects';
 import { useProjectPickerTour } from './use_project_picker_tour';

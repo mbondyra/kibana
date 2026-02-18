@@ -7,12 +7,8 @@
  * License v3.0 only", or the "Server Side Public License, v 1".
  */
 
-/**
- * Project routing constants for cross-project search
- */
-export const PROJECT_ROUTING = {
-  /** Search across all linked projects */
-  ALL: '_alias:*',
-  /** Search only the origin project */
-  ORIGIN: '_alias:_origin',
-} as const;
+module.exports = {
+  preset: '@kbn/test/jest_node',
+  rootDir: '../../../../..',
+  roots: ['<rootDir>/src/platform/packages/private/kbn-cps-common'],
+};
