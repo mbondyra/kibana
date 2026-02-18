@@ -35,35 +35,33 @@ export async function loadIndexPatternRefs(
 export const getAllColumns = (
   existingColumns: TextBasedLayerColumn[],
   columnsFromQuery: DatatableColumn[]
-) => {
-  // filter out columns that do not exist on the query
-  const columns = existingColumns.filter((c) => {
-    const columnExists = columnsFromQuery?.some((f) => f.name === c?.fieldName);
-    if (columnExists) return c;
-  });
-  const allCols = [
-    ...columns,
-    ...columnsFromQuery.map((c) => ({
+): TextBasedLayerColumn[] => {
+  // Enrich existing columns with fresh metadata from query results
+  const enrichedExistingColumns: TextBasedLayerColumn[] = [];
+  for (const c of existingColumns) {
+    const queryColumn = columnsFromQuery?.find((f) => f.name === c?.fieldName);
+    if (queryColumn) {
+      // Update meta from query results to ensure type info is current
+      enrichedExistingColumns.push({
+        ...c,
+        meta: queryColumn.meta,
+      });
+    }
+    // If queryColumn doesn't exist, column is filtered out (no longer in query results)
+  }
+
+  // Add new columns from query that don't exist in the layer yet
+  const newColumnsFromQuery = columnsFromQuery
+    .filter((c) => !existingColumns.some((existing) => existing.fieldName === c.name))
+    .map((c) => ({
       columnId: c.id,
       fieldName: c.id,
       label: c.name,
       meta: c.meta,
       ...(c.variable ? { variable: c.variable } : {}),
-    })),
-  ];
-  const uniqueIds: string[] = [];
+    }));
 
-  return allCols.filter((col) => {
-    const isDuplicate = uniqueIds.includes(col.columnId);
-
-    if (!isDuplicate) {
-      uniqueIds.push(col.columnId);
-
-      return true;
-    }
-
-    return false;
-  });
+  return [...enrichedExistingColumns, ...newColumnsFromQuery];
 };
 
 export const isNumeric = (column: TextBasedLayerColumn | DatatableColumn) =>

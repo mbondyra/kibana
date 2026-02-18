@@ -347,8 +347,21 @@ export function getTextBasedDatasource({
       });
 
       const initState = state || { layers: {} };
+
+      // Enrich columns with metadata from cache (populated by deserializeState)
+      const enrichedLayers = Object.fromEntries(
+        Object.entries(initState.layers).map(([layerId, layer]) => [
+          layerId,
+          {
+            ...layer,
+            columns: retrieveLayerColumnsFromCache(layer.columns ?? [], layer.query),
+          },
+        ])
+      );
+
       return {
         ...initState,
+        layers: enrichedLayers,
         indexPatternRefs: refs,
         initialContext: context,
       };

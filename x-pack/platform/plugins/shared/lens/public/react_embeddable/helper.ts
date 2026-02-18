@@ -32,7 +32,7 @@ import type { LensByValueSerializedAPIConfig, LensSerializedAPIConfig } from '@k
 import { isLensAPIFormat } from '@kbn/lens-embeddable-utils/config_builder/utils';
 import { LENS_ITEM_LATEST_VERSION } from '@kbn/lens-common/content_management/constants';
 import type { ESQLStartServices } from './esql';
-import { loadESQLAttributes } from './esql';
+import { loadESQLAttributes, populateESQLColumnsCache } from './esql';
 import type { LensEmbeddableStartServices } from './types';
 import { getLensBuilder } from '../lazy_builder';
 
@@ -107,6 +107,12 @@ export async function deserializeState(
       // return an empty Lens document if no saved object is found
       return { ...newState, attributes: fallbackAttributes };
     }
+  }
+
+  // For existing ES|QL panels, populate column cache for datasource initialization
+  const query = newState.attributes?.state?.query;
+  if (query && isOfAggregateQueryType(query)) {
+    await populateESQLColumnsCache(query, services);
   }
 
   return newState;

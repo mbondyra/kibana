@@ -12,14 +12,44 @@ import {
   getESQLQueryColumns,
 } from '@kbn/esql-utils';
 import { getLensAttributesFromSuggestion } from '@kbn/visualization-utils';
-import type { LensSerializedState } from '@kbn/lens-common';
+import type { AggregateQuery } from '@kbn/es-query';
+import type { LensRuntimeState, LensSerializedState } from '@kbn/lens-common';
 import { isESQLModeEnabled } from './initializers/utils';
 import type { LensEmbeddableStartServices } from './types';
+import { addColumnsToCache } from '../datasources/text_based/fieldlist_cache';
 
 export type ESQLStartServices = Pick<
   LensEmbeddableStartServices,
   'dataViews' | 'data' | 'visualizationMap' | 'datasourceMap' | 'uiSettings' | 'coreStart'
 >;
+
+/**
+ * Fetches ES|QL column schema and populates the cache.
+ * The datasource initialize method will use the cached columns to enrich column metadata.
+ */
+export async function populateESQLColumnsCache(
+  query: AggregateQuery,
+  services: Pick<ESQLStartServices, 'data'>
+): Promise<void> {
+  if (!('esql' in query) || !query.esql) {
+    return;
+  }
+
+  try {
+    const abortController = new AbortController();
+    const columns = await getESQLQueryColumns({
+      esqlQuery: query.esql,
+      search: services.data.search.search,
+      signal: abortController.signal,
+      timeRange: services.data.query.timefilter.timefilter.getAbsoluteTime(),
+    });
+
+    addColumnsToCache(query, columns);
+  } catch (e) {
+    // If fetching columns fails, the cache won't be populated
+    // The columns will be enriched later when the query runs
+  }
+}
 
 export async function loadESQLAttributes({
   dataViews,
