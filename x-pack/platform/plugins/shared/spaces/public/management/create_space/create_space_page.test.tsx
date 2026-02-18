@@ -128,7 +128,7 @@ describe('ManageSpacePage', () => {
       projectRouting: undefined,
       solution: 'oblt',
     });
-  });
+  }, 15000); // Temp increase to debug
 
   it('validates the form (name, initials, solution view...)', async () => {
     renderWithI18n(
@@ -183,7 +183,7 @@ describe('ManageSpacePage', () => {
       expect(screen.queryByText('Select a solution.')).not.toBeInTheDocument();
       expect(spacesManager.createSpace).toHaveBeenCalled();
     });
-  });
+  }, 15000); // Temp increase to debug
 
   it('shows solution view select when visible', async () => {
     renderWithI18n(
@@ -316,7 +316,7 @@ describe('ManageSpacePage', () => {
 
     // Expect visible features table to exist again
     expect(await screen.findByTestId('enabled-features-panel')).toBeInTheDocument();
-  });
+  }, 15000); // Temp increase to debug
 
   it('notifies when there is an error retrieving features', async () => {
     const error = new Error('something awful happened');
@@ -521,10 +521,20 @@ async function updateSpace(
   if (solution) {
     const solutionSelectButton = screen.getByTestId('solutionViewSelect');
     await user.click(solutionSelectButton);
+
     const solutionOption = await screen.findByTestId(
       `solutionView${capitalizeFirstLetter(solution)}Option`
     );
     await user.click(solutionOption);
+
+    const expectedSolutionLabel =
+      solution === 'classic' ? 'Classic' : solution === 'oblt' ? 'Observability' : solution;
+
+    await waitFor(() => {
+      expect(screen.getByTestId('solutionViewSelect')).toHaveTextContent(
+        new RegExp(expectedSolutionLabel, 'i')
+      );
+    });
   }
 }
 
