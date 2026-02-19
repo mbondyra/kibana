@@ -8,7 +8,7 @@
 import React, { Fragment, useCallback, useEffect, useMemo, useReducer, useState } from 'react';
 import deepEqual from 'fast-deep-equal';
 import { lastValueFrom } from 'rxjs';
-import type { Filter, Query } from '@kbn/es-query';
+import type { Filter, ProjectRouting, Query } from '@kbn/es-query';
 import { FormattedMessage } from '@kbn/i18n-react';
 import { EuiFormRow, EuiSpacer, EuiTitle } from '@elastic/eui';
 import type { IErrorObject } from '@kbn/triggers-actions-ui-plugin/public';
@@ -35,7 +35,7 @@ import type {
   SourceField,
 } from '../types';
 import { DEFAULT_VALUES, SERVERLESS_DEFAULT_VALUES } from '../constants';
-import { DataViewSelectPopover } from '../../components/data_view_select_popover';
+import { DataSourceSelector } from '../../components/data_source_selector';
 import { RuleCommonExpressions } from '../rule_common_expressions';
 import { useTriggerUiActionServices, convertFieldSpecToFieldOption } from '../util';
 import { hasExpressionValidationErrors } from '../validation';
@@ -82,11 +82,25 @@ const isSearchSourceParam = (action: LocalStateAction): action is SearchSourcePa
 export const SearchSourceExpressionForm = (props: SearchSourceExpressionFormProps) => {
   const services = useTriggerUiActionServices();
   const unifiedSearch = services.unifiedSearch;
+  const cps = services.cps;
   const { dataViews, dataViewEditor, isServerless } = useTriggerUiActionServices();
   const { searchSource, errors, initialSavedQuery, setParam, ruleParams } = props;
   const [savedQuery, setSavedQuery] = useState<SavedQuery>();
+  const [projectRouting, setProjectRouting] = useState<ProjectRouting | undefined>(
+    ruleParams.project_routing
+  );
+  // Track if we had a persisted value when the component mounted (for editing existing rules)
+  const [hasPersistedProjectRouting] = useState(ruleParams.project_routing !== undefined);
 
   useEffect(() => setSavedQuery(initialSavedQuery), [initialSavedQuery]);
+
+  const onProjectRoutingChange = useCallback(
+    (newProjectRouting: ProjectRouting | undefined) => {
+      setProjectRouting(newProjectRouting);
+      setParam('project_routing', newProjectRouting);
+    },
+    [setParam]
+  );
 
   const [ruleConfiguration, dispatch] = useReducer<LocalStateReducer>(
     (currentState, action) => {
@@ -291,13 +305,19 @@ export const SearchSourceExpressionForm = (props: SearchSourceExpressionFormProp
     const isGroupAgg = isGroupAggregation(ruleParams.termField);
     const isCountAgg = isCountAggregation(ruleParams.aggType);
     const testSearchSource = createTestSearchSource();
-    const { rawResponse } = await lastValueFrom(testSearchSource.fetch$());
+    const { rawResponse } = await lastValueFrom(testSearchSource.fetch$({ projectRouting }));
     return {
       testResults: parseAggregationResults({ isCountAgg, isGroupAgg, esResult: rawResponse }),
       isGrouped: isGroupAgg,
       timeWindow,
     };
-  }, [timeWindow, createTestSearchSource, ruleParams.aggType, ruleParams.termField]);
+  }, [
+    timeWindow,
+    createTestSearchSource,
+    ruleParams.aggType,
+    ruleParams.termField,
+    projectRouting,
+  ]);
 
   return (
     <Fragment>
@@ -306,11 +326,15 @@ export const SearchSourceExpressionForm = (props: SearchSourceExpressionFormProp
         label={
           <FormattedMessage
             id="xpack.stackAlerts.esQuery.ui.selectDataViewPrompt"
-            defaultMessage="Select a data view"
+            defaultMessage="Select a data source"
           />
         }
       >
-        <DataViewSelectPopover
+        <DataSourceSelector
+          cps={cps}
+          projectRouting={projectRouting}
+          onProjectRoutingChange={onProjectRoutingChange}
+          hasPersistedProjectRouting={hasPersistedProjectRouting}
           dependencies={{ dataViews, dataViewEditor }}
           dataView={dataView}
           metadata={props.metadata}

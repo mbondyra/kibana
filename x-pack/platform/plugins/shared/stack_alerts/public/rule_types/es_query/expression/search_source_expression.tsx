@@ -43,6 +43,7 @@ export const SearchSourceExpression = ({
     termField,
     termSize,
     excludeHitsFromPreviousRun,
+    project_routing,
   } = ruleParams;
   const { data, isServerless } = useTriggerUiActionServices();
 
@@ -94,6 +95,7 @@ export const SearchSourceExpression = ({
             excludeHitsFromPreviousRun ?? DEFAULT_VALUES.EXCLUDE_PREVIOUS_HITS,
           // The sourceFields param is ignored
           sourceFields: [],
+          project_routing,
         });
         setSearchSource(createdSearchSource);
       } catch (error) {

@@ -140,6 +140,14 @@ const EsQueryRuleParamsSchemaProperties = {
       },
     }
   ),
+  project_routing: schema.maybe(
+    schema.string({
+      meta: {
+        description:
+          'The project routing value for cross-project search. Determines which projects to include in the search.',
+      },
+    })
+  ),
   // esQuery rule params only
   esQuery: schema.conditional(
     schema.siblingRef('searchType'),

@@ -9,7 +9,7 @@ import type { RuleTypeParams } from '@kbn/alerting-plugin/common';
 import type { SerializedSearchSourceFields } from '@kbn/data-plugin/common';
 import type { EuiComboBoxOptionOption } from '@elastic/eui';
 import type { DataView } from '@kbn/data-views-plugin/public';
-import type { AggregateQuery } from '@kbn/es-query';
+import type { AggregateQuery, ProjectRouting } from '@kbn/es-query';
 
 export enum SearchType {
   esQuery = 'esQuery',
@@ -62,6 +62,7 @@ export interface OnlySearchSourceRuleParams {
   searchType?: 'searchSource';
   searchConfiguration?: SerializedSearchSourceFields;
   savedQueryId?: string;
+  project_routing?: ProjectRouting;
 }
 
 export interface OnlyEsqlQueryRuleParams {

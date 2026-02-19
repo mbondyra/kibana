@@ -46,6 +46,7 @@ import {
   ALERT_RULE_TRIGGER,
 } from '@kbn/ui-actions-plugin/common/trigger_ids';
 import type { SharePluginStart } from '@kbn/share-plugin/public';
+import type { CPSPluginStart } from '@kbn/cps/public';
 import type { Rule, RuleUiAction } from './types';
 import type { AlertsSearchBarProps } from './application/sections/alerts_search_bar';
 
@@ -164,6 +165,7 @@ interface PluginsSetup {
 }
 
 interface PluginsStart {
+  cps?: CPSPluginStart;
   data: DataPublicPluginStart;
   dataViews: DataViewsPublicPluginStart;
   dataViewEditor: DataViewEditorStart;
@@ -309,6 +311,7 @@ export class Plugin
               ...coreStart,
               actions: plugins.actions,
               cloud: plugins.cloud,
+              cps: pluginsStart.cps,
               data: pluginsStart.data,
               dataViews: pluginsStart.dataViews,
               dataViewEditor: pluginsStart.dataViewEditor,
@@ -388,6 +391,7 @@ export class Plugin
             ...coreStart,
             actions: plugins.actions,
             cloud: plugins.cloud,
+            cps: pluginsStart.cps,
             data: pluginsStart.data,
             dataViews: pluginsStart.dataViews,
             dataViewEditor: pluginsStart.dataViewEditor,
@@ -490,6 +494,7 @@ export class Plugin
           return renderApp({
             ...coreStart,
             actions: plugins.actions,
+            cps: pluginsStart.cps,
             data: pluginsStart.data,
             dataViews: pluginsStart.dataViews,
             dataViewEditor: pluginsStart.dataViewEditor,
