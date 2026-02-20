@@ -73,6 +73,7 @@ dependsOn:
   - '@kbn/scout'
   - '@kbn/es-query'
   - '@kbn/cps'
+  - '@kbn/cps-common'
   - '@kbn/cps-utils'
 tags:
   - plugin
