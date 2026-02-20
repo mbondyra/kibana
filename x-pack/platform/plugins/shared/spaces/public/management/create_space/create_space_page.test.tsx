@@ -49,11 +49,6 @@ describe('ManageSpacePage', () => {
 
   let user: ReturnType<typeof userEvent.setup>;
 
-  const debugLog = (...args: unknown[]) => {
-    // eslint-disable-next-line no-console
-    console.log('[create_space_page.test]', ...args);
-  };
-
   // Mock CPS manager for projectRouting tests
   const mockFetchProjects = jest.fn().mockResolvedValue({
     origin: {
@@ -99,7 +94,6 @@ describe('ManageSpacePage', () => {
   });
 
   it('allows a space to be created', async () => {
-    debugLog('allows create - render start');
     renderWithI18n(
       <CreateSpacePage
         spacesManager={spacesManager as unknown as SpacesManager}
@@ -119,19 +113,15 @@ describe('ManageSpacePage', () => {
     );
 
     expect(await screen.findByRole('textbox', { name: /name/i })).toBeInTheDocument();
-    debugLog('allows create - form ready');
 
     await updateSpace(user, 'oblt');
-    debugLog('allows create - updateSpace complete');
 
     const createButton = screen.getByTestId('save-space-button');
     await user.click(createButton);
-    debugLog('allows create - clicked save');
 
     await waitFor(() => {
       expect(spacesManager.createSpace).toHaveBeenCalled();
     });
-    debugLog('allows create - createSpace called');
 
     expect(spacesManager.createSpace).toHaveBeenCalledWith({
       id: 'new-space-name',
@@ -144,10 +134,9 @@ describe('ManageSpacePage', () => {
       projectRouting: undefined,
       solution: 'oblt',
     });
-  }, 15000); // Temp increase to debug
+  }, 10000);
 
   it('validates the form (name, initials, solution view...)', async () => {
-    debugLog('validates form - render start');
     renderWithI18n(
       <CreateSpacePage
         spacesManager={spacesManager as unknown as SpacesManager}
@@ -167,14 +156,11 @@ describe('ManageSpacePage', () => {
     );
 
     expect(await screen.findByRole('textbox', { name: /name/i })).toBeInTheDocument();
-    debugLog('validates form - form ready');
 
     const createButton = screen.getByTestId('save-space-button');
     await user.click(createButton);
-    debugLog('validates form - clicked save (expecting errors)');
 
     expect(await screen.findByText('Enter a name.')).toBeInTheDocument();
-    debugLog('validates form - initial validation errors shown');
     expect(screen.getByText('Enter a URL identifier.')).toBeInTheDocument();
     expect(screen.getByText('Select a solution.')).toBeInTheDocument();
     expect(screen.getByText('Enter initials.')).toBeInTheDocument();
@@ -186,7 +172,6 @@ describe('ManageSpacePage', () => {
     await user.type(nameInput, 'New Space Name');
 
     await user.click(createButton);
-    debugLog('validates form - clicked save after name update');
 
     // Wait for positive assertion, then check negatives synchronously
     expect(await screen.findByText('Select a solution.')).toBeInTheDocument();
@@ -197,18 +182,15 @@ describe('ManageSpacePage', () => {
     await updateSpace(user, 'oblt');
 
     await user.click(createButton);
-    debugLog('validates form - clicked save after updateSpace');
 
     // Wait for validation error to disappear and create to be called
     await waitFor(() => {
       expect(screen.queryByText('Select a solution.')).not.toBeInTheDocument();
       expect(spacesManager.createSpace).toHaveBeenCalled();
     });
-    debugLog('validates form - createSpace called');
-  }, 15000); // Temp increase to debug
+  }, 10000);
 
   it('shows solution view select when visible', async () => {
-    debugLog('shows solution view - render start');
     renderWithI18n(
       <CreateSpacePage
         spacesManager={spacesManager as unknown as SpacesManager}
@@ -232,7 +214,6 @@ describe('ManageSpacePage', () => {
   });
 
   it('hides solution view select when not visible', async () => {
-    debugLog('hides solution view - render start');
     renderWithI18n(
       <CreateSpacePage
         spacesManager={spacesManager as unknown as SpacesManager}
@@ -256,7 +237,6 @@ describe('ManageSpacePage', () => {
   });
 
   it('shows feature visibility controls when allowed', async () => {
-    debugLog('shows feature controls - render start');
     renderWithI18n(
       <CreateSpacePage
         spacesManager={spacesManager as unknown as SpacesManager}
@@ -276,14 +256,11 @@ describe('ManageSpacePage', () => {
     );
 
     expect(await screen.findByRole('textbox', { name: /name/i })).toBeInTheDocument();
-    debugLog('shows feature controls - form ready');
 
     await updateSpace(user, 'classic');
-    debugLog('shows feature controls - updateSpace classic complete');
 
     await screen.findByTestId('enabled-features-panel');
-    debugLog('shows feature controls - enabled-features-panel present');
-  }, 20000); // Temp increase to debug
+  }, 10000);
 
   it('hides feature visibility controls when not allowed', async () => {
     renderWithI18n(
@@ -310,7 +287,6 @@ describe('ManageSpacePage', () => {
   });
 
   it('hides feature visibility controls when solution view is not "classic"', async () => {
-    debugLog('hides feature controls non-classic - render start');
     renderWithI18n(
       <CreateSpacePage
         spacesManager={spacesManager as unknown as SpacesManager}
@@ -330,22 +306,17 @@ describe('ManageSpacePage', () => {
     );
 
     expect(await screen.findByRole('textbox', { name: /name/i })).toBeInTheDocument();
-    debugLog('hides feature controls non-classic - form ready');
 
     await updateSpace(user, 'oblt');
-    debugLog('hides feature controls non-classic - updateSpace oblt complete');
 
     await waitFor(() => {
       expect(screen.queryByTestId('enabled-features-panel')).not.toBeInTheDocument();
     });
-    debugLog('hides feature controls non-classic - panel hidden');
 
     await updateSpace(user, 'classic');
-    debugLog('hides feature controls non-classic - updateSpace classic complete');
 
     await screen.findByTestId('enabled-features-panel');
-    debugLog('hides feature controls non-classic - panel present again');
-  }, 15000); // Temp increase to debug
+  }, 10000);
 
   it('notifies when there is an error retrieving features', async () => {
     const error = new Error('something awful happened');
@@ -450,7 +421,6 @@ describe('ManageSpacePage', () => {
   });
 
   it('includes projectRouting in createSpace call when provided', async () => {
-    debugLog('projectRouting - render start');
     renderWithI18n(
       <KibanaContextProvider
         services={{
@@ -489,19 +459,8 @@ describe('ManageSpacePage', () => {
 
     expect(await screen.findByRole('textbox', { name: /name/i })).toBeInTheDocument();
     expect(screen.getByTestId('cpsDefaultScopePanel')).toBeInTheDocument();
-    debugLog('projectRouting - form ready');
-
-    const nameInput = screen.getByRole('textbox', { name: /name/i });
-    const descriptionInput = screen.getByRole('textbox', { name: /description/i });
-
-    await user.clear(nameInput);
-    await user.type(nameInput, 'New Space Name');
-    await user.clear(descriptionInput);
-    await user.type(descriptionInput, 'some description');
-    debugLog('projectRouting - name/description filled');
 
     await updateSpace(user, 'oblt');
-    debugLog('projectRouting - updateSpace complete');
 
     // Wait for project picker to load and show projects
     await waitFor(
@@ -510,24 +469,19 @@ describe('ManageSpacePage', () => {
       },
       { timeout: 10000 }
     );
-    debugLog('projectRouting - fetchProjects called');
 
     expect(await screen.findByText('local_project', {}, { timeout: 10000 })).toBeInTheDocument();
-    debugLog('projectRouting - projects rendered');
 
     // Interact with project picker to set projectRouting - click "This project" button
     const thisProjectButton = await screen.findByRole('button', { name: /This project/i });
     await user.click(thisProjectButton);
-    debugLog('projectRouting - selected origin project');
 
     const createButton = screen.getByTestId('save-space-button');
     await user.click(createButton);
-    debugLog('projectRouting - clicked save');
 
     await waitFor(() => {
       expect(spacesManager.createSpace).toHaveBeenCalled();
     });
-    debugLog('projectRouting - createSpace called');
 
     const callArgs = spacesManager.createSpace.mock.calls[0][0];
     expect(callArgs).toMatchObject({
@@ -541,50 +495,24 @@ describe('ManageSpacePage', () => {
 });
 
 async function updateSpace(user: ReturnType<typeof userEvent.setup>, solution?: SolutionView) {
-  const debugLog = (...args: unknown[]) => {
-    if (process.env.SPACES_TEST_DEBUG) {
-      // eslint-disable-next-line no-console
-      console.log('[create_space_page.test:updateSpace]', ...args);
-    }
-  };
-
-  debugLog('start', { solution });
-
   const nameInput = screen.getByTestId('addSpaceName');
   const descriptionInput = screen.getByTestId('descriptionSpaceText');
 
   await user.clear(nameInput);
-  await user.type(nameInput, 'New Space Name');
+  await user.paste('New Space Name');
   await user.clear(descriptionInput);
-  await user.type(descriptionInput, 'some description');
-  debugLog('filled name/description');
+  await user.paste('some description');
 
   if (solution) {
     const solutionSelectButton = screen.getByTestId('solutionViewSelect');
-    debugLog('solution trigger located');
-
-    await waitFor(() => {
-      expect(solutionSelectButton).not.toHaveStyle({ pointerEvents: 'none' });
-      expect(solutionSelectButton).not.toBeDisabled();
-    });
-    debugLog('solution trigger interactable');
 
     await user.click(solutionSelectButton);
-    debugLog('solution trigger clicked');
 
     const solutionOptionTestSubj = `solutionView${capitalizeFirstLetter(solution)}Option`;
 
     const solutionOption = await screen.findByTestId(solutionOptionTestSubj);
-    debugLog('solution option located', solutionOptionTestSubj);
-
-    await waitFor(() => {
-      expect(solutionOption).toBeVisible();
-      expect(solutionOption).not.toHaveStyle({ pointerEvents: 'none' });
-    });
-    debugLog('solution option interactable', solutionOptionTestSubj);
 
     await user.click(solutionOption);
-    debugLog('solution option clicked', solutionOptionTestSubj);
 
     const expectedSolutionLabel =
       solution === 'classic' ? 'Classic' : solution === 'oblt' ? 'Observability' : solution;
@@ -594,15 +522,11 @@ async function updateSpace(user: ReturnType<typeof userEvent.setup>, solution?: 
         new RegExp(expectedSolutionLabel, 'i')
       );
     });
-    debugLog('solution label updated', expectedSolutionLabel);
 
     await waitFor(() => {
       expect(screen.queryByTestId(solutionOptionTestSubj)).not.toBeInTheDocument();
     });
-    debugLog('solution popover closed');
   }
-
-  debugLog('end');
 }
 
 function capitalizeFirstLetter(string: string) {
