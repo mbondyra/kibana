@@ -15,7 +15,7 @@ import type {
 } from '@kbn/core/server';
 import type { LegacyUrlAliasTarget } from '@kbn/core-saved-objects-common';
 import type { INpreClient } from '@kbn/cps/server/npre';
-import { PROJECT_ROUTING } from '@kbn/cps-common';
+import { getSpaceDefaultNpreName, PROJECT_ROUTING } from '@kbn/cps-common';
 import type { KibanaFeature } from '@kbn/features-plugin/common';
 import type { FeaturesPluginStart } from '@kbn/features-plugin/server';
 
@@ -23,7 +23,6 @@ import { isReservedSpace } from '../../common';
 import type { spaceV1 as v1 } from '../../common';
 import type { ConfigType } from '../config';
 import { withSpaceSolutionDisabledFeatures } from '../lib/utils/space_solution_disabled_features';
-import { getSpaceDefaultNpreName } from '../npre/get_space_default_npre_name';
 
 const SUPPORTED_GET_SPACE_PURPOSES: v1.GetAllSpacesPurpose[] = [
   'any',

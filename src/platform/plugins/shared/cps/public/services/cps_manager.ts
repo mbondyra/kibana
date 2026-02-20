@@ -11,8 +11,14 @@ import type { ApplicationStart, HttpSetup } from '@kbn/core/public';
 import type { Logger } from '@kbn/logging';
 import type { ProjectRouting } from '@kbn/es-query';
 import { BehaviorSubject, combineLatest, switchMap } from 'rxjs';
-import { type ICPSManager, type ProjectsData, ProjectRoutingAccess } from '@kbn/cps-utils';
+import {
+  type ICPSManager,
+  type ProjectsData,
+  ProjectRoutingAccess,
+  PROJECT_ROUTING,
+} from '@kbn/cps-utils';
 import { getSpaceIdFromPath } from '@kbn/spaces-utils';
+import { getSpaceDefaultNpreName } from '@kbn/cps-common';
 import type { ProjectFetcher } from './project_fetcher';
 
 /**
@@ -94,6 +100,23 @@ export class CPSManager implements ICPSManager {
   }
 
   /**
+   * Fetch a named project routing expression value from the CPS plugin.
+   *
+   * Returns {@link PROJECT_ROUTING.ALL} when the expression doesn't exist (404).
+   */
+  private async fetchNpreOrDefault(projectRoutingName: string): Promise<string> {
+    try {
+      return await this.http.get<string>(`/internal/cps/project_routing/${projectRoutingName}`);
+    } catch (error) {
+      if (error?.response?.status === 404) {
+        return PROJECT_ROUTING.ALL;
+      }
+
+      throw error;
+    }
+  }
+
+  /**
    * Initialize the default project routing from the active space.
    * Fetches the default project routing for the current space from the CPS plugin.
    */
@@ -101,11 +124,11 @@ export class CPSManager implements ICPSManager {
     try {
       const basePath = this.http.basePath.get();
       const { spaceId } = getSpaceIdFromPath(basePath, this.http.basePath.serverBasePath);
+      const projectRoutingName = getSpaceDefaultNpreName(spaceId);
 
-      const response = await this.http.get<{ projectRouting?: ProjectRouting }>(
-        `/api/spaces/space/${spaceId}`
-      );
-      this.updateDefaultProjectRouting(response.projectRouting);
+      const projectRoutingValue = await this.fetchNpreOrDefault(projectRoutingName);
+
+      this.updateDefaultProjectRouting(projectRoutingValue);
     } catch (error) {
       this.logger.warn('Failed to fetch default project routing for space', error);
     }

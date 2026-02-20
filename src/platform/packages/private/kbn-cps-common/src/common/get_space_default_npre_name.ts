@@ -7,6 +7,6 @@
  * License v3.0 only", or the "Server Side Public License, v 1".
  */
 
-export { PROJECT_ROUTING } from './src/common/constants';
-export type { ProjectRoutingValue } from './src/common/constants';
-export { getSpaceDefaultNpreName } from './src/common/get_space_default_npre_name';
+export function getSpaceDefaultNpreName(spaceId: string): string {
+  return `kibana_space_${spaceId}_default`;
+}

@@ -55,6 +55,7 @@ describe('ProjectPickerContainer', () => {
       getProjectPickerAccess$: jest.fn(() => mockProjectPickerAccess$),
       refresh: jest.fn(),
       getDefaultProjectRouting: jest.fn(() => undefined),
+      updateDefaultProjectRouting: jest.fn(),
       ...props.cpsManager,
     };
     return await act(async () => {

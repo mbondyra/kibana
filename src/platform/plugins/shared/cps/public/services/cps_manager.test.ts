@@ -58,7 +58,7 @@ describe('CPSManager', () => {
   beforeEach(() => {
     mockHttp = {
       post: jest.fn().mockResolvedValue(mockResponse),
-      get: jest.fn().mockResolvedValue({ projectRouting: undefined }),
+      get: jest.fn().mockResolvedValue(undefined),
       basePath: {
         get: jest.fn().mockReturnValue(''),
         serverBasePath: '',
@@ -224,7 +224,7 @@ describe('CPSManager', () => {
       if (shouldError) {
         mockHttp.get = jest.fn().mockRejectedValue(new Error('Network error'));
       } else {
-        mockHttp.get = jest.fn().mockResolvedValue({ projectRouting });
+        mockHttp.get = jest.fn().mockResolvedValue(projectRouting);
       }
 
       const manager = new CPSManager({
@@ -238,28 +238,32 @@ describe('CPSManager', () => {
     };
 
     describe('initializeDefaultProjectRouting', () => {
-      it('should initialize with undefined when space has no projectRouting', async () => {
+      it('should initialize with undefined when cps has no projectRouting', async () => {
         const manager = await createManagerWithProjectRouting(undefined);
 
-        expect(mockHttp.get).toHaveBeenCalledWith('/api/spaces/space/default');
+        expect(mockHttp.get).toHaveBeenCalledWith(
+          '/internal/cps/project_routing/kibana_space_default_default'
+        );
         expect(manager.getDefaultProjectRouting()).toBe(undefined);
       });
 
-      it('should initialize with space projectRouting when it exists', async () => {
+      it('should initialize with cps projectRouting when it exists', async () => {
         const spaceProjectRouting = '_alias:_origin';
         const manager = await createManagerWithProjectRouting(spaceProjectRouting);
 
-        expect(mockHttp.get).toHaveBeenCalledWith('/api/spaces/space/default');
+        expect(mockHttp.get).toHaveBeenCalledWith(
+          '/internal/cps/project_routing/kibana_space_default_default'
+        );
         expect(manager.getDefaultProjectRouting()).toBe(spaceProjectRouting);
       });
 
-      it('should initialize with space projectRouting with current space', async () => {
+      it('should initialize with cps projectRouting with current space', async () => {
         const spaceProjectRouting = '_alias:_origin';
 
         // Mock basePath to return a space-specific path
         const customMockHttp = {
           ...mockHttp,
-          get: jest.fn().mockResolvedValue({ projectRouting: spaceProjectRouting }),
+          get: jest.fn().mockResolvedValue(spaceProjectRouting),
           basePath: {
             get: jest.fn().mockReturnValue('/s/test-space'),
             serverBasePath: '',
@@ -274,7 +278,9 @@ describe('CPSManager', () => {
 
         await waitForInitialization();
 
-        expect(customMockHttp.get).toHaveBeenCalledWith('/api/spaces/space/test-space');
+        expect(customMockHttp.get).toHaveBeenCalledWith(
+          '/internal/cps/project_routing/kibana_space_test-space_default'
+        );
         expect(manager.getDefaultProjectRouting()).toBe(spaceProjectRouting);
       });
 
@@ -288,7 +294,9 @@ describe('CPSManager', () => {
       it('should handle fetch errors gracefully', async () => {
         const manager = await createManagerWithProjectRouting(undefined, true);
 
-        expect(mockHttp.get).toHaveBeenCalledWith('/api/spaces/space/default');
+        expect(mockHttp.get).toHaveBeenCalledWith(
+          '/internal/cps/project_routing/kibana_space_default_default'
+        );
         expect(manager.getDefaultProjectRouting()).toBe(undefined);
         expect(mockLogger.warn).toHaveBeenCalledWith(
           'Failed to fetch default project routing for space',
