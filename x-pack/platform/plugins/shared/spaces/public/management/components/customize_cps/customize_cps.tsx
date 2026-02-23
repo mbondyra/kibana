@@ -42,9 +42,12 @@ export const CustomizeCps: FC<Props> = ({ space, onChange }) => {
     services: { cps, application },
   } = useKibana<KibanaServices>();
 
-  const fetchProjects = useCallback(() => {
-    return cps?.cpsManager?.fetchProjects() ?? Promise.resolve(null);
-  }, [cps?.cpsManager]);
+  const fetchProjects = useCallback(
+    (projectRouting?: ProjectRouting) => {
+      return cps?.cpsManager?.fetchProjects(projectRouting) ?? Promise.resolve(null);
+    },
+    [cps?.cpsManager]
+  );
 
   const updateProjectRouting = (newRouting: ProjectRouting) => {
     onChange({
