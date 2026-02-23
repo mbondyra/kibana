@@ -48,14 +48,16 @@ describe('ProjectPickerContainer', () => {
         origin: mockOriginProject,
         linkedProjects: mockLinkedProjects,
       }),
+      whenReady: jest.fn().mockResolvedValue(undefined),
       getProjectRouting: jest.fn(() => undefined),
       getProjectRouting$: jest.fn(() => mockProjectRouting$),
       setProjectRouting: jest.fn(),
       getProjectPickerAccess: jest.fn(() => mockProjectPickerAccess$.getValue()),
       getProjectPickerAccess$: jest.fn(() => mockProjectPickerAccess$),
-      refresh: jest.fn(),
       getDefaultProjectRouting: jest.fn(() => undefined),
-      updateDefaultProjectRouting: jest.fn(),
+      getTotalProjectCount: jest.fn(() => 2),
+      getResolvedDefaultProjectRouting: jest.fn(() => '@kibana_space_default_default'),
+      updateResolvedDefaultProjectRouting: jest.fn(),
       ...props.cpsManager,
     };
     return await act(async () => {
@@ -110,6 +112,7 @@ describe('ProjectPickerContainer', () => {
             origin: mockOriginProject,
             linkedProjects: [],
           }),
+          getTotalProjectCount: jest.fn(() => 1),
         },
       });
       expect(screen.queryByTestId('project-picker-button')).not.toBeInTheDocument();
@@ -139,7 +142,7 @@ describe('ProjectPickerContainer', () => {
           getProjectPickerAccess: jest.fn(() => ProjectRoutingAccess.DISABLED),
         },
       });
-      const button = screen.getByTestId('project-picker-button');
+      const button = screen.getByTestId('project-picker-button-disabled');
       expect(button).toHaveAttribute('disabled');
     });
 

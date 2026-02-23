@@ -34,20 +34,26 @@ export class CPSManager implements ICPSManager {
   private readonly application: ApplicationStart;
   private projectFetcherPromise: Promise<ProjectFetcher> | null = null;
   private defaultProjectRouting: ProjectRouting = undefined;
+  private defaultProjectRoutingValue: string = PROJECT_ROUTING.ALL;
+  private totalProjectCount: number = 0;
+  private readonly readyPromise: Promise<void>;
   private readonly projectRouting$ = new BehaviorSubject<ProjectRouting | undefined>(
     this.defaultProjectRouting
   );
   private readonly projectPickerAccess$ = new BehaviorSubject<ProjectRoutingAccess>(
     ProjectRoutingAccess.EDITABLE
   );
+  private lastEditableProjectRouting: ProjectRouting | undefined = undefined;
 
   constructor(deps: { http: HttpSetup; logger: Logger; application: ApplicationStart }) {
     this.http = deps.http;
     this.logger = deps.logger.get('cps_manager');
     this.application = deps.application;
 
-    // Initialize the default project routing from the active space
-    this.initializeDefaultProjectRouting();
+    this.readyPromise = Promise.all([
+      this.initializeDefaultProjectRouting(),
+      this.fetchTotalProjectCount(),
+    ]).then(() => {});
 
     combineLatest([this.application.currentAppId$, this.application.currentLocation$])
       .pipe(
@@ -60,35 +66,45 @@ export class CPSManager implements ICPSManager {
       )
       .subscribe((access) => {
         this.projectPickerAccess$.next(access);
-        // Reset project routing to default when access is disabled
-        if (access === ProjectRoutingAccess.DISABLED) {
+        // Reset project routing to default when access is disabled or readonly, to prevent showing stale or unauthorized project context
+        if (access === ProjectRoutingAccess.READONLY) {
           this.projectRouting$.next(this.defaultProjectRouting);
+        } else if (access === ProjectRoutingAccess.DISABLED) {
+          this.projectRouting$.next(undefined);
+        } else if (access === ProjectRoutingAccess.EDITABLE) {
+          this.projectRouting$.next(this.lastEditableProjectRouting ?? this.defaultProjectRouting);
         }
       });
   }
 
   /**
-   * Get the current project routing as an observable
+   * Resolves once the default project routing and total count of projects has been fetched
    */
-  public getProjectRouting$() {
-    return this.projectRouting$.asObservable();
+  public whenReady(): Promise<void> {
+    return this.readyPromise;
   }
 
   /**
-   * Set the current project routing
+   * Initialize the default project routing from the active space.
+   * Fetches the default project routing for the current space from the CPS plugin.
    */
-  public setProjectRouting(projectRouting: ProjectRouting) {
-    this.projectRouting$.next(projectRouting);
-  }
+  private async initializeDefaultProjectRouting() {
+    try {
+      const basePath = this.http.basePath.get();
+      const { spaceId } = getSpaceIdFromPath(basePath, this.http.basePath.serverBasePath);
 
-  /**
-   * Get the current project routing value
-   */
-  public getProjectRouting() {
-    if (this.projectPickerAccess$.value === ProjectRoutingAccess.DISABLED) {
-      return undefined;
+      const projectRoutingName = getSpaceDefaultNpreName(spaceId);
+      const projectRouting = `@${projectRoutingName}`;
+      this.defaultProjectRouting = projectRouting;
+
+      // init the current project routing to the space name
+      this.projectRouting$.next(projectRouting);
+
+      const projectRoutingValue = await this.fetchNpreOrDefault(projectRoutingName);
+      this.updateResolvedDefaultProjectRouting(projectRoutingValue);
+    } catch (error) {
+      this.logger.warn('Failed to fetch default project routing for space', error);
     }
-    return this.projectRouting$.value;
   }
 
   /**
@@ -97,6 +113,14 @@ export class CPSManager implements ICPSManager {
    */
   public getDefaultProjectRouting(): ProjectRouting {
     return this.defaultProjectRouting;
+  }
+
+  /**
+   * Get the default project routing value from a global space setting.
+   * This is the fallback value used when no app-specific or saved value exists.
+   */
+  public getResolvedDefaultProjectRouting(): ProjectRouting {
+    return this.defaultProjectRoutingValue;
   }
 
   /**
@@ -116,34 +140,60 @@ export class CPSManager implements ICPSManager {
     }
   }
 
+  public updateResolvedDefaultProjectRouting(projectRoutingValue: string) {
+    this.defaultProjectRoutingValue = projectRoutingValue;
+    this.getProjectFetcher().then((projectFetcher) => {
+      projectFetcher.invalidateCache(this.defaultProjectRouting);
+    });
+  }
+
   /**
-   * Initialize the default project routing from the active space.
-   * Fetches the default project routing for the current space from the CPS plugin.
+   * Fetches total project count
    */
-  private async initializeDefaultProjectRouting() {
+  private async fetchTotalProjectCount(): Promise<void> {
     try {
-      const basePath = this.http.basePath.get();
-      const { spaceId } = getSpaceIdFromPath(basePath, this.http.basePath.serverBasePath);
-      const projectRoutingName = getSpaceDefaultNpreName(spaceId);
-
-      const projectRoutingValue = await this.fetchNpreOrDefault(projectRoutingName);
-
-      this.updateDefaultProjectRouting(projectRoutingValue);
+      const projectsData = await this.fetchProjects(PROJECT_ROUTING.ALL);
+      this.totalProjectCount =
+        (projectsData?.origin ? 1 : 0) + (projectsData?.linkedProjects.length ?? 0);
     } catch (error) {
-      this.logger.warn('Failed to fetch default project routing for space', error);
+      this.logger.warn('Failed to fetch total project count', error);
     }
   }
 
   /**
-   * Update the default project routing value.
-   * This method can be called externally (e.g., by the spaces plugin) when the space settings change.
-   * Also updates the current project routing if it's still set to the old default.
+   * Returns the total number of projects (origin + linked) across all project routings.
    */
-  public updateDefaultProjectRouting(projectRouting?: ProjectRouting) {
-    if (projectRouting !== undefined && projectRouting !== this.getDefaultProjectRouting()) {
-      this.projectRouting$.next(projectRouting);
-      this.defaultProjectRouting = projectRouting;
+  public getTotalProjectCount(): number {
+    return this.totalProjectCount;
+  }
+
+  /**
+   * Get the current project routing as an observable
+   */
+  public getProjectRouting$() {
+    return this.projectRouting$.asObservable();
+  }
+
+  /**
+   * Get the current project routing value
+   */
+  public getProjectRouting() {
+    if (this.projectPickerAccess$.value === ProjectRoutingAccess.DISABLED) {
+      return undefined;
+    } else if (this.projectPickerAccess$.value === ProjectRoutingAccess.READONLY) {
+      return this.defaultProjectRouting;
     }
+    return this.projectRouting$.value;
+  }
+
+  /**
+   * Set the current project routing
+   */
+  public setProjectRouting(projectRouting: ProjectRouting) {
+    if (this.projectPickerAccess$.value === ProjectRoutingAccess.EDITABLE) {
+      this.lastEditableProjectRouting = projectRouting;
+    }
+    this.projectRouting$.next(projectRouting);
   }
 
   /**
@@ -167,18 +217,10 @@ export class CPSManager implements ICPSManager {
    * Returns cached data if already loaded. If a fetch is already in progress, returns the existing promise.
    * @returns Promise resolving to ProjectsData
    */
-  public async fetchProjects(): Promise<ProjectsData | null> {
-    const fetcher = await this.getProjectFetcher();
-    return fetcher.fetchProjects();
-  }
-
-  /**
-   * Forces a refresh of projects from the server, bypassing the cache.
-   * @returns Promise resolving to ProjectsData
-   */
-  public async refresh(): Promise<ProjectsData | null> {
-    const fetcher = await this.getProjectFetcher();
-    return fetcher.refresh();
+  public async fetchProjects(projectRouting?: ProjectRouting): Promise<ProjectsData | null> {
+    return (await this.getProjectFetcher()).fetchProjects(
+      projectRouting ?? this.getProjectRouting()
+    );
   }
 
   private async getProjectFetcher() {

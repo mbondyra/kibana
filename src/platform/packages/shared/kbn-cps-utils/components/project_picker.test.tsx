@@ -45,6 +45,7 @@ describe('ProjectPicker', () => {
     projectRouting: undefined as ProjectRouting | undefined,
     onProjectRoutingChange: jest.fn(),
     fetchProjects: mockFetchProjects,
+    totalProjectCount: 2,
   };
 
   const renderProjectPicker = async (props: Partial<typeof defaultProps> = {}) => {
