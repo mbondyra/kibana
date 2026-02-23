@@ -10,28 +10,37 @@
 import type { HttpSetup } from '@kbn/core/public';
 import type { Logger } from '@kbn/logging';
 import type { ProjectTagsResponse, ProjectsData } from '@kbn/cps-utils';
+import type { ProjectRouting } from '@kbn/es-query';
 
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 1000;
 
 export interface ProjectFetcher {
-  fetchProjects: () => Promise<ProjectsData | null>;
-  refresh: () => Promise<ProjectsData | null>;
+  fetchProjects: (projectRouting?: ProjectRouting) => Promise<ProjectsData | null>;
+  invalidateCache: (projectRouting?: ProjectRouting) => void;
 }
 
 /**
  * Creates project fetcher with caching and retry logic
  */
 export function createProjectFetcher(http: HttpSetup, logger: Logger): ProjectFetcher {
-  let fetchPromise: Promise<ProjectsData | null> | null = null;
-  let cachedData: ProjectsData | null = null;
+  const fetchPromises = new Map<string, Promise<ProjectsData | null>>();
+  const cache = new Map<string, ProjectsData>();
 
-  async function fetchProjectsWithRetry(): Promise<ProjectsData | null> {
+  function cacheKey(projectRouting?: ProjectRouting): string {
+    return projectRouting ?? '';
+  }
+
+  async function fetchProjectsWithRetry(
+    projectRouting?: ProjectRouting
+  ): Promise<ProjectsData | null> {
     let lastError: Error = new Error('');
 
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       try {
-        const response = await http.post<ProjectTagsResponse>('/internal/cps/projects_tags');
+        const response = await http.post<ProjectTagsResponse>('/internal/cps/projects_tags', {
+          body: JSON.stringify(projectRouting ? { project_routing: projectRouting } : {}),
+        });
         const originValues = response.origin ? Object.values(response.origin) : [];
 
         return {
@@ -59,21 +68,26 @@ export function createProjectFetcher(http: HttpSetup, logger: Logger): ProjectFe
     throw lastError;
   }
 
-  async function doFetch(): Promise<ProjectsData | null> {
-    if (fetchPromise) {
-      return fetchPromise;
+  async function doFetch(projectRouting?: ProjectRouting): Promise<ProjectsData | null> {
+    const key = cacheKey(projectRouting);
+    const existing = fetchPromises.get(key);
+    if (existing) {
+      return existing;
     }
 
-    fetchPromise = fetchProjectsWithRetry()
+    const promise = fetchProjectsWithRetry(projectRouting)
       .then((projectsData) => {
-        cachedData = projectsData;
+        if (projectsData) {
+          cache.set(key, projectsData);
+        }
         return projectsData;
       })
       .finally(() => {
-        fetchPromise = null;
+        fetchPromises.delete(key);
       });
 
-    return fetchPromise;
+    fetchPromises.set(key, promise);
+    return promise;
   }
 
   return {
@@ -81,18 +95,20 @@ export function createProjectFetcher(http: HttpSetup, logger: Logger): ProjectFe
      * Fetches projects from the server with caching and retry logic.
      * Returns cached data if already loaded. If a fetch is already in progress, returns the existing promise.
      */
-    fetchProjects: async (): Promise<ProjectsData | null> => {
-      if (cachedData) {
-        return cachedData;
+    fetchProjects: async (projectRouting?: ProjectRouting): Promise<ProjectsData | null> => {
+      const cached = cache.get(cacheKey(projectRouting));
+      if (cached) {
+        return cached;
       }
-      return doFetch();
+      return doFetch(projectRouting);
     },
 
     /**
-     * Forces a refresh of projects from the server, bypassing the cache.
+     * Removes cached data for a given project routing key.
+     * The next fetchProjects call for this key will hit the server.
      */
-    refresh: async (): Promise<ProjectsData | null> => {
-      return doFetch();
+    invalidateCache: (projectRouting?: ProjectRouting): void => {
+      cache.delete(cacheKey(projectRouting));
     },
   };
 }

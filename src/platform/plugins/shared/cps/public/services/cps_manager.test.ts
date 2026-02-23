@@ -9,9 +9,16 @@
 
 import { CPSManager } from './cps_manager';
 import type { ApplicationStart, HttpSetup } from '@kbn/core/public';
+import { ProjectRoutingAccess } from '@kbn/cps-utils';
 import type { CPSProject, ProjectTagsResponse } from '@kbn/cps-utils';
 import { loggingSystemMock } from '@kbn/core/server/mocks';
 import { BehaviorSubject } from 'rxjs';
+
+const mockGetProjectRoutingAccess = jest.fn();
+jest.mock('./async_services', () => ({
+  ...jest.requireActual('./async_services'),
+  getProjectRoutingAccess: (...args: unknown[]) => mockGetProjectRoutingAccess(...args),
+}));
 
 describe('CPSManager', () => {
   let mockHttp: jest.Mocked<HttpSetup>;
@@ -58,6 +65,11 @@ describe('CPSManager', () => {
   beforeEach(() => {
     mockHttp = {
       post: jest.fn().mockResolvedValue(mockResponse),
+      get: jest.fn().mockResolvedValue(undefined),
+      basePath: {
+        get: jest.fn().mockReturnValue(''),
+        serverBasePath: '',
+      },
     } as unknown as jest.Mocked<HttpSetup>;
 
     mockApplication = {
@@ -74,13 +86,21 @@ describe('CPSManager', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+    mockGetProjectRoutingAccess.mockReturnValue(ProjectRoutingAccess.EDITABLE);
   });
 
   describe('fetchProjects', () => {
     it('should fetch and store projects successfully', async () => {
+      // fetches all projects to get the total project count
+      expect(mockHttp.post).toHaveBeenCalledWith('/internal/cps/projects_tags', {
+        body: JSON.stringify({ project_routing: '_alias:*' }),
+      });
+      jest.clearAllMocks();
       const result = await cpsManager.fetchProjects();
 
-      expect(mockHttp.post).toHaveBeenCalledWith('/internal/cps/projects_tags');
+      expect(mockHttp.post).toHaveBeenCalledWith('/internal/cps/projects_tags', {
+        body: JSON.stringify({ project_routing: '@kibana_space_default_default' }),
+      });
       expect(result).toEqual({
         origin: mockOriginProject,
         linkedProjects: [mockLinkedProjects[1], mockLinkedProjects[0]], // sorted by alias
@@ -97,6 +117,7 @@ describe('CPSManager', () => {
 
   describe('caching behavior', () => {
     it('should cache results and not refetch on subsequent calls', async () => {
+      jest.clearAllMocks();
       // First fetch
       await cpsManager.fetchProjects();
       expect(mockHttp.post).toHaveBeenCalledTimes(1);
@@ -107,6 +128,7 @@ describe('CPSManager', () => {
     });
 
     it('should not cache failed requests', async () => {
+      jest.clearAllMocks();
       jest.useFakeTimers();
       mockHttp.post.mockRejectedValue(new Error('Network error'));
 
@@ -122,50 +144,10 @@ describe('CPSManager', () => {
     });
   });
 
-  describe('refresh', () => {
-    it('should refetch data when refresh is called', async () => {
-      mockHttp.post.mockResolvedValue(mockResponse);
-
-      // First fetch
-      await cpsManager.fetchProjects();
-      expect(mockHttp.post).toHaveBeenCalledTimes(1);
-
-      // Refresh should call HTTP again
-      await cpsManager.refresh();
-      expect(mockHttp.post).toHaveBeenCalledTimes(2);
-    });
-
-    it('should update cached data after refresh', async () => {
-      const updatedProject: CPSProject = {
-        ...mockOriginProject,
-        _alias: 'Updated Project',
-      };
-      const updatedResponse: ProjectTagsResponse = {
-        origin: { 'origin-id': updatedProject },
-        linked_projects: mockResponse.linked_projects,
-      };
-
-      mockHttp.post.mockResolvedValueOnce(mockResponse);
-      mockHttp.post.mockResolvedValueOnce(updatedResponse);
-
-      // First fetch
-      const result1 = await cpsManager.fetchProjects();
-      expect(result1!.origin?._alias).toBe('Origin Project');
-
-      // Refresh with new data
-      const result2 = await cpsManager.refresh();
-      expect(result2!.origin?._alias).toBe('Updated Project');
-
-      // Subsequent fetch should return updated cached data
-      const result3 = await cpsManager.fetchProjects();
-      expect(result3!.origin?._alias).toBe('Updated Project');
-      expect(mockHttp.post).toHaveBeenCalledTimes(2); // Only 2 calls, third was from cache
-    });
-  });
-
   describe('retry logic', () => {
     it('should retry on failure with exponential backoff', async () => {
       jest.useFakeTimers();
+      jest.clearAllMocks();
       mockHttp.post
         .mockRejectedValueOnce(new Error('Error 1'))
         .mockRejectedValueOnce(new Error('Error 2'))
@@ -183,6 +165,7 @@ describe('CPSManager', () => {
     });
 
     it('should throw error after max retries exceeded', async () => {
+      jest.clearAllMocks();
       jest.useFakeTimers();
       mockHttp.post.mockRejectedValue(new Error('Persistent error'));
 
@@ -206,6 +189,160 @@ describe('CPSManager', () => {
       await expect(Promise.all([promise, timerPromise])).rejects.toThrow();
 
       jest.useRealTimers();
+    });
+  });
+
+  describe('default project routing', () => {
+    const createManagerWithProjectRouting = async (
+      projectRoutingValue?: string,
+      shouldError = false
+    ) => {
+      if (shouldError) {
+        mockHttp.get = jest.fn().mockRejectedValue(new Error('Network error'));
+      } else {
+        mockHttp.get = jest.fn().mockResolvedValue(projectRoutingValue);
+      }
+
+      const manager = new CPSManager({
+        http: mockHttp,
+        logger: mockLogger,
+        application: mockApplication,
+      });
+
+      await manager.whenReady();
+      return manager;
+    };
+
+    describe('initializeDefaultProjectRouting', () => {
+      it('should initialize defaultProjectRouting to the space name even when value is undefined', async () => {
+        const manager = await createManagerWithProjectRouting(undefined);
+
+        expect(mockHttp.get).toHaveBeenCalledWith(
+          '/internal/cps/project_routing/kibana_space_default_default'
+        );
+        expect(manager.getDefaultProjectRouting()).toBe('@kibana_space_default_default');
+        expect(manager.getResolvedDefaultProjectRouting()).toBe(undefined);
+      });
+
+      it('should initialize defaultProjectRouting to the space name and store the value separately', async () => {
+        const spaceProjectRoutingValue = '_alias:_origin';
+        const manager = await createManagerWithProjectRouting(spaceProjectRoutingValue);
+
+        expect(mockHttp.get).toHaveBeenCalledWith(
+          '/internal/cps/project_routing/kibana_space_default_default'
+        );
+        expect(manager.getDefaultProjectRouting()).toBe('@kibana_space_default_default');
+        expect(manager.getResolvedDefaultProjectRouting()).toBe(spaceProjectRoutingValue);
+      });
+
+      it('should initialize with the current space name', async () => {
+        const spaceProjectRoutingValue = '_alias:_origin';
+
+        // Mock basePath to return a space-specific path
+        const customMockHttp = {
+          ...mockHttp,
+          get: jest.fn().mockResolvedValue(spaceProjectRoutingValue),
+          basePath: {
+            get: jest.fn().mockReturnValue('/s/test-space'),
+            serverBasePath: '',
+          },
+        } as unknown as jest.Mocked<HttpSetup>;
+
+        const manager = new CPSManager({
+          http: customMockHttp,
+          logger: mockLogger,
+          application: mockApplication,
+        });
+
+        await manager.whenReady();
+
+        expect(customMockHttp.get).toHaveBeenCalledWith(
+          '/internal/cps/project_routing/kibana_space_test-space_default'
+        );
+        expect(manager.getDefaultProjectRouting()).toBe('@kibana_space_test-space_default');
+        expect(manager.getResolvedDefaultProjectRouting()).toBe(spaceProjectRoutingValue);
+      });
+
+      it('should update current project routing to the space name after initialization', async () => {
+        const manager = await createManagerWithProjectRouting('_alias:_origin');
+
+        expect(manager.getProjectRouting()).toBe('@kibana_space_default_default');
+      });
+
+      it('should handle fetch errors gracefully', async () => {
+        const manager = await createManagerWithProjectRouting(undefined, true);
+
+        expect(mockHttp.get).toHaveBeenCalledWith(
+          '/internal/cps/project_routing/kibana_space_default_default'
+        );
+        expect(manager.getDefaultProjectRouting()).toBe(`@kibana_space_default_default`);
+        expect(mockLogger.warn).toHaveBeenCalledWith(
+          'Failed to fetch default project routing for space',
+          expect.any(Error)
+        );
+      });
+    });
+  });
+
+  describe('getProjectRouting with different access levels', () => {
+    const flushAsync = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+    const changeAccess = async (access: ProjectRoutingAccess) => {
+      mockGetProjectRoutingAccess.mockReturnValue(access);
+      (mockApplication.currentAppId$ as BehaviorSubject<string | undefined>).next('app');
+      await flushAsync();
+    };
+
+    it('returns undefined when access is DISABLED', async () => {
+      await cpsManager.whenReady();
+      await changeAccess(ProjectRoutingAccess.DISABLED);
+
+      expect(cpsManager.getProjectRouting()).toBeUndefined();
+    });
+
+    it('returns default project routing when access is READONLY', async () => {
+      await cpsManager.whenReady();
+      await changeAccess(ProjectRoutingAccess.READONLY);
+
+      expect(cpsManager.getProjectRouting()).toBe('@kibana_space_default_default');
+    });
+
+    it('returns current value when access is EDITABLE', async () => {
+      await cpsManager.whenReady();
+      await changeAccess(ProjectRoutingAccess.EDITABLE);
+
+      cpsManager.setProjectRouting('_alias:_origin');
+      expect(cpsManager.getProjectRouting()).toBe('_alias:_origin');
+    });
+
+    it('resets to undefined when access changes from EDITABLE to DISABLED', async () => {
+      await cpsManager.whenReady();
+      await changeAccess(ProjectRoutingAccess.EDITABLE);
+      cpsManager.setProjectRouting('_alias:_origin');
+
+      await changeAccess(ProjectRoutingAccess.DISABLED);
+      expect(cpsManager.getProjectRouting()).toBeUndefined();
+    });
+
+    it('resets to default when access changes from EDITABLE to READONLY', async () => {
+      await cpsManager.whenReady();
+      await changeAccess(ProjectRoutingAccess.EDITABLE);
+      cpsManager.setProjectRouting('_alias:_origin');
+
+      await changeAccess(ProjectRoutingAccess.READONLY);
+      expect(cpsManager.getProjectRouting()).toBe('@kibana_space_default_default');
+    });
+
+    it('restores last editable routing when access returns to EDITABLE', async () => {
+      await cpsManager.whenReady();
+      await changeAccess(ProjectRoutingAccess.EDITABLE);
+      cpsManager.setProjectRouting('_alias:_origin');
+
+      await changeAccess(ProjectRoutingAccess.DISABLED);
+      expect(cpsManager.getProjectRouting()).toBeUndefined();
+
+      await changeAccess(ProjectRoutingAccess.EDITABLE);
+      expect(cpsManager.getProjectRouting()).toBe('_alias:_origin');
     });
   });
 });

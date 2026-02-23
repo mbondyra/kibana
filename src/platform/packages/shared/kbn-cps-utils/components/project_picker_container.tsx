@@ -28,23 +28,31 @@ export const ProjectPickerContainer: React.FC<ProjectPickerContainerProps> = ({ 
   const { projectRouting, updateProjectRouting } = useProjectRouting(cpsManager);
   const access = useObservable(cpsManager.getProjectPickerAccess$(), ProjectRoutingAccess.DISABLED);
 
-  const fetchProjects = useCallback(() => {
-    return cpsManager.fetchProjects();
-  }, [cpsManager]);
+  const fetchProjects = useCallback(
+    (routing?: ProjectRouting) => {
+      return cpsManager.fetchProjects(routing);
+    },
+    [cpsManager]
+  );
 
   const resetProjectPicker = useCallback(() => {
     updateProjectRouting(cpsManager.getDefaultProjectRouting());
   }, [cpsManager, updateProjectRouting]);
 
   if (access === ProjectRoutingAccess.DISABLED) {
-    return <DisabledProjectPicker fetchProjects={fetchProjects} />;
+    return <DisabledProjectPicker totalProjectCount={cpsManager.getTotalProjectCount()} />;
   }
 
   return (
     <ProjectPicker
+      defaultProjectRouting={{
+        value: cpsManager.getResolvedDefaultProjectRouting(),
+        name: cpsManager.getDefaultProjectRouting(),
+      }}
       projectRouting={projectRouting}
       onProjectRoutingChange={updateProjectRouting}
       fetchProjects={fetchProjects}
+      totalProjectCount={cpsManager.getTotalProjectCount()}
       isReadonly={access === ProjectRoutingAccess.READONLY}
       settingsComponent={<ProjectPickerSettings onResetToDefaults={resetProjectPicker} />}
     />
@@ -70,9 +78,12 @@ const useProjectRouting = (cpsManager: ICPSManager) => {
     };
   }, [cpsManager]);
 
-  const updateProjectRouting = (newRouting: ProjectRouting) => {
-    cpsManager.setProjectRouting(newRouting);
-  };
+  const updateProjectRouting = useCallback(
+    (newRouting: ProjectRouting) => {
+      cpsManager.setProjectRouting(newRouting);
+    },
+    [cpsManager]
+  );
 
   return { projectRouting, updateProjectRouting };
 };
