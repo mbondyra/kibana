@@ -21,6 +21,7 @@ import { difference } from 'lodash';
 import React, { Component } from 'react';
 
 import type { Capabilities, NotificationsStart, ScopedHistory } from '@kbn/core/public';
+import { PROJECT_ROUTING } from '@kbn/cps-common';
 import { SectionLoading } from '@kbn/es-ui-shared-plugin/public';
 import type { FeaturesPluginStart, KibanaFeature } from '@kbn/features-plugin/public';
 import { i18n } from '@kbn/i18n';
@@ -95,6 +96,10 @@ export class CreateSpacePage extends Component<Props, State> {
       return;
     }
 
+    if (this.canEditProjectRouting()) {
+      this.setDefaultProjectRouting();
+    }
+
     const { spaceId, getFeatures, notifications } = this.props;
 
     try {
@@ -146,6 +151,19 @@ export class CreateSpacePage extends Component<Props, State> {
 
   private canEditProjectRouting(): boolean {
     return this.props.capabilities.project_routing?.manage_space_default === true;
+  }
+
+  private setDefaultProjectRouting() {
+    if (this.state.space.projectRouting != null) {
+      return;
+    }
+
+    this.setState(({ space }) => ({
+      space: {
+        ...space,
+        projectRouting: PROJECT_ROUTING.ALL,
+      },
+    }));
   }
 
   public render() {
