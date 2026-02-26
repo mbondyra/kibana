@@ -46,25 +46,27 @@ export class CpsPlugin implements Plugin<CPSPluginSetup, CPSPluginStart> {
         appAccessResolvers: this.appAccessResolvers,
       });
 
-      // Register project picker in the navigation
-      import('@kbn/cps-utils').then(({ ProjectPickerContainer }) => {
-        core.chrome.navControls.registerLeft({
-          mount: (element) => {
-            ReactDOM.render(
-              <I18nProvider>
-                <ProjectPickerContainer cpsManager={manager} />
-              </I18nProvider>,
-              element,
-              () => {}
-            );
+      // Register project picker only after the default project routing is known
+      manager.whenReady().then(() =>
+        import('@kbn/cps-utils').then(({ ProjectPickerContainer }) => {
+          core.chrome.navControls.registerLeft({
+            mount: (element) => {
+              ReactDOM.render(
+                <I18nProvider>
+                  <ProjectPickerContainer cpsManager={manager} />
+                </I18nProvider>,
+                element,
+                () => {}
+              );
 
-            return () => {
-              ReactDOM.unmountComponentAtNode(element);
-            };
-          },
-          order: 1000,
-        });
-      });
+              return () => {
+                ReactDOM.unmountComponentAtNode(element);
+              };
+            },
+            order: 1000,
+          });
+        })
+      );
       cpsManager = manager;
     }
 

@@ -14,8 +14,8 @@ import type { ProjectRouting } from '@kbn/es-query';
 import userEvent from '@testing-library/user-event';
 import { EuiThemeProvider } from '@elastic/eui';
 import { I18nProvider } from '@kbn/i18n-react';
-import { PROJECT_ROUTING } from '../constants';
 import { ProjectPicker } from './project_picker';
+import { PROJECT_ROUTING } from '../constants';
 
 describe('ProjectPicker', () => {
   const mockFetchProjects = jest.fn().mockResolvedValue({
@@ -45,6 +45,7 @@ describe('ProjectPicker', () => {
     projectRouting: undefined as ProjectRouting | undefined,
     onProjectRoutingChange: jest.fn(),
     fetchProjects: mockFetchProjects,
+    totalProjectCount: 2,
   };
 
   const renderProjectPicker = async (props: Partial<typeof defaultProps> = {}) => {
