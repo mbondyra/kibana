@@ -14,12 +14,6 @@ import type { CPSProject, ProjectTagsResponse } from '@kbn/cps-utils';
 import { loggingSystemMock } from '@kbn/core/server/mocks';
 import { BehaviorSubject } from 'rxjs';
 
-const mockGetProjectRoutingAccess = jest.fn();
-jest.mock('./async_services', () => ({
-  ...jest.requireActual('./async_services'),
-  getProjectRoutingAccess: (...args: unknown[]) => mockGetProjectRoutingAccess(...args),
-}));
-
 describe('CPSManager', () => {
   let mockHttp: jest.Mocked<HttpSetup>;
   const mockLogger = loggingSystemMock.createLogger();
@@ -63,8 +57,6 @@ describe('CPSManager', () => {
   };
 
   beforeEach(() => {
-    mockGetProjectRoutingAccess.mockReturnValue(ProjectRoutingAccess.EDITABLE);
-
     mockHttp = {
       post: jest.fn().mockResolvedValue(mockResponse),
     } as unknown as jest.Mocked<HttpSetup>;
@@ -222,23 +214,32 @@ describe('CPSManager', () => {
     const flushAsync = () => new Promise((resolve) => setTimeout(resolve, 0));
 
     const changeAccess = async (access: ProjectRoutingAccess) => {
-      mockGetProjectRoutingAccess.mockReturnValue(access);
+      cpsManager.registerAppAccess('app', () => access);
       (mockApplication.currentAppId$ as BehaviorSubject<string | undefined>).next('app');
       await flushAsync();
     };
 
-    it('returns the override value when provided', () => {
+    it('returns the override value when provided', async () => {
+      cpsManager.registerAppAccess('discover', () => ProjectRoutingAccess.EDITABLE);
+      await flushAsync();
+
       expect(cpsManager.getProjectRouting('_alias:*')).toBe('_alias:*');
       expect(cpsManager.getProjectRouting('_alias:_origin')).toBe('_alias:_origin');
     });
 
-    it('falls back to current projectRouting$ value when no override is provided', () => {
+    it('falls back to current projectRouting$ value when no override is provided', async () => {
+      cpsManager.registerAppAccess('discover', () => ProjectRoutingAccess.EDITABLE);
+      await flushAsync();
+
       cpsManager.setProjectRouting('_alias:_origin');
       expect(cpsManager.getProjectRouting()).toBe('_alias:_origin');
     });
 
-    it('returns DEFAULT_PROJECT_ROUTING when no override and no explicit set', () => {
-      expect(cpsManager.getProjectRouting()).toBe('_alias:*');
+    it('returns undefined when no resolver is registered (defaults to DISABLED)', async () => {
+      (mockApplication.currentAppId$ as BehaviorSubject<string | undefined>).next('unknownApp');
+      await flushAsync();
+
+      expect(cpsManager.getProjectRouting()).toBeUndefined();
     });
 
     it('returns undefined when access is DISABLED, regardless of override', async () => {
@@ -249,6 +250,9 @@ describe('CPSManager', () => {
     });
 
     it('resets projectRouting$ to default when access changes to DISABLED', async () => {
+      cpsManager.registerAppAccess('discover', () => ProjectRoutingAccess.EDITABLE);
+      await flushAsync();
+
       cpsManager.setProjectRouting('_alias:_origin');
       expect(cpsManager.getProjectRouting()).toBe('_alias:_origin');
 
@@ -257,6 +261,135 @@ describe('CPSManager', () => {
 
       await changeAccess(ProjectRoutingAccess.EDITABLE);
       expect(cpsManager.getProjectRouting()).toBe('_alias:*');
+    });
+  });
+
+  describe('registerAppAccess', () => {
+    const flushAsync = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+    it('uses a registered resolver to determine access', async () => {
+      const resolver = jest.fn().mockReturnValue(ProjectRoutingAccess.READONLY);
+      cpsManager.registerAppAccess('discover', resolver);
+
+      (mockApplication.currentAppId$ as BehaviorSubject<string | undefined>).next('discover');
+      (mockApplication.currentLocation$ as BehaviorSubject<string>).next('#/view/123');
+      await flushAsync();
+
+      expect(resolver).toHaveBeenCalledWith('#/view/123');
+      expect(cpsManager.getProjectPickerAccess$().value).toBe(ProjectRoutingAccess.READONLY);
+    });
+
+    it('defaults to DISABLED for apps without a registered resolver', async () => {
+      (mockApplication.currentAppId$ as BehaviorSubject<string | undefined>).next('unregisteredApp');
+      (mockApplication.currentLocation$ as BehaviorSubject<string>).next('#/');
+      await flushAsync();
+
+      expect(cpsManager.getProjectPickerAccess$().value).toBe(ProjectRoutingAccess.DISABLED);
+    });
+
+    it('re-evaluates access immediately when registering for the current app', async () => {
+      (mockApplication.currentAppId$ as BehaviorSubject<string | undefined>).next('stackAlerts');
+      (mockApplication.currentLocation$ as BehaviorSubject<string>).next('#/rules');
+      await flushAsync();
+
+      expect(cpsManager.getProjectPickerAccess$().value).toBe(ProjectRoutingAccess.DISABLED);
+
+      const resolver = jest.fn().mockReturnValue(ProjectRoutingAccess.READONLY);
+      cpsManager.registerAppAccess('stackAlerts', resolver);
+      await flushAsync();
+
+      expect(cpsManager.getProjectPickerAccess$().value).toBe(ProjectRoutingAccess.READONLY);
+    });
+
+    it('does not re-evaluate when registering for a different app', async () => {
+      cpsManager.registerAppAccess('discover', () => ProjectRoutingAccess.EDITABLE);
+
+      (mockApplication.currentAppId$ as BehaviorSubject<string | undefined>).next('discover');
+      await flushAsync();
+
+      expect(cpsManager.getProjectPickerAccess$().value).toBe(ProjectRoutingAccess.EDITABLE);
+
+      const resolver = jest.fn().mockReturnValue(ProjectRoutingAccess.READONLY);
+      cpsManager.registerAppAccess('stackAlerts', resolver);
+      await flushAsync();
+
+      expect(cpsManager.getProjectPickerAccess$().value).toBe(ProjectRoutingAccess.EDITABLE);
+      expect(resolver).not.toHaveBeenCalled();
+    });
+
+    it('resolver can use runtime conditions to determine access', async () => {
+      let featureEnabled = false;
+
+      cpsManager.registerAppAccess('stackAlerts', (location) => {
+        if (featureEnabled && location.includes('rules')) {
+          return ProjectRoutingAccess.READONLY;
+        }
+        return ProjectRoutingAccess.DISABLED;
+      });
+
+      (mockApplication.currentAppId$ as BehaviorSubject<string | undefined>).next('stackAlerts');
+      (mockApplication.currentLocation$ as BehaviorSubject<string>).next('#/rules');
+      await flushAsync();
+
+      expect(cpsManager.getProjectPickerAccess$().value).toBe(ProjectRoutingAccess.DISABLED);
+
+      featureEnabled = true;
+      (mockApplication.currentLocation$ as BehaviorSubject<string>).next('#/rules/new');
+      await flushAsync();
+
+      expect(cpsManager.getProjectPickerAccess$().value).toBe(ProjectRoutingAccess.READONLY);
+    });
+
+    it('supports setup-phase registration via appAccessResolvers constructor param', async () => {
+      const resolver = jest.fn().mockReturnValue(ProjectRoutingAccess.READONLY);
+      const preRegistered = new Map([['stackAlerts', resolver]]);
+
+      const manager = new CPSManager({
+        http: mockHttp,
+        logger: mockLogger,
+        application: mockApplication,
+        appAccessResolvers: preRegistered,
+      });
+
+      (mockApplication.currentAppId$ as BehaviorSubject<string | undefined>).next('stackAlerts');
+      (mockApplication.currentLocation$ as BehaviorSubject<string>).next('#/rules');
+      await flushAsync();
+
+      expect(resolver).toHaveBeenCalledWith('#/rules');
+      expect(manager.getProjectPickerAccess$().value).toBe(ProjectRoutingAccess.READONLY);
+    });
+
+    it('setup-phase resolvers override defaults but defaults still apply for other apps', async () => {
+      const overrideResolver = jest.fn().mockReturnValue(ProjectRoutingAccess.READONLY);
+      const manager = new CPSManager({
+        http: mockHttp,
+        logger: mockLogger,
+        application: mockApplication,
+        appAccessResolvers: new Map([['discover', overrideResolver]]),
+      });
+
+      // The override applies for 'discover'
+      (mockApplication.currentAppId$ as BehaviorSubject<string | undefined>).next('discover');
+      await flushAsync();
+      expect(overrideResolver).toHaveBeenCalled();
+      expect(manager.getProjectPickerAccess$().value).toBe(ProjectRoutingAccess.READONLY);
+
+      // The default still applies for 'maps'
+      (mockApplication.currentAppId$ as BehaviorSubject<string | undefined>).next('maps');
+      await flushAsync();
+      expect(manager.getProjectPickerAccess$().value).toBe(ProjectRoutingAccess.EDITABLE);
+    });
+
+    it('later registration overrides earlier one for the same app', async () => {
+      cpsManager.registerAppAccess('discover', () => ProjectRoutingAccess.DISABLED);
+
+      (mockApplication.currentAppId$ as BehaviorSubject<string | undefined>).next('discover');
+      await flushAsync();
+      expect(cpsManager.getProjectPickerAccess$().value).toBe(ProjectRoutingAccess.DISABLED);
+
+      cpsManager.registerAppAccess('discover', () => ProjectRoutingAccess.EDITABLE);
+      await flushAsync();
+      expect(cpsManager.getProjectPickerAccess$().value).toBe(ProjectRoutingAccess.EDITABLE);
     });
   });
 });

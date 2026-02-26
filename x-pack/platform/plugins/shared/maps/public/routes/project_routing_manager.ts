@@ -23,7 +23,7 @@ export function initializeProjectRoutingManager({
 }) {
   const cpsManager = getCps()?.cpsManager;
 
-  if (!cpsManager || cpsManager.getProjectPickerAccess() === 'disabled') {
+  if (!cpsManager) {
     return;
   }
 

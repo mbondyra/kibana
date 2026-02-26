@@ -22,6 +22,13 @@ export enum ProjectRoutingAccess {
   EDITABLE = 'editable',
 }
 
+/**
+ * Function that determines the project picker access level for a given location.
+ * Apps register one of these via `registerAppAccess` to control picker behavior
+ * based on runtime conditions (feature flags, config values, route patterns, etc.).
+ */
+export type CPSAppAccessResolver = (location: string) => ProjectRoutingAccess;
+
 export interface CPSProject {
   _id: string;
   _alias: string;
@@ -50,5 +57,5 @@ export interface ICPSManager {
   getProjectRouting(overrideValue?: ProjectRouting): ProjectRouting | undefined;
   getDefaultProjectRouting(): ProjectRouting;
   getProjectPickerAccess$(): Observable<ProjectRoutingAccess>;
-  getProjectPickerAccess(): ProjectRoutingAccess;
+  registerAppAccess(appId: string, resolver: CPSAppAccessResolver): void;
 }

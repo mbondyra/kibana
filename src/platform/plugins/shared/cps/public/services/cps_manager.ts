@@ -10,8 +10,9 @@
 import type { ApplicationStart, HttpSetup } from '@kbn/core/public';
 import type { Logger } from '@kbn/logging';
 import type { ProjectRouting } from '@kbn/es-query';
-import { BehaviorSubject, combineLatest, switchMap } from 'rxjs';
+import { BehaviorSubject, combineLatest, map } from 'rxjs';
 import {
+  type CPSAppAccessResolver,
   type ICPSManager,
   type ProjectsData,
   PROJECT_ROUTING,
@@ -37,6 +38,9 @@ export class CPSManager implements ICPSManager {
   private readonly logger: Logger;
   private readonly application: ApplicationStart;
   private projectFetcherPromise: Promise<ProjectFetcher> | null = null;
+  private readonly appAccessResolvers: Map<string, CPSAppAccessResolver>;
+  private currentAppId: string = '';
+  private currentLocation: string = '';
   private readonly projectRouting$ = new BehaviorSubject<ProjectRouting | undefined>(
     DEFAULT_PROJECT_ROUTING
   );
@@ -44,27 +48,46 @@ export class CPSManager implements ICPSManager {
     ProjectRoutingAccess.EDITABLE
   );
 
-  constructor(deps: { http: HttpSetup; logger: Logger; application: ApplicationStart }) {
+  constructor(deps: {
+    http: HttpSetup;
+    logger: Logger;
+    application: ApplicationStart;
+    appAccessResolvers?: Map<string, CPSAppAccessResolver>;
+  }) {
     this.http = deps.http;
     this.logger = deps.logger.get('cps_manager');
     this.application = deps.application;
-
+    this.appAccessResolvers = new Map([...DEFAULT_APP_ACCESS, ...(deps.appAccessResolvers ?? [])]);
     combineLatest([this.application.currentAppId$, this.application.currentLocation$])
       .pipe(
-        switchMap(async ([appId, location]) => {
-          return (await import('./async_services')).getProjectRoutingAccess(
-            appId ?? '',
-            location ?? ''
-          );
+        map(([appId, location]) => {
+          this.currentAppId = appId ?? '';
+          this.currentLocation = location ?? '';
+          return this.resolveAccess(this.currentAppId, this.currentLocation);
         })
       )
       .subscribe((access) => {
-        this.projectPickerAccess$.next(access);
-        // Reset project routing to default when access is disabled
-        if (access === ProjectRoutingAccess.DISABLED) {
-          this.projectRouting$.next(DEFAULT_PROJECT_ROUTING);
-        }
+        this.applyAccess(access);
       });
+  }
+
+  public registerAppAccess(appId: string, resolver: CPSAppAccessResolver): void {
+    this.appAccessResolvers.set(appId, resolver);
+    if (appId === this.currentAppId) {
+      this.applyAccess(this.resolveAccess(this.currentAppId, this.currentLocation));
+    }
+  }
+
+  private applyAccess(access: ProjectRoutingAccess): void {
+    this.projectPickerAccess$.next(access);
+    if (access === ProjectRoutingAccess.DISABLED) {
+      this.projectRouting$.next(DEFAULT_PROJECT_ROUTING);
+    }
+  }
+
+  private resolveAccess(appId: string, location: string): ProjectRoutingAccess {
+    const resolver = this.appAccessResolvers.get(appId);
+    return resolver?.(location) ?? ProjectRoutingAccess.DISABLED;
   }
 
   /**
@@ -109,13 +132,6 @@ export class CPSManager implements ICPSManager {
   }
 
   /**
-   * Get the current project picker access value
-   */
-  public getProjectPickerAccess() {
-    return this.projectPickerAccess$.value;
-  }
-
-  /**
    * Fetches projects from the server with caching and retry logic.
    * Returns cached data if already loaded. If a fetch is already in progress, returns the existing promise.
    * @returns Promise resolving to ProjectsData
@@ -143,3 +159,21 @@ export class CPSManager implements ICPSManager {
     return this.projectFetcherPromise;
   }
 }
+
+
+/**
+ * Default access resolvers for known apps.
+ * Apps that need dynamic runtime conditions (e.g. feature flags, config values)
+ * should call `registerAppAccess` themselves -- that will override these defaults.
+ */
+const DEFAULT_APP_ACCESS: ReadonlyMap<string, CPSAppAccessResolver> = new Map([
+  ['discover', () => ProjectRoutingAccess.EDITABLE],
+  ['dashboards', (location: string) =>
+    location.includes('list') ? ProjectRoutingAccess.DISABLED : ProjectRoutingAccess.EDITABLE],
+  ['visualize', (location: string) =>
+    location.includes('type:vega') ? ProjectRoutingAccess.EDITABLE : ProjectRoutingAccess.DISABLED],
+  ['lens', () => ProjectRoutingAccess.EDITABLE],
+  ['maps', () => ProjectRoutingAccess.EDITABLE],
+  ['securitySolutionUI', (location: string) =>
+    /dashboards\//.test(location) ? ProjectRoutingAccess.EDITABLE : ProjectRoutingAccess.DISABLED],
+]);
