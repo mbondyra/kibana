@@ -283,8 +283,8 @@ export class Plugin implements IPlugin<PluginSetup, PluginStart, SetupPlugins, S
       });
     }
 
-    plugins.cps?.cpsManager?.registerAppAccess('securitySolutionUI', (location: string) =>
-      /dashboards\//.test(location) ? ProjectRoutingAccess.EDITABLE : ProjectRoutingAccess.DISABLED
+    plugins.cps?.cpsManager?.registerAppAccess(APP_UI_ID, (location: string) =>
+      /security\/dashboards\//.test(location) ? ProjectRoutingAccess.EDITABLE : ProjectRoutingAccess.DISABLED
     );
 
     return this.contract.getStartContract(core);
