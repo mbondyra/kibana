@@ -5,10 +5,14 @@
  * 2.0.
  */
 
-import React, { useCallback, useMemo, useState } from 'react';
-import { EuiButton, EuiFlexGroup, EuiFlexItem, useEuiTheme } from '@elastic/eui';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEuiTheme } from '@elastic/eui';
 import { css } from '@emotion/react';
-import type { AttachmentRenderProps } from '@kbn/agent-builder-browser/attachments';
+import type {
+  ActionButton,
+  AttachmentRenderProps,
+} from '@kbn/agent-builder-browser/attachments';
+import { ActionButtonType } from '@kbn/agent-builder-browser/attachments';
 import type { DashboardAttachmentData, AttachmentPanel } from '@kbn/dashboard-agent-common';
 import { isGenericAttachmentPanel, isLensAttachmentPanel } from '@kbn/dashboard-agent-common';
 import type { DashboardAttachment } from '@kbn/dashboard-agent-common/types';
@@ -299,9 +303,6 @@ const getDashboardCanvasContentStyles = ({
       display: 'none !important',
     },
   }),
-  actions: css({
-    padding: euiTheme.size.m,
-  }),
   renderer: css({
     flex: 1,
     minHeight: 0,
@@ -309,13 +310,17 @@ const getDashboardCanvasContentStyles = ({
   }),
 });
 
-export const DashboardCanvasContent = ({
+interface DashboardCanvasContentProps extends AttachmentRenderProps<DashboardAttachment> {
+  registerActionButtons?: (buttons: ActionButton[]) => void;
+}
+
+export const DashboardCanvasContent: React.FC<DashboardCanvasContentProps> = ({
   attachment,
-}: AttachmentRenderProps<DashboardAttachment>) => {
+  registerActionButtons,
+}) => {
   const { euiTheme } = useEuiTheme();
   const data = attachment.data;
   const [dashboardApi, setDashboardApi] = useState<DashboardApi | undefined>();
-  const [isSaveInProgress, setIsSaveInProgress] = useState(false);
   const styles = useMemo(() => getDashboardCanvasContentStyles({ euiTheme }), [euiTheme]);
 
   const initialDashboardInput = useMemo(() => createDashboardRendererInitialInput(data), [data]);
@@ -329,40 +334,26 @@ export const DashboardCanvasContent = ({
     [data.savedObjectId, initialDashboardInput]
   );
 
-  const handleSave = useCallback(async () => {
-    if (!dashboardApi || isSaveInProgress) {
+  useEffect(() => {
+    if (!registerActionButtons || !dashboardApi) {
       return;
     }
 
-    setIsSaveInProgress(true);
-    try {
-      await saveDashboardFromApi(dashboardApi);
-    } finally {
-      setIsSaveInProgress(false);
-    }
-  }, [dashboardApi, isSaveInProgress]);
+    registerActionButtons([
+      {
+        label: i18n.translate(
+          'xpack.dashboardAgent.attachments.dashboard.canvasSaveActionLabel',
+          { defaultMessage: 'Save dashboard' }
+        ),
+        icon: 'save',
+        type: ActionButtonType.PRIMARY,
+        handler: () => saveDashboardFromApi(dashboardApi),
+      },
+    ]);
+  }, [dashboardApi, registerActionButtons]);
 
   return (
     <div css={styles.root}>
-      <div css={styles.actions}>
-        <EuiFlexGroup justifyContent="flexEnd" gutterSize="s" responsive={false}>
-          <EuiFlexItem grow={false}>
-            <EuiButton
-              fill
-              size="s"
-              iconType="save"
-              onClick={handleSave}
-              isLoading={isSaveInProgress}
-              disabled={!dashboardApi || isSaveInProgress}
-              data-test-subj="dashboardCanvasSaveButton"
-            >
-              {i18n.translate('xpack.dashboardAgent.attachments.dashboard.canvasSaveActionLabel', {
-                defaultMessage: 'Save dashboard',
-              })}
-            </EuiButton>
-          </EuiFlexItem>
-        </EuiFlexGroup>
-      </div>
       <div css={styles.renderer}>
         <DashboardRenderer
           getCreationOptions={getCreationOptions}

@@ -5,9 +5,10 @@
  * 2.0.
  */
 
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { EuiFlyout, EuiFlyoutBody, useEuiTheme } from '@elastic/eui';
 import { css } from '@emotion/react';
+import type { ActionButton } from '@kbn/agent-builder-browser/attachments';
 import { i18n } from '@kbn/i18n';
 import type { AttachmentsService } from '../../../../../../services/attachments/attachements_service';
 import { AttachmentHeader } from './attachment_header';
@@ -34,23 +35,29 @@ export const CanvasFlyout: React.FC<CanvasFlyoutProps> = ({ attachmentsService }
     // TODO: Implement updateOrigin
   }, []);
 
+  const [dynamicButtons, setDynamicButtons] = useState<ActionButton[]>([]);
+
+  const registerActionButtons = useCallback((buttons: ActionButton[]) => {
+    setDynamicButtons(buttons);
+  }, []);
+
   const uiDefinition = canvasState
     ? attachmentsService.getAttachmentUiDefinition(canvasState.attachment.type)
     : null;
 
   const canvasHeaderActionButtons = useMemo(() => {
-    if (!canvasState || !uiDefinition?.getActionButtons) {
-      return [];
+    if (!canvasState) {
+      return dynamicButtons;
     }
-    return (
-      uiDefinition.getActionButtons({
+    const staticButtons =
+      uiDefinition?.getActionButtons?.({
         attachment: canvasState.attachment,
         isSidebar: canvasState.isSidebar,
         updateOrigin,
         isCanvas: true,
-      }) ?? []
-    );
-  }, [canvasState, uiDefinition, updateOrigin]);
+      }) ?? [];
+    return [...staticButtons, ...dynamicButtons];
+  }, [canvasState, uiDefinition, updateOrigin, dynamicButtons]);
 
   if (!canvasState || !uiDefinition?.renderCanvasContent) {
     return null;
@@ -95,7 +102,7 @@ export const CanvasFlyout: React.FC<CanvasFlyoutProps> = ({ attachmentsService }
         showPreviewBadge
       />
       <EuiFlyoutBody css={flyoutBodyStyles}>
-        {uiDefinition.renderCanvasContent({ attachment, isSidebar })}
+        {uiDefinition.renderCanvasContent({ attachment, isSidebar }, registerActionButtons)}
       </EuiFlyoutBody>
     </EuiFlyout>
   );

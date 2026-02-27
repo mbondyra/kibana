@@ -13,16 +13,6 @@ import { DASHBOARD_ATTACHMENT_TYPE } from '@kbn/dashboard-agent-common';
 import type { DashboardAttachment } from '@kbn/dashboard-agent-common/types';
 import { DashboardCanvasContent } from './dashboard_canvas_content';
 
-// TODO: Remove this once we have a real action for the canvas - required to show the canvas header
-const canvasNoopAction = {
-  label: i18n.translate('xpack.dashboardAgent.attachments.dashboard.canvasNoopActionLabel', {
-    defaultMessage: 'Placeholder',
-  }),
-  icon: 'eye',
-  type: ActionButtonType.PRIMARY,
-  handler: () => undefined,
-} as const;
-
 export const registerDashboardAttachmentUiDefinition = ({
   attachments,
 }: {
@@ -38,10 +28,10 @@ export const registerDashboardAttachmentUiDefinition = ({
       );
     },
     getIcon: () => 'productDashboard',
-    renderCanvasContent: (props) => <DashboardCanvasContent {...props} />,
+    renderCanvasContent: (props, registerActionButtons) => <DashboardCanvasContent {...props} registerActionButtons={registerActionButtons} />,
     getActionButtons: ({ isCanvas, openCanvas }) => {
       if (isCanvas) {
-        return [canvasNoopAction];
+        return [];
       }
 
       if (!openCanvas) {
