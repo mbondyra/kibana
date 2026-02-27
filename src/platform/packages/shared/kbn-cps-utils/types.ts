@@ -53,9 +53,9 @@ export interface ICPSManager {
   whenReady(): Promise<void>;
   fetchProjects(projectRouting?: ProjectRouting): Promise<ProjectsData | null>;
   getTotalProjectCount(): number;
-  getProjectRouting$(): Observable<ProjectRouting | undefined>;
-  setProjectRouting(projectRouting: ProjectRouting | undefined): void;
-  getProjectRouting(overrideValue?: ProjectRouting): ProjectRouting | undefined;
+  getProjectRouting$(): Observable<ProjectRouting>;
+  setProjectRouting(projectRouting: ProjectRouting): void;
+  getProjectRouting(overrideValue?: ProjectRouting): ProjectRouting;
   getDefaultProjectRouting(): ProjectRouting;
   getProjectPickerAccess$(): Observable<ProjectRoutingAccess>;
   updateDefaultProjectRouting(projectRouting: ProjectRouting): void;

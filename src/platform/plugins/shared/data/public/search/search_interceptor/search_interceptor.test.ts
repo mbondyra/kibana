@@ -2241,9 +2241,7 @@ describe('SearchInterceptor', () => {
   });
 
   describe('project_routing parameter handling', () => {
-    const createMockCPSManager = (
-      projectRouting: string | undefined,
-    ): ICPSManager =>
+    const createMockCPSManager = (projectRouting: string | undefined): ICPSManager =>
       ({
         getProjectRouting: jest
           .fn()

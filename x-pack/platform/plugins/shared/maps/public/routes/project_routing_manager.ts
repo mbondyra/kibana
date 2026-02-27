@@ -7,6 +7,7 @@
 
 import type { ProjectRouting } from '@kbn/es-query';
 import { distinctUntilChanged } from 'rxjs';
+import { ProjectRoutingAccess } from '@kbn/cps-utils';
 import { getCps } from '../kibana_services';
 
 /**
@@ -26,6 +27,8 @@ export function initializeProjectRoutingManager({
   if (!cpsManager) {
     return;
   }
+
+  cpsManager.registerAppAccess('maps', () => ProjectRoutingAccess.EDITABLE);
 
   const initialProjectRouting = cpsManager.getProjectRouting();
 

@@ -53,7 +53,6 @@ describe('ProjectPickerContainer', () => {
       getProjectRouting: jest.fn(() => undefined),
       getProjectRouting$: jest.fn(() => mockProjectRouting$),
       setProjectRouting: jest.fn(),
-      getProjectPickerAccess: jest.fn(() => mockProjectPickerAccess$.getValue()),
       getProjectPickerAccess$: jest.fn(() => mockProjectPickerAccess$),
       getDefaultProjectRouting: jest.fn(() => PROJECT_ROUTING.ALL),
       getTotalProjectCount: jest.fn(() => 2),

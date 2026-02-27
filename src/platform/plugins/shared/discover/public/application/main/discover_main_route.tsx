@@ -17,6 +17,7 @@ import type { AppMountParameters } from '@kbn/core/public';
 import { useExecutionContext } from '@kbn/kibana-react-plugin/public';
 import useLatest from 'react-use/lib/useLatest';
 import { i18n } from '@kbn/i18n';
+import { ProjectRoutingAccess } from '@kbn/cps-utils';
 import { useDiscoverServices } from '../../hooks/use_discover_services';
 import type { CustomizationCallback, DiscoverCustomizationContext } from '../../customizations';
 import {
@@ -108,6 +109,10 @@ const DiscoverMainRouteContent = (props: SingleTabViewProps) => {
   const tabsEnabled =
     !services.embeddableEditor.isByValueEditor() &&
     customizationContext.displayMode === 'standalone';
+
+  useEffect(() => {
+    services.cps?.cpsManager?.registerAppAccess('discover', () => ProjectRoutingAccess.EDITABLE);
+  }, [services.cps?.cpsManager]);
 
   const { initializeProfileDataViews } = useDefaultAdHocDataViews();
   const [mainRouteInitializationState, initializeMainRoute] = useAsyncFunction<InitializeMainRoute>(

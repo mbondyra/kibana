@@ -13,6 +13,7 @@ import { ProjectRoutingAccess } from '@kbn/cps-utils';
 import type { CPSProject, ProjectTagsResponse } from '@kbn/cps-utils';
 import { loggingSystemMock } from '@kbn/core/server/mocks';
 import { BehaviorSubject } from 'rxjs';
+import { PROJECT_TAGS_ROUTE } from './project_fetcher';
 
 const DEFAULT_NPRE_VALUE = '_alias:*';
 
@@ -94,7 +95,7 @@ describe('CPSManager', () => {
       await cpsManager.whenReady();
 
       // Constructor's fetchTotalProjectCount fetches all projects
-      expect(mockHttp.post).toHaveBeenCalledWith('/internal/cps/projects_tags', {
+      expect(mockHttp.post).toHaveBeenCalledWith(PROJECT_TAGS_ROUTE, {
         body: JSON.stringify({ project_routing: '_alias:*' }),
       });
 
@@ -102,7 +103,7 @@ describe('CPSManager', () => {
       const result = await cpsManager.fetchProjects('_alias:_origin');
 
       // http.get returns undefined → defaultProjectRouting = undefined → getProjectRouting() = undefined
-      expect(mockHttp.post).toHaveBeenCalledWith('/internal/cps/projects_tags', {
+      expect(mockHttp.post).toHaveBeenCalledWith(PROJECT_TAGS_ROUTE, {
         body: JSON.stringify({ project_routing: '_alias:_origin' }),
       });
       expect(result).toEqual({
@@ -193,7 +194,7 @@ describe('CPSManager', () => {
   describe('getProjectRouting with different access levels', () => {
     const flushAsync = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-    beforeEach(() => {
+    beforeEach(async () => {
       // Use a resolved NPRE value so defaultProjectRouting is populated for READONLY assertions
       mockHttp.get = jest.fn().mockResolvedValue(DEFAULT_NPRE_VALUE);
       cpsManager = new CPSManager({
@@ -201,6 +202,8 @@ describe('CPSManager', () => {
         logger: mockLogger,
         application: mockApplication,
       });
+      await cpsManager.whenReady();
+      await changeAccess(ProjectRoutingAccess.EDITABLE);
     });
 
     const changeAccess = async (access: ProjectRoutingAccess) => {
@@ -210,27 +213,19 @@ describe('CPSManager', () => {
     };
 
     it('returns undefined when access is DISABLED', async () => {
-      await cpsManager.whenReady();
       await changeAccess(ProjectRoutingAccess.DISABLED);
-
       expect(cpsManager.getProjectRouting()).toBeUndefined();
     });
 
     it('returns default project routing when access is READONLY', async () => {
-      await cpsManager.whenReady();
-      await changeAccess(ProjectRoutingAccess.READONLY);
-
       expect(cpsManager.getProjectRouting()).toBe(DEFAULT_NPRE_VALUE);
     });
 
     it('returns current value when access is EDITABLE', async () => {
-      await cpsManager.whenReady();
-      await changeAccess(ProjectRoutingAccess.EDITABLE);
-
       expect(cpsManager.getProjectRouting()).toBe(DEFAULT_NPRE_VALUE);
     });
 
-    it('returns the override value when provided', () => {
+    it('returns the override value when provided', async () => {
       expect(cpsManager.getProjectRouting('_alias:*')).toBe('_alias:*');
       expect(cpsManager.getProjectRouting('_alias:_origin')).toBe('_alias:_origin');
     });
@@ -241,8 +236,6 @@ describe('CPSManager', () => {
     });
 
     it('resets to undefined when access changes from EDITABLE to DISABLED', async () => {
-      await cpsManager.whenReady();
-      await changeAccess(ProjectRoutingAccess.EDITABLE);
       cpsManager.setProjectRouting('_alias:_origin');
 
       await changeAccess(ProjectRoutingAccess.DISABLED);
@@ -250,8 +243,6 @@ describe('CPSManager', () => {
     });
 
     it('resets to default when access changes from EDITABLE to READONLY', async () => {
-      await cpsManager.whenReady();
-      await changeAccess(ProjectRoutingAccess.EDITABLE);
       cpsManager.setProjectRouting('_alias:_origin');
 
       await changeAccess(ProjectRoutingAccess.READONLY);
@@ -259,8 +250,6 @@ describe('CPSManager', () => {
     });
 
     it('restores last editable routing when access returns to EDITABLE', async () => {
-      await cpsManager.whenReady();
-      await changeAccess(ProjectRoutingAccess.EDITABLE);
       cpsManager.setProjectRouting('_alias:_origin');
 
       await changeAccess(ProjectRoutingAccess.DISABLED);

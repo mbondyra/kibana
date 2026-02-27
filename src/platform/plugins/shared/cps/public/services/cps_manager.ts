@@ -10,7 +10,7 @@
 import type { ApplicationStart, HttpSetup } from '@kbn/core/public';
 import type { Logger } from '@kbn/logging';
 import type { ProjectRouting } from '@kbn/es-query';
-import { BehaviorSubject, combineLatest, map } from 'rxjs';
+import { BehaviorSubject, combineLatest, distinctUntilChanged, map } from 'rxjs';
 import {
   type CPSAppAccessResolver,
   type ICPSManager,
@@ -61,7 +61,7 @@ export class CPSManager implements ICPSManager {
       this.fetchTotalProjectCount(),
     ]).then(() => {});
 
-    this.appAccessResolvers = new Map([...DEFAULT_APP_ACCESS, ...(deps.appAccessResolvers ?? [])]);
+    this.appAccessResolvers = deps.appAccessResolvers ?? new Map();
     combineLatest([this.application.currentAppId$, this.application.currentLocation$])
       .pipe(
         map(([appId, location]) => {
@@ -70,6 +70,7 @@ export class CPSManager implements ICPSManager {
           return this.resolveAccess(this.currentAppId, this.currentLocation);
         })
       )
+      .pipe(distinctUntilChanged())
       .subscribe((access) => {
         this.applyAccess(access);
       });
@@ -230,31 +231,3 @@ export class CPSManager implements ICPSManager {
     return this.projectFetcherPromise;
   }
 }
-
-/**
- * Default access resolvers for known apps.
- * Apps that need dynamic runtime conditions (e.g. feature flags, config values)
- * should call `registerAppAccess` themselves -- that will override these defaults.
- */
-const DEFAULT_APP_ACCESS: ReadonlyMap<string, CPSAppAccessResolver> = new Map([
-  ['discover', () => ProjectRoutingAccess.EDITABLE],
-  [
-    'dashboards',
-    (location: string) =>
-      location.includes('list') ? ProjectRoutingAccess.DISABLED : ProjectRoutingAccess.EDITABLE,
-  ],
-  [
-    'visualize',
-    (location: string) =>
-      location.includes('type:vega')
-        ? ProjectRoutingAccess.EDITABLE
-        : ProjectRoutingAccess.DISABLED,
-  ],
-  ['lens', () => ProjectRoutingAccess.EDITABLE],
-  ['maps', () => ProjectRoutingAccess.EDITABLE],
-  [
-    'securitySolutionUI',
-    (location: string) =>
-      /dashboards\//.test(location) ? ProjectRoutingAccess.EDITABLE : ProjectRoutingAccess.DISABLED,
-  ],
-]);

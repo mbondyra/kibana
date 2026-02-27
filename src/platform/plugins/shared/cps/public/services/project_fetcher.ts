@@ -15,6 +15,8 @@ import type { ProjectRouting } from '@kbn/es-query';
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 1000;
 
+export const PROJECT_TAGS_ROUTE = '/internal/cps/projects_tags';
+
 export interface ProjectFetcher {
   fetchProjects: (projectRouting?: ProjectRouting) => Promise<ProjectsData | null>;
   invalidateCache: (projectRouting?: ProjectRouting) => void;
@@ -37,7 +39,7 @@ export function createProjectFetcher(http: HttpSetup, logger: Logger): ProjectFe
     let lastError: Error = new Error('');
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       try {
-        const response = await http.post<ProjectTagsResponse>('/internal/cps/projects_tags', {
+        const response = await http.post<ProjectTagsResponse>(PROJECT_TAGS_ROUTE, {
           body: JSON.stringify(projectRouting ? { project_routing: projectRouting } : {}),
         });
         const originValues = response.origin ? Object.values(response.origin) : [];
