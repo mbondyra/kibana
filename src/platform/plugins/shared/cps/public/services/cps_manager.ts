@@ -35,7 +35,7 @@ export class CPSManager implements ICPSManager {
   private readonly application: ApplicationStart;
   private projectFetcherPromise: Promise<ProjectFetcher> | null = null;
   private defaultProjectRouting: ProjectRouting = PROJECT_ROUTING.ALL;
-  private totalProjectCount: number = 0;
+  private allProjects: ProjectsData | null = null;
   private readonly readyPromise: Promise<void>;
   private readonly appAccessResolvers: Map<string, CPSAppAccessResolver>;
   private currentAppId: string = '';
@@ -59,7 +59,7 @@ export class CPSManager implements ICPSManager {
     this.application = deps.application;
     this.readyPromise = Promise.all([
       this.initializeDefaultProjectRouting(),
-      this.fetchTotalProjectCount(),
+      this.fetchAllProjects(),
     ]).then(() => {});
 
     this.appAccessResolvers = deps.appAccessResolvers ?? new Map();
@@ -98,7 +98,6 @@ export class CPSManager implements ICPSManager {
       // init the current project routing to the space name
 
       const projectRouting = await this.fetchNpreOrDefault(projectRoutingName);
-      this.projectRouting$.next(projectRouting);
       this.updateDefaultProjectRouting(projectRouting);
     } catch (error) {
       this.logger.warn('Failed to fetch default project routing for space', error);
@@ -135,22 +134,22 @@ export class CPSManager implements ICPSManager {
 
     this.lastEditableProjectRouting = this.defaultProjectRouting;
 
-    // If access is disabled, `projectRouting$` must remain undefined.
     if (this.projectPickerAccess$.value === ProjectRoutingAccess.DISABLED) {
       return;
     }
 
-    this.projectRouting$.next(this.defaultProjectRouting);
+    if (this.projectRouting$.value !== this.defaultProjectRouting) {
+      this.projectRouting$.next(this.defaultProjectRouting);
+    }
   }
 
   /**
-   * Fetches total project count
+   * Fetches all projects
    */
-  private async fetchTotalProjectCount(): Promise<void> {
+  private async fetchAllProjects(): Promise<void> {
     try {
       const projectsData = await this.fetchProjects(PROJECT_ROUTING.ALL);
-      this.totalProjectCount =
-        (projectsData?.origin ? 1 : 0) + (projectsData?.linkedProjects.length ?? 0);
+      this.allProjects = projectsData;
     } catch (error) {
       this.logger.warn('Failed to fetch total project count', error);
     }
@@ -160,7 +159,9 @@ export class CPSManager implements ICPSManager {
    * Returns the total number of projects (origin + linked) across all project routings.
    */
   public getTotalProjectCount(): number {
-    return this.totalProjectCount;
+    return this.allProjects
+      ? (this.allProjects?.origin ? 1 : 0) + (this.allProjects?.linkedProjects.length ?? 0)
+      : 0;
   }
 
   /**
@@ -178,14 +179,21 @@ export class CPSManager implements ICPSManager {
   }
 
   private applyAccess(access: ProjectRoutingAccess): void {
-    this.projectPickerAccess$.next(access);
-    // Reset project routing to default when access is disabled or readonly, to prevent showing stale or unauthorized project context
+    if (this.projectPickerAccess$.value !== access) {
+      this.projectPickerAccess$.next(access);
+    }
+
+    let nextRouting: ProjectRouting | undefined;
     if (access === ProjectRoutingAccess.READONLY) {
-      this.projectRouting$.next(this.defaultProjectRouting);
+      nextRouting = this.defaultProjectRouting;
     } else if (access === ProjectRoutingAccess.DISABLED) {
-      this.projectRouting$.next(undefined);
+      nextRouting = undefined;
     } else if (access === ProjectRoutingAccess.EDITABLE) {
-      this.projectRouting$.next(this.lastEditableProjectRouting ?? this.defaultProjectRouting);
+      nextRouting = this.lastEditableProjectRouting ?? this.defaultProjectRouting;
+    }
+
+    if (nextRouting !== this.projectRouting$.value) {
+      this.projectRouting$.next(nextRouting);
     }
   }
 
@@ -201,7 +209,9 @@ export class CPSManager implements ICPSManager {
     if (this.projectPickerAccess$.value === ProjectRoutingAccess.EDITABLE) {
       this.lastEditableProjectRouting = projectRouting;
     }
-    this.projectRouting$.next(projectRouting);
+    if (this.projectRouting$.value !== projectRouting) {
+      this.projectRouting$.next(projectRouting);
+    }
   }
   /**
    * Get the current project routing value
@@ -231,7 +241,7 @@ export class CPSManager implements ICPSManager {
    */
   public async fetchProjects(projectRouting?: ProjectRouting): Promise<ProjectsData | null> {
     return (await this.getProjectFetcher()).fetchProjects(
-      projectRouting ?? this.getProjectRouting()
+      projectRouting ?? this.getProjectRouting() ?? PROJECT_ROUTING.ALL
     );
   }
 

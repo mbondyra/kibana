@@ -97,12 +97,7 @@ describe('CPSManager', () => {
       });
       jest.clearAllMocks();
       const result = await cpsManager.fetchProjects();
-
-      // getProjectRouting() returns undefined here because initializeDefaultProjectRouting
-      // fetches the NPRE value (http.get returns undefined), so defaultProjectRouting = undefined
-      expect(mockHttp.post).toHaveBeenCalledWith('/internal/cps/projects_tags', {
-        body: JSON.stringify({}),
-      });
+      expect(mockHttp.post).not.toHaveBeenCalled();
       expect(result).toEqual({
         origin: mockOriginProject,
         linkedProjects: [mockLinkedProjects[1], mockLinkedProjects[0]],
