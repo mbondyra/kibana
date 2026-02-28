@@ -18,8 +18,6 @@ import {
   ProjectRoutingAccess,
   PROJECT_ROUTING,
 } from '@kbn/cps-utils';
-import { getSpaceIdFromPath } from '@kbn/spaces-utils';
-import { getSpaceDefaultNpreName } from '@kbn/cps-common';
 import type { ProjectFetcher } from './project_fetcher';
 
 /**
@@ -90,14 +88,8 @@ export class CPSManager implements ICPSManager {
    */
   private async initializeDefaultProjectRouting() {
     try {
-      const basePath = this.http.basePath.get();
-      const { spaceId } = getSpaceIdFromPath(basePath, this.http.basePath.serverBasePath);
-
-      const projectRoutingName = getSpaceDefaultNpreName(spaceId);
-
-      // init the current project routing to the space name
-
-      const projectRouting = await this.fetchNpreOrDefault(projectRoutingName);
+      const { fetchDefaultProjectRouting } = await import('./async_services');
+      const projectRouting = await fetchDefaultProjectRouting(this.http);
       this.updateDefaultProjectRouting(projectRouting);
     } catch (error) {
       this.logger.warn('Failed to fetch default project routing for space', error);
@@ -110,23 +102,6 @@ export class CPSManager implements ICPSManager {
    */
   public getDefaultProjectRouting(): ProjectRouting {
     return this.defaultProjectRouting;
-  }
-
-  /**
-   * Fetch a named project routing expression value from the CPS plugin.
-   *
-   * Returns {@link PROJECT_ROUTING.ALL} when the expression doesn't exist (404).
-   */
-  private async fetchNpreOrDefault(projectRoutingName: string): Promise<string> {
-    try {
-      return await this.http.get<string>(`/internal/cps/project_routing/${projectRoutingName}`);
-    } catch (error) {
-      if (error?.response?.status === 404) {
-        return PROJECT_ROUTING.ALL;
-      }
-
-      throw error;
-    }
   }
 
   public updateDefaultProjectRouting(projectRouting: string) {
