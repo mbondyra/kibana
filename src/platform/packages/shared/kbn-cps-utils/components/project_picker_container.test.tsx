@@ -57,7 +57,7 @@ describe('ProjectPickerContainer', () => {
       getDefaultProjectRouting: jest.fn(() => PROJECT_ROUTING.ALL),
       getTotalProjectCount: jest.fn(() => 2),
       updateDefaultProjectRouting: jest.fn(),
-      registerAppAccess: jest.fn((appId: string) => {}),
+      registerAppAccess: jest.fn(),
       ...props.cpsManager,
     };
     return await act(async () => {

@@ -15,9 +15,11 @@ import {
   type CPSAppAccessResolver,
   type ICPSManager,
   type ProjectsData,
-  PROJECT_ROUTING,
   ProjectRoutingAccess,
+  PROJECT_ROUTING,
 } from '@kbn/cps-utils';
+import { getSpaceIdFromPath } from '@kbn/spaces-utils';
+import { getSpaceDefaultNpreName } from '@kbn/cps-common';
 import type { ProjectFetcher } from './project_fetcher';
 
 /**
@@ -25,7 +27,7 @@ import type { ProjectFetcher } from './project_fetcher';
  *
  * - Fetches project data from ES via `/internal/cps/projects_tags` endpoint (with caching and retry logic)
  * - Manages current project routing state using observables
- * - projectRouting$ represents temporary UI state; apps should reset to their saved value on navigation
+ * - projectRouting$ represents temporary UI state; apps should reset to their saved value or spaces project routing on navigation
  */
 export class CPSManager implements ICPSManager {
   private readonly http: HttpSetup;
@@ -44,7 +46,6 @@ export class CPSManager implements ICPSManager {
   private readonly projectPickerAccess$ = new BehaviorSubject<ProjectRoutingAccess>(
     ProjectRoutingAccess.EDITABLE
   );
-
   private lastEditableProjectRouting: ProjectRouting | undefined = undefined;
 
   constructor(deps: {
@@ -75,22 +76,26 @@ export class CPSManager implements ICPSManager {
         this.applyAccess(access);
       });
   }
+
   /**
    * Resolves once the default project routing and total count of projects has been fetched
    */
   public whenReady(): Promise<void> {
     return this.readyPromise;
   }
+
   /**
    * Initialize the default project routing from the active space.
    * Fetches the default project routing for the current space from the CPS plugin.
    */
   private async initializeDefaultProjectRouting() {
     try {
-      // const basePath = this.http.basePath.get();
-      // const { spaceId } = getSpaceIdFromPath(basePath, this.http.basePath.serverBasePath);
-      // const projectRoutingName = `kibana_space_${spaceId}_default`;
-      const projectRoutingName = '_alias:*';
+      const basePath = this.http.basePath.get();
+      const { spaceId } = getSpaceIdFromPath(basePath, this.http.basePath.serverBasePath);
+
+      const projectRoutingName = getSpaceDefaultNpreName(spaceId);
+
+      // init the current project routing to the space name
 
       const projectRouting = await this.fetchNpreOrDefault(projectRoutingName);
       this.projectRouting$.next(projectRouting);
@@ -113,10 +118,9 @@ export class CPSManager implements ICPSManager {
    *
    * Returns {@link PROJECT_ROUTING.ALL} when the expression doesn't exist (404).
    */
-  private async fetchNpreOrDefault(projectRoutingName: string): Promise<ProjectRouting> {
+  private async fetchNpreOrDefault(projectRoutingName: string): Promise<string> {
     try {
-      return await Promise.resolve(projectRoutingName);
-      // return await this.http.get<string>(`/internal/cps/project_routing/${projectRoutingName}`);
+      return await this.http.get<string>(`/internal/cps/project_routing/${projectRoutingName}`);
     } catch (error) {
       if (error?.response?.status === 404) {
         return PROJECT_ROUTING.ALL;
@@ -126,8 +130,17 @@ export class CPSManager implements ICPSManager {
     }
   }
 
-  public updateDefaultProjectRouting(projectRouting: ProjectRouting) {
+  public updateDefaultProjectRouting(projectRouting: string) {
     this.defaultProjectRouting = projectRouting;
+
+    this.lastEditableProjectRouting = this.defaultProjectRouting;
+
+    // If access is disabled, `projectRouting$` must remain undefined.
+    if (this.projectPickerAccess$.value === ProjectRoutingAccess.DISABLED) {
+      return;
+    }
+
+    this.projectRouting$.next(this.defaultProjectRouting);
   }
 
   /**

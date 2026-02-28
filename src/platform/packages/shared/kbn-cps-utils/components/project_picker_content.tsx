@@ -23,16 +23,15 @@ import { i18n } from '@kbn/i18n';
 import { FormattedMessage } from '@kbn/i18n-react';
 import { css } from '@emotion/react';
 import type { ProjectRouting } from '@kbn/es-query';
-import type { ProjectsData } from '../types';
+import { PROJECT_ROUTING } from '@kbn/cps-common';
 import { ProjectListItem } from './project_list_item';
 import { strings } from './strings';
-import { useFetchProjects } from './use_fetch_projects';
-import { PROJECT_ROUTING } from '../constants';
+import type { UseFetchProjectsResult } from './use_fetch_projects';
 
 export interface ProjectPickerContentProps {
-  projectRouting: ProjectRouting;
+  projectRouting?: ProjectRouting;
   onProjectRoutingChange: (projectRouting: ProjectRouting) => void;
-  fetchProjects: (routing?: ProjectRouting) => Promise<ProjectsData | null>;
+  projects: UseFetchProjectsResult;
   isReadonly?: boolean;
 }
 
@@ -52,14 +51,11 @@ const projectPickerOptions = [
 export const ProjectPickerContent = ({
   projectRouting,
   onProjectRoutingChange,
-  fetchProjects,
+  projects,
   isReadonly = false,
 }: ProjectPickerContentProps) => {
   const styles = useMemoCss(projectPickerContentStyles);
-  const { originProject, linkedProjects, isLoading, error } = useFetchProjects(
-    fetchProjects,
-    projectRouting
-  );
+  const { originProject, linkedProjects, isLoading, error } = projects;
 
   if (isLoading) {
     return (
