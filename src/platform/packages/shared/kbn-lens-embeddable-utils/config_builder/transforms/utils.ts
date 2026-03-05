@@ -162,6 +162,11 @@ export function buildDatasetStateESQL(layer: TextBasedLayer): DatasetTypeESQL {
   return {
     type: 'esql',
     query: layer.query?.esql ?? '',
+    // Only persist time_field when it's explicitly different from the default,
+    // so that round-trip conversions remain stable.
+    ...(layer.timeField && layer.timeField !== LENS_DEFAULT_TIME_FIELD
+      ? { time_field: layer.timeField }
+      : {}),
   };
 }
 
@@ -259,11 +264,15 @@ export function getDatasetIndex(dataset: DatasetType) {
         index: dataset.index,
         timeFieldName,
       };
-    case 'esql':
+    case 'esql': {
+      const resolvedTimeField =
+        getTimeFieldFromESQLQuery(dataset.query)  ?? dataset.time_field ?? LENS_DEFAULT_TIME_FIELD;
       return {
         index: getIndexPatternFromESQLQuery(dataset.query),
-        timeFieldName: getTimeFieldFromESQLQuery(dataset.query),
+        // Priority: explicit time_field > field extracted from ?_tstart/?_tend in query > default
+        timeFieldName: resolvedTimeField,
       };
+    }
     case 'dataView':
       return {
         index: dataset.id,
@@ -320,7 +329,9 @@ function buildDatasourceStatesLayer(
     return {
       index: datasetIndex.index,
       query: { esql: ds.query },
-      timeField: getTimeFieldFromESQLQuery(ds.query) || undefined,
+      // timeFieldName is pre-resolved in getDatasetIndex with proper fallback priority:
+      // explicit time_field > field from ?_tstart/?_tend in query > LENS_DEFAULT_TIME_FIELD
+      timeField: datasetIndex.timeFieldName,
       columns,
     };
   }

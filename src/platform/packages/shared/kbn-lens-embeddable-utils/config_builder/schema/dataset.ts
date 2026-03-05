@@ -124,6 +124,19 @@ export const datasetEsqlTableTypeSchema = schema.oneOf([
             'The ESQL query string to use as the data source. Example: "FROM my-index | LIMIT 100".',
         },
       }),
+      /**
+       * The name of the time field in the index. Used for time-based filtering when the query
+       * does not explicitly reference ?_tstart / ?_tend. Defaults to "@timestamp".
+       * Example: 'event.ingested'
+       */
+      time_field: schema.maybe(
+        schema.string({
+          meta: {
+            description:
+              'The name of the time field used for time-based filtering. Defaults to "@timestamp". Example: "event.ingested".',
+          },
+        })
+      ),
     },
     { meta: { id: 'esqlDataset', title: 'ES|QL Dataset' } }
   ),
