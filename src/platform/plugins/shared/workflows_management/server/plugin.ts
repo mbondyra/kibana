@@ -174,7 +174,7 @@ export class WorkflowsPlugin
     if (!this.api) {
       throw new Error('Workflows management API not initialized');
     }
-    const api = this.api;
+
     const resolveMatchingWorkflowSubscriptionsFn = (
       params: ResolveMatchingWorkflowSubscriptionsParams
     ) => resolveMatchingWorkflowSubscriptions(params, { api, logger: this.logger });
