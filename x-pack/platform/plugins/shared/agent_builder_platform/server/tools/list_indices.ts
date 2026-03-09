@@ -35,12 +35,7 @@ e.g. if the user provided one. Otherwise, do not try to invent or guess a patter
     schema: listIndicesSchema,
     handler: async ({ pattern }, { esClient, logger }) => {
       logger.debug(`list indices tool called with pattern: ${pattern}`);
-      const {
-        indices,
-        data_streams: dataStreams,
-        aliases,
-        warnings,
-      } = await listSearchSources({
+      let { indices, data_streams: dataStreams, aliases, warnings } = await listSearchSources({
         pattern,
         includeHidden: false,
         includeKibanaIndices: false,
@@ -48,6 +43,25 @@ e.g. if the user provided one. Otherwise, do not try to invent or guess a patter
         excludeIndicesRepresentedAsDatastream: true,
         esClient: esClient.asCurrentUser,
       });
+
+      if (
+        pattern !== '*' &&
+        indices.length === 0 &&
+        dataStreams.length === 0 &&
+        aliases.length === 0
+      ) {
+        logger.debug(
+          `list indices pattern "${pattern}" returned no results, falling back to '*'`
+        );
+        ({ indices, data_streams: dataStreams, aliases, warnings } = await listSearchSources({
+          pattern: '*',
+          includeHidden: false,
+          includeKibanaIndices: false,
+          excludeIndicesRepresentedAsAlias: false,
+          excludeIndicesRepresentedAsDatastream: true,
+          esClient: esClient.asCurrentUser,
+        }));
+      }
 
       return {
         results: [

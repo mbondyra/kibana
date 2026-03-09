@@ -151,13 +151,29 @@ export const indexExplorer = async ({
 }): Promise<IndexExplorerResponse> => {
   logger?.trace(() => `index_explorer - query="${nlQuery}", pattern="${indexPattern}"`);
 
-  const sources = await listSearchSources({
+  let sources = await listSearchSources({
     pattern: indexPattern,
     excludeIndicesRepresentedAsDatastream: true,
     excludeIndicesRepresentedAsAlias: false,
     esClient,
     includeKibanaIndices: indexPattern !== '*',
   });
+
+    if (
+    indexPattern !== '*' &&
+    sources.indices.length + sources.aliases.length + sources.data_streams.length === 0
+  ) {
+    logger?.trace(
+      () => `index_explorer - pattern="${indexPattern}" returned no results, falling back to '*'`
+    );
+    sources = await listSearchSources({
+      pattern: '*',
+      excludeIndicesRepresentedAsDatastream: true,
+      excludeIndicesRepresentedAsAlias: false,
+      esClient,
+      includeKibanaIndices: false,
+    });
+  }
 
   const indexCount = sources.indices.length;
   const aliasCount = sources.aliases.length;
