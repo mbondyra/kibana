@@ -10,7 +10,7 @@ import type { EsqlPrompts } from '@kbn/inference-plugin/server/tasks/nl_to_esql/
 import type { ResolvedResourceWithSampling } from '../utils/resources';
 import { formatResourceWithSampledValues } from '../utils/resources';
 import type { Action } from './actions';
-import { formatAction } from './actions';
+import { isRequestDocumentationAction, formatAction } from './actions';
 import { getEsqlInstructions } from './prompts/instructions_template';
 
 const getInstructionsWithRowLimit = (rowLimit?: number): string => {
@@ -81,6 +81,19 @@ export const createGenerateEsqlPrompt = ({
   additionalContext?: string;
   rowLimit?: number;
 }): BaseMessageLike[] => {
+  const hasRequestedDocumentation = previousActions.some(isRequestDocumentationAction);
+
+  const documentationSection = hasRequestedDocumentation
+    ? `## Documentation
+
+Refer to the ES|QL documentation returned by the request_documentation tool call in the conversation.
+Use ONLY the commands and functions described there.`
+    : `## Documentation
+
+${prompts.syntax}
+
+${prompts.examples}`;
+
   return [
     [
       'system',
@@ -93,11 +106,7 @@ Your current task is to respond to the user's question by providing a valid ES|Q
 
 Please use the information accessible from your past actions when relevant.
 
-## Documentation
-
-${prompts.syntax}
-
-${prompts.examples}
+${documentationSection}
 
 ${getInstructionsWithRowLimit(rowLimit)}
 
