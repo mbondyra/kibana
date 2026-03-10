@@ -756,7 +756,31 @@ export const xyStateSchema = schema.object(
   { meta: { id: 'xyChart', title: 'XY Chart', description: 'Complete XY chart configuration' } }
 );
 
+export const xyStateSchemaESQL = schema.object(
+  {
+    type: schema.literal('xy'),
+    ...sharedPanelInfoSchema,
+    ...xySharedSettings,
+    layers: schema.arrayOf(
+      schema.oneOf([xyDataLayerSchemaESQL, referenceLineLayerSchemaESQL]),
+      {
+        minSize: 1,
+        maxSize: 100,
+        meta: { description: 'Chart layers (minimum 1 required)' },
+      }
+    ),
+  },
+  {
+    meta: {
+      id: 'xyChartESQL',
+      title: 'XY Chart (ES|QL)',
+      description: 'Complete XY chart configuration',
+    },
+  }
+);
+
 export type XYState = TypeOf<typeof xyStateSchema>;
+export type XYStateESQL = TypeOf<typeof xyStateSchemaESQL>;
 export type DataLayerTypeESQL = TypeOf<typeof xyDataLayerSchemaESQL>;
 export type DataLayerTypeNoESQL = TypeOf<typeof xyDataLayerSchemaNoESQL>;
 export type DataLayerType = DataLayerTypeNoESQL | DataLayerTypeESQL;
