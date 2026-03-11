@@ -48,6 +48,7 @@ export class DashboardAgentPlugin
         dashboardLocator: plugins.share.url.locators.get(DASHBOARD_APP_LOCATOR),
         unifiedSearch: plugins.unifiedSearch,
         dashboardPlugin: plugins.dashboard,
+        agentBuilder: plugins.agentBuilder,
       });
     });
 
