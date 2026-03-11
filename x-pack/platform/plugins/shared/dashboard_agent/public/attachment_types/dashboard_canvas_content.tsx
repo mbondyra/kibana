@@ -23,41 +23,19 @@ import type { UseEuiTheme } from '@elastic/eui';
 import { DashboardRenderer } from '@kbn/dashboard-plugin/public';
 import { useMemoCss } from '@kbn/css-utils/public/use_memo_css';
 import type { DashboardAttachment } from '@kbn/dashboard-agent-common/types';
-import { normalizeDashboardWidgets } from './panel_grid_layout';
+import { DEFAULT_TIME_RANGE, getStateFromAttachment } from './panel_grid_layout';
 import { useRegisterActionButtons } from './use_register_action_buttons';
 
-export interface DashboardCanvasInitialInput {
-  timeRange: {
-    from: string;
-    to: string;
-  };
-  viewMode: 'view';
-  panels: DashboardState['panels'];
-  title?: string;
-  description?: string;
-}
-
-const DEFAULT_TIME_RANGE = { from: 'now-24h', to: 'now' };
-
 const createDashboardRendererInitialInput = (
-  data: DashboardAttachmentData
-): DashboardCanvasInitialInput => ({
-  timeRange: DEFAULT_TIME_RANGE,
-  viewMode: 'view',
-  panels: normalizeDashboardWidgets({
-    panels: data.panels ?? [],
-    sections: data.sections,
-  }),
-  title: data.title,
-  description: data.description,
-});
+  attachment: DashboardAttachment
+): Pick<DashboardState, 'title' | 'description' | 'panels' | 'time_range'> => getStateFromAttachment(attachment);
 
 const getDashboardRendererCreationOptions = async ({
   savedObjectId,
   initialDashboardInput,
 }: {
   savedObjectId?: string;
-  initialDashboardInput: DashboardCanvasInitialInput;
+  initialDashboardInput: Pick<DashboardState, 'title' | 'description' | 'panels' | 'time_range'>;
 }): Promise<DashboardCreationOptions> => {
   if (savedObjectId) {
     return {
@@ -69,11 +47,7 @@ const getDashboardRendererCreationOptions = async ({
 
   return {
     getInitialInput: () => {
-      const { timeRange, ...restInitialDashboardInput } = initialDashboardInput;
-      return {
-        ...restInitialDashboardInput,
-        time_range: timeRange,
-      };
+      return {...initialDashboardInput, viewMode: 'view'};
     },
   };
 };
@@ -130,7 +104,6 @@ export const DashboardCanvasContent = ({
   const [dashboardApi, setDashboardApi] = useState<DashboardApi | undefined>();
   const styles = useMemoCss(dashboardCanvasContentStyles);
   const linkedSavedObjectId = attachment.origin?.savedObjectId;
-
   // useEffect(
   //   function checkLinkedSavedDashboardExists() {
   //     let canceled = false;
@@ -159,10 +132,10 @@ export const DashboardCanvasContent = ({
   //   },
   //   [linkedSavedObjectId, doesSavedDashboardExist]
   // );
-  const initialDashboardInput = useMemo(() => createDashboardRendererInitialInput(data), [data]);
+  const initialDashboardInput = useMemo(() => createDashboardRendererInitialInput(attachment), [attachment]);
 
   const [timeRange, setTimeRange] = useState<{ from: string; to: string }>(
-    initialDashboardInput.timeRange
+    initialDashboardInput.time_range ?? DEFAULT_TIME_RANGE
   );
 
   const getCreationOptions = useCallback(
