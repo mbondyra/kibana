@@ -8,6 +8,7 @@
 import React from 'react';
 import { i18n } from '@kbn/i18n';
 import { ActionButtonType } from '@kbn/agent-builder-browser/attachments';
+import type { CoreStart } from '@kbn/core/public';
 import { DASHBOARD_ATTACHMENT_TYPE } from '@kbn/dashboard-agent-common';
 import type { DashboardAttachment } from '@kbn/dashboard-agent-common/types';
 import type {
@@ -18,20 +19,23 @@ import type {
 import type { UnifiedSearchPublicPluginStart } from '@kbn/unified-search-plugin/public';
 import type { AgentBuilderPluginStart } from '@kbn/agent-builder-plugin/public';
 import { DashboardCanvasContent } from './dashboard_canvas_content';
-import { getStateFromAttachment } from './attachment_to_dashboard_state';
+import { runDashboardAppFlow } from './dashboard_app_flow';
 
 export const registerDashboardAttachmentUiDefinition = ({
-  agentBuilder: { attachments },
+  agentBuilder: { attachments }
+  core,
   dashboardLocator,
   unifiedSearch,
   dashboardPlugin,
 }: {
   agentBuilder: AgentBuilderPluginStart;
+  core: CoreStart;
   dashboardLocator?: DashboardRendererProps['locator'];
   unifiedSearch: UnifiedSearchPublicPluginStart;
   dashboardPlugin: DashboardStart;
-}): (() => void) => {
+}) => {
   let dashboardApi: DashboardApi | undefined;
+  let confirmedOverwriteForId: string | undefined;
   const dashboardAppApiSubscription = dashboardPlugin.dashboardAppClientApi$.subscribe((api) => {
     dashboardApi = api;
   });
@@ -78,9 +82,15 @@ export const registerDashboardAttachmentUiDefinition = ({
               openCanvas?.();
               return;
             }
-
-            dashboardApi.setViewMode('edit');
-            dashboardApi.setState(getStateFromAttachment(attachment));
+            runDashboardAppFlow({
+              core,
+              attachment,
+              dashboardApi,
+              confirmedOverwriteForIdState: [
+                confirmedOverwriteForId,
+                (id) => (confirmedOverwriteForId = id),
+              ],
+            });
           },
         },
       ];
