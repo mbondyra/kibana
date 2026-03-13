@@ -11,7 +11,6 @@ import { ATTACHMENT_REF_OPERATION } from '@kbn/agent-builder-common/attachments'
 import { isRoundCompleteEvent } from '@kbn/agent-builder-common/chat';
 import { i18n } from '@kbn/i18n';
 import { ActionButtonType } from '@kbn/agent-builder-browser/attachments';
-import type { CoreStart } from '@kbn/core/public';
 import { DASHBOARD_ATTACHMENT_TYPE } from '@kbn/dashboard-agent-common';
 import type { DashboardAttachment } from '@kbn/dashboard-agent-common/types';
 import type { AgentBuilderPluginStart } from '@kbn/agent-builder-plugin/public';
@@ -24,10 +23,9 @@ import type { UnifiedSearchPublicPluginStart } from '@kbn/unified-search-plugin/
 import type { AgentBuilderPluginStart } from '@kbn/agent-builder-plugin/public';
 import { DashboardCanvasContent } from './dashboard_canvas_content';
 import { getStateFromAttachment } from './attachment_to_dashboard_state';
-import { runDashboardAppFlow } from './dashboard_app_flow';
+import { handlePreviewInDashboard } from './dashboard_app_flow';
 
 export const registerDashboardAttachmentUiDefinition = ({
-  core,
   dashboardLocator,
   unifiedSearch,
   dashboardPlugin,
@@ -36,14 +34,12 @@ export const registerDashboardAttachmentUiDefinition = ({
     attachments,
   },
 }: {
-  core: CoreStart;
   dashboardLocator?: DashboardRendererProps['locator'];
   unifiedSearch: UnifiedSearchPublicPluginStart;
   dashboardPlugin: DashboardStart;
   agentBuilder: AgentBuilderPluginStart;
 }) => {
   let dashboardApi: DashboardApi | undefined;
-  let confirmedOverwriteForId: string | undefined;
   const dashboardAppApiSubscription = dashboardPlugin.dashboardAppClientApi$.subscribe((api) => {
     dashboardApi = api;
   });
@@ -67,8 +63,9 @@ export const registerDashboardAttachmentUiDefinition = ({
           attachment.type === DASHBOARD_ATTACHMENT_TYPE &&
           event.data.round.input.attachment_refs?.some(
             (ref) =>
-              ref.attachment_id === attachment.id &&
-              ref.operation === ATTACHMENT_REF_OPERATION.updated || ref.operation === ATTACHMENT_REF_OPERATION.created
+              (ref.attachment_id === attachment.id &&
+                ref.operation === ATTACHMENT_REF_OPERATION.updated) ||
+              ref.operation === ATTACHMENT_REF_OPERATION.created
           ) === true
       );
 
@@ -130,14 +127,10 @@ export const registerDashboardAttachmentUiDefinition = ({
               openCanvas?.();
               return;
             }
-            runDashboardAppFlow({
-              core,
+            handlePreviewInDashboard({
               attachment,
               dashboardApi,
-              confirmedOverwriteForIdState: [
-                confirmedOverwriteForId,
-                (id) => (confirmedOverwriteForId = id),
-              ],
+              doesSavedDashboardExist,
             });
           },
         },

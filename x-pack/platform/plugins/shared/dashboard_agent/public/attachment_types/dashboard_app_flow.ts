@@ -5,50 +5,44 @@
  * 2.0.
  */
 
-import type { CoreStart } from '@kbn/core/public';
 import type { DashboardAttachment } from '@kbn/dashboard-agent-common/types';
 import type { DashboardApi } from '@kbn/dashboard-plugin/public';
-import { openConfirmApplyDifferentDashboardModal } from './confirm_apply_different_dashboard_modal';
 import { getStateFromAttachment } from './attachment_to_dashboard_state';
 
-interface RunDashboardAppFlowParams {
+interface HandlePreviewInDashboardParams {
   attachment: DashboardAttachment;
-  core: CoreStart;
   dashboardApi: DashboardApi;
-  confirmedOverwriteForIdState: [string | undefined, (savedObjectId: string | undefined) => void];
+  doesSavedDashboardExist: (dashboardId: string) => Promise<boolean>;
 }
 
-export const runDashboardAppFlow = ({
+export const handlePreviewInDashboard = async ({
   attachment,
-  core,
   dashboardApi,
-  confirmedOverwriteForIdState,
-}: RunDashboardAppFlowParams) => {
-  const [confirmedOverwriteForId, setConfirmedOverwriteForId] = confirmedOverwriteForIdState;
+  doesSavedDashboardExist,
+}: HandlePreviewInDashboardParams) => {
   const dashboardState = getStateFromAttachment(attachment);
-  const savedObjectId = attachment.origin?.savedObjectId;
+  const attachmentLinkedSavedObjectId = attachment.origin?.savedObjectId;
   const currentSavedObjectId = dashboardApi.savedObjectId$.getValue();
-  const hasConfirmedForCurrentDashboard = confirmedOverwriteForId === currentSavedObjectId;
 
-  const applyAttachmentChanges = () => {
+  // a) Viewing saved dashboard + attachment linked to same dashboard -> apply state
+  if (currentSavedObjectId && attachmentLinkedSavedObjectId === currentSavedObjectId) {
     dashboardApi.setViewMode('edit');
-    (
-      dashboardApi as DashboardApi & {
-        setState: (state: typeof dashboardState) => void;
-      }
-    ).setState(dashboardState);
-  };
-
-  if (savedObjectId !== currentSavedObjectId && !hasConfirmedForCurrentDashboard) {
-    openConfirmApplyDifferentDashboardModal({
-      core,
-      onApply: () => {
-        setConfirmedOverwriteForId(currentSavedObjectId);
-        applyAttachmentChanges();
-      },
-    });
+    dashboardApi.setState(dashboardState);
     return;
   }
 
-  applyAttachmentChanges();
+  // b) Viewing saved dashboard + attachment not linked -> navigate to new unsaved dashboard
+  // c) Viewing saved dashboard + attachment linked to different dashboard -> navigate to linked dashboard
+  const dashboardId =
+    attachmentLinkedSavedObjectId && (await doesSavedDashboardExist(attachmentLinkedSavedObjectId))
+      ? attachmentLinkedSavedObjectId
+      : undefined;
+  dashboardApi.locator?.navigate({
+    title: dashboardState.title,
+    description: dashboardState.description,
+    panels: dashboardState.panels,
+    time_range: dashboardState.time_range,
+    dashboardId,
+    viewMode: 'edit',
+  });
 };
