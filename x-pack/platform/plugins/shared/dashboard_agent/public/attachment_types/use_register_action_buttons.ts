@@ -23,20 +23,24 @@ interface UseRegisterActionButtonsParams {
   dashboardApi: DashboardApi | undefined;
   registerActionButtons: (buttons: ActionButton[]) => void;
   updateOrigin: (origin: DashboardAttachmentOrigin) => Promise<unknown>;
+  closeCanvas: () => void;
   timeRange: { from: string; to: string };
   dashboardState: Pick<DashboardState, 'title' | 'description' | 'panels' | 'time_range'>;
   linkedSavedObjectId: string | undefined;
   doesSavedDashboardExist: (dashboardId: string) => Promise<boolean>;
+  isSidebar: boolean;
 }
 
 export const useRegisterActionButtons = ({
   dashboardApi,
   registerActionButtons,
   updateOrigin,
+  closeCanvas,
   timeRange,
   dashboardState,
   linkedSavedObjectId,
   doesSavedDashboardExist,
+  isSidebar,
 }: UseRegisterActionButtonsParams) => {
   const timeRangeRef = useLatest(timeRange);
   const linkedSavedObjectIdRef = useLatest(linkedSavedObjectId);
@@ -69,6 +73,9 @@ export const useRegisterActionButtons = ({
             time_range: timeRangeRef.current,
             viewMode: 'edit',
           });
+          if (isSidebar) {
+            closeCanvas();
+          }
         },
       });
     }
@@ -101,8 +108,10 @@ export const useRegisterActionButtons = ({
     registerActionButtons,
     updateOrigin,
     doesSavedDashboardExist,
+    closeCanvas,
     timeRangeRef,
     linkedSavedObjectIdRef,
     dashboardStateRef,
+    isSidebar,
   ]);
 };

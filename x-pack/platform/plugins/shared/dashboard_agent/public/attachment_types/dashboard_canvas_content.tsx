@@ -54,15 +54,19 @@ const dashboardCanvasContentStyles = {
 };
 
 export const DashboardCanvasContent = ({
+  isSidebar,
   attachment,
   registerActionButtons,
   updateOrigin,
+  closeCanvas,
   dashboardLocator,
   searchBarComponent: SearchBar,
   doesSavedDashboardExist,
 }: AttachmentRenderProps<DashboardAttachment> & {
+  isSidebar: boolean;
   registerActionButtons: (buttons: ActionButton[]) => void;
   updateOrigin: (origin: DashboardAttachmentOrigin) => Promise<unknown>;
+  closeCanvas: () => void;
   dashboardLocator?: DashboardRendererProps['locator'];
   searchBarComponent: UnifiedSearchPublicPluginStart['ui']['SearchBar'];
   doesSavedDashboardExist: (dashboardId: string) => Promise<boolean>;
@@ -121,10 +125,12 @@ export const DashboardCanvasContent = ({
     dashboardApi,
     registerActionButtons,
     updateOrigin,
+    closeCanvas,
     timeRange,
     dashboardState,
     linkedSavedObjectId,
     doesSavedDashboardExist,
+    isSidebar,
   });
 
   return (
