@@ -30,6 +30,7 @@ export const registerDashboardAttachmentUiDefinition = ({
     events: { chat$ },
     attachments,
     addAttachment,
+    openChat,
   },
 }: {
   dashboardLocator?: DashboardRendererProps['locator'];
@@ -75,6 +76,8 @@ export const registerDashboardAttachmentUiDefinition = ({
           {...props}
           registerActionButtons={callbacks.registerActionButtons}
           updateOrigin={callbacks.updateOrigin}
+          closeCanvas={callbacks.closeCanvas}
+          openChat={openChat}
           dashboardLocator={dashboardLocator}
           searchBarComponent={unifiedSearch.ui.SearchBar}
           checkSavedDashboardExist={checkSavedDashboardExist}

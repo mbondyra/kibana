@@ -11,6 +11,7 @@ import type { ActionButton } from '@kbn/agent-builder-browser/attachments';
 import type { DashboardAttachmentOrigin } from '@kbn/dashboard-agent-common';
 import type { DashboardState } from '@kbn/dashboard-plugin/common';
 import type { DashboardApi } from '@kbn/dashboard-plugin/public';
+import type { AgentBuilderPluginStart } from '@kbn/agent-builder-plugin/public';
 import { i18n } from '@kbn/i18n';
 import useLatest from 'react-use/lib/useLatest';
 
@@ -24,6 +25,7 @@ interface UseRegisterActionButtonsParams {
   registerActionButtons: (buttons: ActionButton[]) => void;
   updateOrigin: (origin: DashboardAttachmentOrigin) => Promise<unknown>;
   closeCanvas: () => void;
+  openChat: AgentBuilderPluginStart['openChat'];
   timeRange: { from: string; to: string };
   dashboardState: Pick<DashboardState, 'title' | 'description' | 'panels' | 'time_range'>;
   linkedSavedObjectId: string | undefined;
@@ -36,6 +38,7 @@ export const useRegisterActionButtons = ({
   registerActionButtons,
   updateOrigin,
   closeCanvas,
+  openChat,
   timeRange,
   dashboardState,
   linkedSavedObjectId,
@@ -75,6 +78,8 @@ export const useRegisterActionButtons = ({
           });
           if (isSidebar) {
             closeCanvas();
+          } else {
+            openChat();
           }
         },
       });
@@ -109,6 +114,7 @@ export const useRegisterActionButtons = ({
     updateOrigin,
     checkSavedDashboardExist,
     closeCanvas,
+    openChat,
     timeRangeRef,
     linkedSavedObjectIdRef,
     dashboardStateRef,
