@@ -35,7 +35,7 @@ export class DashboardAgentPlugin
   }
 
   public start(
-    _core: CoreStart,
+    core: CoreStart,
     plugins: DashboardAgentPluginPublicStartDependencies
   ): DashboardAgentPluginPublicStart {
     // TODO this causes async imports when plugin starts

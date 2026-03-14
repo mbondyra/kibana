@@ -12,13 +12,13 @@ import { getStateFromAttachment } from './attachment_to_dashboard_state';
 interface HandlePreviewInDashboardParams {
   attachment: DashboardAttachment;
   dashboardApi: DashboardApi;
-  doesSavedDashboardExist: (dashboardId: string) => Promise<boolean>;
+  checkSavedDashboardExist: (dashboardId: string) => Promise<boolean>;
 }
 
 export const handlePreviewInDashboard = async ({
   attachment,
   dashboardApi,
-  doesSavedDashboardExist,
+  checkSavedDashboardExist,
 }: HandlePreviewInDashboardParams) => {
   const dashboardState = getStateFromAttachment(attachment);
   const attachmentLinkedSavedObjectId = attachment.origin?.savedObjectId;
@@ -34,7 +34,7 @@ export const handlePreviewInDashboard = async ({
   // b) Viewing saved dashboard + attachment not linked -> navigate to new unsaved dashboard
   // c) Viewing saved dashboard + attachment linked to different dashboard -> navigate to linked dashboard
   const dashboardId =
-    attachmentLinkedSavedObjectId && (await doesSavedDashboardExist(attachmentLinkedSavedObjectId))
+    attachmentLinkedSavedObjectId && (await checkSavedDashboardExist(attachmentLinkedSavedObjectId))
       ? attachmentLinkedSavedObjectId
       : undefined;
   dashboardApi.locator?.navigate({
