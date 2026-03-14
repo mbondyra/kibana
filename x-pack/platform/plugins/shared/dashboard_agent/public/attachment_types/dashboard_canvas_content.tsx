@@ -60,6 +60,7 @@ export const DashboardCanvasContent = ({
   registerActionButtons,
   updateOrigin,
   closeCanvas,
+  conversationId,
   openChat,
   dashboardLocator,
   searchBarComponent: SearchBar,
@@ -69,6 +70,7 @@ export const DashboardCanvasContent = ({
   registerActionButtons: (buttons: ActionButton[]) => void;
   updateOrigin: (origin: DashboardAttachmentOrigin) => Promise<unknown>;
   closeCanvas: () => void;
+  conversationId: string | undefined;
   openChat: AgentBuilderPluginStart['openChat'];
   dashboardLocator?: DashboardRendererProps['locator'];
   searchBarComponent: UnifiedSearchPublicPluginStart['ui']['SearchBar'];
@@ -129,6 +131,7 @@ export const DashboardCanvasContent = ({
     registerActionButtons,
     updateOrigin,
     closeCanvas,
+    conversationId,
     openChat,
     timeRange,
     dashboardState,

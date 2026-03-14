@@ -22,6 +22,8 @@ interface InlineAttachmentWithActionsProps {
   isSidebar: boolean;
   conversationId: string;
   screenContext?: ScreenContextAttachmentData;
+  /** Version number of the attachment being rendered, used for canvas preview comparison */
+  version?: number;
 }
 
 /**
@@ -33,13 +35,14 @@ export const InlineAttachmentWithActions: React.FC<InlineAttachmentWithActionsPr
   isSidebar,
   conversationId,
   screenContext,
+  version,
 }) => {
   const { openCanvas: openCanvasContext, canvasState } = useCanvasContext();
   const { conversationActions } = useConversationContext();
 
   const openCanvas = useCallback(() => {
-    openCanvasContext(attachment, isSidebar);
-  }, [openCanvasContext, attachment, isSidebar]);
+    openCanvasContext(attachment, isSidebar, version);
+  }, [openCanvasContext, attachment, isSidebar, version]);
 
   const updateOrigin = useCallback(
     async (origin: unknown) => {
@@ -65,8 +68,15 @@ export const InlineAttachmentWithActions: React.FC<InlineAttachmentWithActionsPr
   );
 
   const isViewingAttachmentInCanvas = useMemo(() => {
-    return canvasState?.attachment.id === attachment.id;
-  }, [canvasState, attachment]);
+    if (canvasState?.attachment.id !== attachment.id) {
+      return false;
+    }
+    // If version is provided, compare versions; otherwise fall back to id-only comparison
+    if (version !== undefined && canvasState.version !== undefined) {
+      return canvasState.version === version;
+    }
+    return true;
+  }, [canvasState, attachment.id, version]);
 
   if (!uiDefinition) {
     return null;

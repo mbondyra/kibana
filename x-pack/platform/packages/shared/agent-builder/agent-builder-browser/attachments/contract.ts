@@ -41,6 +41,8 @@ export interface CanvasRenderCallbacks {
   updateOrigin: (origin: unknown) => Promise<UpdateOriginResponse | undefined>;
   /** Close the canvas (expanded flyout view) */
   closeCanvas: () => void;
+  /** The current conversation ID */
+  conversationId: string | undefined;
 }
 
 /**

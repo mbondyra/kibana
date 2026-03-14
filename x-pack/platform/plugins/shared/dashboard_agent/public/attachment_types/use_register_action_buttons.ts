@@ -25,6 +25,7 @@ interface UseRegisterActionButtonsParams {
   registerActionButtons: (buttons: ActionButton[]) => void;
   updateOrigin: (origin: DashboardAttachmentOrigin) => Promise<unknown>;
   closeCanvas: () => void;
+  conversationId: string | undefined;
   openChat: AgentBuilderPluginStart['openChat'];
   timeRange: { from: string; to: string };
   dashboardState: Pick<DashboardState, 'title' | 'description' | 'panels' | 'time_range'>;
@@ -38,6 +39,7 @@ export const useRegisterActionButtons = ({
   registerActionButtons,
   updateOrigin,
   closeCanvas,
+  conversationId,
   openChat,
   timeRange,
   dashboardState,
@@ -48,6 +50,7 @@ export const useRegisterActionButtons = ({
   const timeRangeRef = useLatest(timeRange);
   const linkedSavedObjectIdRef = useLatest(linkedSavedObjectId);
   const dashboardStateRef = useLatest(dashboardState);
+  const conversationIdRef = useLatest(conversationId);
 
   useEffect(() => {
     if (!dashboardApi) {
@@ -79,7 +82,7 @@ export const useRegisterActionButtons = ({
           if (isSidebar) {
             closeCanvas();
           } else {
-            openChat();
+            openChat({ conversationId: conversationIdRef.current });
           }
         },
       });
@@ -118,6 +121,7 @@ export const useRegisterActionButtons = ({
     timeRangeRef,
     linkedSavedObjectIdRef,
     dashboardStateRef,
+    conversationIdRef,
     isSidebar,
   ]);
 };

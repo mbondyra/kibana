@@ -77,6 +77,7 @@ export const registerDashboardAttachmentUiDefinition = ({
           registerActionButtons={callbacks.registerActionButtons}
           updateOrigin={callbacks.updateOrigin}
           closeCanvas={callbacks.closeCanvas}
+          conversationId={callbacks.conversationId}
           openChat={openChat}
           dashboardLocator={dashboardLocator}
           searchBarComponent={unifiedSearch.ui.SearchBar}
