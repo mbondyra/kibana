@@ -35,7 +35,7 @@ export class DashboardAgentPlugin
   }
 
   public start(
-    core: CoreStart,
+    _core: CoreStart,
     plugins: DashboardAgentPluginPublicStartDependencies
   ): DashboardAgentPluginPublicStart {
     // TODO this causes async imports when plugin starts
@@ -43,7 +43,6 @@ export class DashboardAgentPlugin
     // Please remove async import.
     import('./attachment_types').then(({ registerDashboardAttachmentUiDefinition }) => {
       this.cleanupAttachmentUi = registerDashboardAttachmentUiDefinition({
-        agentBuilder: {attachments: plugins.agentBuilder.attachments},
         core,
         dashboardLocator: plugins.share.url.locators.get(DASHBOARD_APP_LOCATOR),
         unifiedSearch: plugins.unifiedSearch,
