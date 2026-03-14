@@ -75,9 +75,7 @@ export const CanvasFlyout: React.FC<CanvasFlyoutProps> = ({ attachmentsService }
 
   // Auto-update canvas when following latest and a new version arrives
   useEffect(() => {
-    console.log('canvasState', canvasState);
-    debugger;
-    if (!canvasState || !conversation?.attachments) {
+    if (!canvasState?.followLatest || !conversation?.attachments) {
       return;
     }
 

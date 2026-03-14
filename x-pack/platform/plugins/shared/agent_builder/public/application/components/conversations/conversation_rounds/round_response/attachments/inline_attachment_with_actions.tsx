@@ -24,6 +24,8 @@ interface InlineAttachmentWithActionsProps {
   screenContext?: ScreenContextAttachmentData;
   /** Version number of the attachment being rendered, used for canvas preview comparison */
   version?: number;
+  /** Whether this is the latest version of the attachment */
+  isLatestVersion?: boolean;
 }
 
 /**
@@ -36,13 +38,15 @@ export const InlineAttachmentWithActions: React.FC<InlineAttachmentWithActionsPr
   conversationId,
   screenContext,
   version,
+  isLatestVersion,
 }) => {
   const { openCanvas: openCanvasContext, canvasState } = useCanvasContext();
   const { conversationActions } = useConversationContext();
 
   const openCanvas = useCallback(() => {
-    openCanvasContext(attachment, isSidebar, version);
-  }, [openCanvasContext, attachment, isSidebar, version]);
+    // If this is the latest version, don't pass version so followLatest will be true
+    openCanvasContext(attachment, isSidebar, isLatestVersion ? undefined : version);
+  }, [openCanvasContext, attachment, isSidebar, version, isLatestVersion]);
 
   const updateOrigin = useCallback(
     async (origin: unknown) => {

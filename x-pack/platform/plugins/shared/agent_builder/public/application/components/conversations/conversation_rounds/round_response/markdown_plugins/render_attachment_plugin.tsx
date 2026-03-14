@@ -133,6 +133,8 @@ export const createRenderAttachmentRenderer = ({
       return null;
     }
 
+    const isLatestVersion = versionToUse === attachment.current_version;
+
     return (
       <InlineAttachmentWithActions
         attachment={{
@@ -147,6 +149,7 @@ export const createRenderAttachmentRenderer = ({
         isSidebar={isSidebar}
         screenContext={screenContext}
         version={versionToUse}
+        isLatestVersion={isLatestVersion}
       />
     );
   };
