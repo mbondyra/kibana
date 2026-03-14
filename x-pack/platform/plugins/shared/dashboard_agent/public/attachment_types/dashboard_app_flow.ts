@@ -25,9 +25,9 @@ export const handlePreviewInDashboard = async ({
   const currentSavedObjectId = dashboardApi.savedObjectId$.getValue();
 
   // a) Viewing saved dashboard + attachment linked to same dashboard -> apply state
-  if (currentSavedObjectId && attachmentLinkedSavedObjectId === currentSavedObjectId) {
-    dashboardApi.setViewMode('edit');
+  if ((currentSavedObjectId && attachmentLinkedSavedObjectId === currentSavedObjectId) || (!currentSavedObjectId && !attachmentLinkedSavedObjectId)) {
     dashboardApi.setState(dashboardState);
+    dashboardApi.scrollToBottom();
     return;
   }
 
@@ -37,6 +37,12 @@ export const handlePreviewInDashboard = async ({
     attachmentLinkedSavedObjectId && (await checkSavedDashboardExist(attachmentLinkedSavedObjectId))
       ? attachmentLinkedSavedObjectId
       : undefined;
+if (!dashboardId && !currentSavedObjectId) {
+  dashboardApi.setState(dashboardState);
+  dashboardApi.scrollToBottom();
+  return;
+}
+  
   dashboardApi.locator?.navigate({
     title: dashboardState.title,
     description: dashboardState.description,
