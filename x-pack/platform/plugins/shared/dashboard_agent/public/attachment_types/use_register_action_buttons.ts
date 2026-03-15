@@ -68,20 +68,21 @@ export const useRegisterActionButtons = ({
         }),
         type: ActionButtonType.PRIMARY,
         handler: async () => {
+          console.log('useRegisterActionButtons', linkedSavedObjectIdRef.current);
           const existingDashboardId =
             linkedSavedObjectIdRef.current &&
             (await checkSavedDashboardExist(linkedSavedObjectIdRef.current))
               ? linkedSavedObjectIdRef.current
               : undefined;
+
           await locator.navigate({
             ...dashboardStateRef.current,
             dashboardId: existingDashboardId,
             time_range: timeRangeRef.current,
             viewMode: 'edit',
           });
-          if (isSidebar) {
-            closeCanvas();
-          } else {
+          closeCanvas();
+          if (!isSidebar) {
             openChat({ conversationId: conversationIdRef.current });
           }
         },

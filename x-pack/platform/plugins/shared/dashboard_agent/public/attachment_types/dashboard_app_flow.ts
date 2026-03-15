@@ -25,12 +25,14 @@ export const handlePreviewInDashboard = async ({
   const currentSavedObjectId = dashboardApi.savedObjectId$.getValue();
 
   // a) Viewing saved dashboard + attachment linked to same dashboard -> apply state
-  if ((currentSavedObjectId && attachmentLinkedSavedObjectId === currentSavedObjectId) || (!currentSavedObjectId && !attachmentLinkedSavedObjectId)) {
+  if (attachmentLinkedSavedObjectId === currentSavedObjectId) {
     dashboardApi.setState(dashboardState);
     dashboardApi.scrollToBottom();
     return;
   }
 
+  // todo: not to show 404 if we are on a different dashboard
+  // todo: not to fetch so much if we already know attachmentLinkedSavedObjectId doesn't exist
   // b) Viewing saved dashboard + attachment not linked -> navigate to new unsaved dashboard
   // c) Viewing saved dashboard + attachment linked to different dashboard -> navigate to linked dashboard
   const dashboardId =
