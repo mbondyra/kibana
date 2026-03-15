@@ -50,8 +50,8 @@ export const registerDashboardAttachmentUiDefinition = ({
   const findDashboardsServicePromise = dashboardPlugin.findDashboardsService();
   const checkSavedDashboardExist = async (dashboardId: string) => {
     const findDashboardsService = await findDashboardsServicePromise;
-    const { dashboards } = await findDashboardsService.search({ per_page: 1000 });
-    return dashboards.some((d) => d.id === dashboardId);
+    const result = await findDashboardsService.findById(dashboardId);
+    return result.status === 'success';
   };
 
   const registerAttachmentWithManager = (attachment: DashboardAttachment) => {
