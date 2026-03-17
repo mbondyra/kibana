@@ -101,6 +101,10 @@ See \`./examples/tool-result-format\` for the complete result structure with exa
 
 **After a successful call:**
 - Summarize what was created or updated. List each panel by title so the user knows what is included.
+- Emit \`<render_attachment id="..." version="..." />\` using:
+  - \`id = data.dashboardAttachment.id\`
+  - \`version = data.version\`
+- Always include both \`id\` and \`version\` when rendering the dashboard attachment.
 - If \`failures\` is present and non-empty, explain which attachments could not be resolved and include the error message. Offer to recreate those visualizations and retry adding them.
 - Remember the \`dashboardAttachment.id\` for follow-up updates. Do not ask the user for it again.
 - **Render the dashboard attachment inline** so the user can see and interact with the dashboard card. Do NOT render individual visualization attachments inline during dashboard composition — only the final dashboard attachment should be rendered.
