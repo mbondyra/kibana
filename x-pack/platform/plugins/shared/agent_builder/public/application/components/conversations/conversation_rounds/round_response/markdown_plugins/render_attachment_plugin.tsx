@@ -64,13 +64,13 @@ export const renderAttachmentTagParser = createTagParser({
   assignAttributes: (node, attributes) => {
     node.type = renderAttachmentElement.tagName;
     node.attachmentId = attributes.attachmentId;
-    node.attachmentVersion = attributes.version;
+    node.version = attributes.version;
     delete node.value;
   },
   createNode: (attributes, position) => ({
     type: renderAttachmentElement.tagName,
     attachmentId: attributes.attachmentId,
-    attachmentVersion: attributes.version,
+    version: attributes.version,
     position,
   }),
 });

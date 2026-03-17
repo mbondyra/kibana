@@ -6,7 +6,10 @@
  */
 
 import type { AttachmentVersionRef } from '@kbn/agent-builder-common/attachments';
-import { resolveAttachmentVersion } from './render_attachment_plugin';
+import {
+  createRenderAttachmentRenderer,
+  resolveAttachmentVersion,
+} from './render_attachment_plugin';
 
 describe('resolveAttachmentVersion', () => {
   const attachmentId = 'attachment-1';
@@ -134,5 +137,46 @@ describe('resolveAttachmentVersion', () => {
 
       expect(result).toBe(7);
     });
+  });
+});
+
+describe('createRenderAttachmentRenderer', () => {
+  it('uses version parsed by markdown plugin', () => {
+    const render = createRenderAttachmentRenderer({
+      attachmentsService: {} as never,
+      conversationAttachments: [
+        {
+          id: 'attachment-1',
+          type: 'test_type',
+          versions: [
+            {
+              version: 1,
+              data: { label: 'v1' },
+              created_at: '2026-03-17T00:00:00.000Z',
+              content_hash: 'hash-1',
+            },
+            {
+              version: 2,
+              data: { label: 'v2' },
+              created_at: '2026-03-17T00:01:00.000Z',
+              content_hash: 'hash-2',
+            },
+          ],
+          current_version: 2,
+        },
+      ],
+      attachmentRefs: undefined,
+      conversationId: 'conversation-1',
+      isSidebar: false,
+    });
+
+    const element = render({
+      attachmentId: 'attachment-1',
+      // Parser stores version under `version` on the node.
+      version: '1',
+    } as unknown as { attachmentId?: string; version?: string | number });
+
+    expect(element).not.toBeNull();
+    expect((element as any).props.version).toBe(1);
   });
 });
