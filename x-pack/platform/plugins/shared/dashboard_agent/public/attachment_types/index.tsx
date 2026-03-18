@@ -19,21 +19,38 @@ import type { UnifiedSearchPublicPluginStart } from '@kbn/unified-search-plugin/
 import type { AgentBuilderPluginStart } from '@kbn/agent-builder-plugin/public';
 import { DashboardCanvasContent } from './dashboard_canvas_content';
 import { getStateFromAttachment } from './attachment_to_dashboard_state';
+import { createDashboardUpdatesManager } from '../dashboard_updates_manager';
 
 export const registerDashboardAttachmentUiDefinition = ({
-  agentBuilder: { attachments },
   dashboardLocator,
   unifiedSearch,
   dashboardPlugin,
+  agentBuilder: {
+    events: { chat$ },
+    attachments,
+    addAttachment,
+    openChat,
+    setChatConfig,
+    clearChatConfig,
+  },
 }: {
-  agentBuilder: AgentBuilderPluginStart;
   dashboardLocator?: DashboardRendererProps['locator'];
   unifiedSearch: UnifiedSearchPublicPluginStart;
   dashboardPlugin: DashboardStart;
-}): (() => void) => {
+  agentBuilder: AgentBuilderPluginStart;
+}) => {
   let dashboardApi: DashboardApi | undefined;
+
+  const updatesManager = createDashboardUpdatesManager({
+    chat$,
+    addAttachment,
+    setChatConfig,
+    clearChatConfig,
+  });
+
   const dashboardAppApiSubscription = dashboardPlugin.dashboardAppClientApi$.subscribe((api) => {
     dashboardApi = api;
+    updatesManager.setDashboardApi(api);
   });
 
   const findDashboardsServicePromise = dashboardPlugin.findDashboardsService();
@@ -42,6 +59,12 @@ export const registerDashboardAttachmentUiDefinition = ({
     const result = await findDashboardsService.findById(dashboardId);
     return result.status === 'success';
   };
+
+  const registerAttachmentWithManager = (attachment: DashboardAttachment) => {
+    updatesManager.setCurrentAttachmentId(attachment.id);
+    updatesManager.setCurrentAttachmentOrigin(attachment.origin);
+  };
+
   attachments.addAttachmentType<DashboardAttachment>(DASHBOARD_ATTACHMENT_TYPE, {
     getLabel: (attachment) => {
       return (
@@ -63,6 +86,7 @@ export const registerDashboardAttachmentUiDefinition = ({
       />
     ),
     getActionButtons: ({ attachment, openCanvas, isCanvas }) => {
+      registerAttachmentWithManager(attachment);
       if (isCanvas) {
         return [];
       }
@@ -89,6 +113,7 @@ export const registerDashboardAttachmentUiDefinition = ({
 
   return () => {
     dashboardAppApiSubscription.unsubscribe();
+    updatesManager.stop();
     dashboardApi = undefined;
   };
 };
