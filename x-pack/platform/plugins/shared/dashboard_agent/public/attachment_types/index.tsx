@@ -18,7 +18,7 @@ import type {
 import type { UnifiedSearchPublicPluginStart } from '@kbn/unified-search-plugin/public';
 import type { AgentBuilderPluginStart } from '@kbn/agent-builder-plugin/public';
 import { DashboardCanvasContent } from './dashboard_canvas_content';
-import { getStateFromAttachment } from './attachment_to_dashboard_state';
+import { handlePreviewInDashboard } from './handle_preview_in_dashboard';
 
 export const registerDashboardAttachmentUiDefinition = ({
   agentBuilder: { attachments },
@@ -55,11 +55,10 @@ export const registerDashboardAttachmentUiDefinition = ({
     renderCanvasContent: (props, callbacks) => (
       <DashboardCanvasContent
         {...props}
-        registerActionButtons={callbacks.registerActionButtons}
-        updateOrigin={callbacks.updateOrigin}
+        {...callbacks}
+        checkSavedDashboardExist={checkSavedDashboardExist}
         dashboardLocator={dashboardLocator}
         searchBarComponent={unifiedSearch.ui.SearchBar}
-        checkSavedDashboardExist={checkSavedDashboardExist}
       />
     ),
     getActionButtons: ({ attachment, openCanvas, isCanvas }) => {
@@ -78,9 +77,11 @@ export const registerDashboardAttachmentUiDefinition = ({
               openCanvas?.();
               return;
             }
-
-            dashboardApi.setViewMode('edit');
-            dashboardApi.setState(getStateFromAttachment(attachment));
+            handlePreviewInDashboard({
+              attachment,
+              dashboardApi,
+              checkSavedDashboardExist,
+            });
           },
         },
       ];
