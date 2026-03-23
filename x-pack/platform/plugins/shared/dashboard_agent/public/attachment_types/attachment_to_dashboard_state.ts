@@ -13,9 +13,10 @@ import { isSection } from '@kbn/dashboard-agent-common';
 import { type DashboardState } from '@kbn/dashboard-plugin/common';
 import type { DashboardPanel, DashboardSection } from '@kbn/dashboard-plugin/server';
 import { LensConfigBuilder } from '@kbn/lens-embeddable-utils/config_builder';
-import { isLensAPIFormat } from '@kbn/lens-embeddable-utils/config_builder/utils';
+import { isLensAPIFormat, isLensLegacyAttributes } from '@kbn/lens-embeddable-utils/config_builder/utils';
 import { LENS_EMBEDDABLE_TYPE } from '@kbn/lens-plugin/public';
-import type { DashboardAttachment } from '@kbn/dashboard-agent-common/types';
+import { v4 as uuidv4 } from 'uuid';
+import type { DashboardAttachment, DashboardAttachmentData } from '@kbn/dashboard-agent-common/types';
 
 const lensConfigBuilder = new LensConfigBuilder();
 
@@ -85,3 +86,61 @@ export const getStateFromAttachment = ({
   description,
   panels: normalizeWidgets(panels),
 });
+
+/**
+ * Converts a DashboardPanel to an AttachmentPanel.
+ */
+const toAttachmentPanel = ({ type, uid, grid, config }: DashboardPanel): AttachmentPanel => {
+  let configObject = config;
+  if (type === LENS_EMBEDDABLE_TYPE) {
+    if ('attributes' in config && isLensLegacyAttributes(config.attributes)) {
+      configObject = {
+        ...config,
+        attributes: lensConfigBuilder.toAPIFormat(config.attributes),
+      };
+    }
+  }
+  const panelUid = uid ?? uuidv4(); // id generation should never happen
+  return {
+    type,
+    uid: panelUid,
+    grid,
+    config: configObject,
+  };
+};
+
+/**
+ * Converts a DashboardSection to an AgentDashboardSection.
+ */
+const toAttachmentSection = ({
+  uid,
+  title,
+  collapsed,
+  grid,
+  panels,
+}: DashboardSection): AgentDashboardSection => ({
+  uid: uid ?? uuidv4(),// id generation should never happen
+  title,
+  collapsed,
+  grid,
+  panels: panels.map(toAttachmentPanel),
+});
+
+/**
+ * Converts a DashboardState to DashboardAttachmentData.
+ * This is the reverse of getStateFromAttachment.
+ */
+export const toDashboardAttachmentData = (state: DashboardState): DashboardAttachmentData => ({
+  title: state.title,
+  description: state.description ?? '',
+  panels: state.panels.map((widget) =>
+    isDashboardSection(widget) ? toAttachmentSection(widget) : toAttachmentPanel(widget)
+  ),
+});
+
+export const isDashboardSection = (
+  widget: DashboardPanel | DashboardSection 
+): widget is DashboardSection => {
+  return 'panels' in widget;
+};
+
