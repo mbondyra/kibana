@@ -9,7 +9,11 @@ import type {
   AttachmentVersionRef,
   VersionedAttachment,
 } from '@kbn/agent-builder-common/attachments';
-import { renderAttachmentTagParser, resolveAttachmentVersion } from './render_attachment_plugin';
+import {
+  createRenderAttachmentRenderer,
+  renderAttachmentTagParser,
+  resolveAttachmentVersion,
+} from './render_attachment_plugin';
 import { renderAttachmentElement } from '@kbn/agent-builder-common/tools/custom_rendering';
 
 const createMockAttachment = (
@@ -179,5 +183,30 @@ describe('renderAttachmentTagParser', () => {
       attachmentId: 'dash-1',
       attachmentVersion: '2',
     });
+  });
+});
+
+describe('createRenderAttachmentRenderer', () => {
+  it('does not follow latest versions for explicitly pinned attachments', () => {
+    const attachment = createMockAttachment('attachment-1', [
+      { version: 1, created_at: '2024-01-01T10:00:00Z' },
+      { version: 2, created_at: '2024-01-02T10:00:00Z' },
+    ]);
+
+    const renderer = createRenderAttachmentRenderer({
+      attachmentsService: {} as any,
+      conversationAttachments: [attachment],
+      attachmentRefs: undefined,
+      conversationId: 'conversation-1',
+      isSidebar: false,
+    });
+
+    const result = renderer({
+      attachmentId: 'attachment-1',
+      version: 2,
+    } as any);
+
+    expect(result?.props.version).toBe(2);
+    expect(result?.props.isLatestVersion).toBe(false);
   });
 });

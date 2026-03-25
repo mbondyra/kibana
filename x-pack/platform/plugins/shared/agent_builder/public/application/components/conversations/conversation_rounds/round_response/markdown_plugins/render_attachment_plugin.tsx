@@ -157,6 +157,9 @@ export const createRenderAttachmentRenderer = ({
         isSidebar={isSidebar}
         screenContext={screenContext}
         version={versionToUse}
+        isLatestVersion={
+          explicitVersion === undefined && versionToUse === attachment.current_version
+        }
       />
     );
   };
