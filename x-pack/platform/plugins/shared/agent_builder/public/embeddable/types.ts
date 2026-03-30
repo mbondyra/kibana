@@ -71,6 +71,15 @@ export interface EmbeddableConversationProps {
   attachments?: AttachmentInput[];
 
   /**
+   * Optional contextual attachments that should only be staged when the sidebar is currently
+   * showing a new conversation. These are ignored when an existing conversation is restored.
+   *
+   * Unlike `attachments`, these also work when the sidebar is already open: they appear only
+   * if the active conversation is still new, and are withheld for existing conversations.
+   */
+  newConversationAttachments?: AttachmentInput[];
+
+  /**
    * Browser API tools that the agent can use to interact with the page.
    * Tools are executed browser-side when the LLM requests them.
    *

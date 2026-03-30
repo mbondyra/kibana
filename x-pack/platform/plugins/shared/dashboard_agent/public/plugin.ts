@@ -13,6 +13,7 @@ import type {
   DashboardAgentPluginPublicSetupDependencies,
   DashboardAgentPluginPublicStartDependencies,
 } from './types';
+import { syncDashboardChatConfig } from './dashboard_chat_config_sync';
 
 export class DashboardAgentPlugin
   implements
@@ -24,6 +25,7 @@ export class DashboardAgentPlugin
     >
 {
   private cleanupAttachmentUi?: () => void;
+  private cleanupChatConfigSync?: () => void;
 
   constructor(_initContext: PluginInitializerContext) {}
 
@@ -38,6 +40,11 @@ export class DashboardAgentPlugin
     _core: CoreStart,
     plugins: DashboardAgentPluginPublicStartDependencies
   ): DashboardAgentPluginPublicStart {
+    this.cleanupChatConfigSync = syncDashboardChatConfig({
+      agentBuilder: plugins.agentBuilder,
+      dashboardPlugin: plugins.dashboard,
+    });
+
     // TODO this causes async imports when plugin starts
     // Please avoid this practice as it hides plugin size but impacts kibana load performance
     // Please remove async import.
@@ -55,5 +62,6 @@ export class DashboardAgentPlugin
 
   public stop() {
     this.cleanupAttachmentUi?.();
+    this.cleanupChatConfigSync?.();
   }
 }

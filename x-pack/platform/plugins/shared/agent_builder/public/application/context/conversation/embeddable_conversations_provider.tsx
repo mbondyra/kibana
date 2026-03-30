@@ -22,6 +22,7 @@ import { useConversationActions } from './use_conversation_actions';
 import { usePersistedConversationId } from '../../hooks/use_persisted_conversation_id';
 import { AppLeaveContext } from '../app_leave_context';
 import { AgentBuilderTourProvider } from '../agent_builder_tour_context';
+import { resolveActiveAttachments } from './resolve_active_attachments';
 
 const noopOnAppLeave = () => {};
 interface EmbeddableConversationsProviderProps extends EmbeddableConversationInternalProps {
@@ -150,6 +151,16 @@ export const EmbeddableConversationsProvider: React.FC<EmbeddableConversationsPr
     onDeleteConversation,
   });
 
+  const activeAttachments = useMemo(
+    () =>
+      resolveActiveAttachments({
+        attachments: currentProps.attachments,
+        newConversationAttachments: currentProps.newConversationAttachments,
+        conversationId,
+      }),
+    [conversationId, currentProps.attachments, currentProps.newConversationAttachments]
+  );
+
   // Resets the {initialMessage} and {autoSendInitialMessage} flags after an initial message has been sent or set in the {ConversationInput} component
   const resetInitialMessage = useCallback(() => {
     setCurrentProps((prevProps) => ({
@@ -193,7 +204,7 @@ export const EmbeddableConversationsProvider: React.FC<EmbeddableConversationsPr
       resetInitialMessage,
       browserApiTools: currentProps.browserApiTools,
       setConversationId,
-      attachments: currentProps.attachments,
+      attachments: activeAttachments,
       upsertAttachments,
       resetAttachments,
       removeAttachment,
@@ -206,7 +217,7 @@ export const EmbeddableConversationsProvider: React.FC<EmbeddableConversationsPr
       currentProps.initialMessage,
       currentProps.autoSendInitialMessage,
       currentProps.browserApiTools,
-      currentProps.attachments,
+      activeAttachments,
       upsertAttachments,
       resetInitialMessage,
       setConversationId,
