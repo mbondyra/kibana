@@ -55,6 +55,36 @@ export const createVisualizationFailureResult = (
   },
 });
 
+const getExistingEsqlQueries = (config?: VisualizationConfig): string[] => {
+  if (!config) {
+    return [];
+  }
+
+  const queries: string[] = [];
+
+  if ('layers' in config && Array.isArray(config.layers)) {
+    for (const layer of config.layers) {
+      if (layer && 'dataset' in layer && layer.dataset) {
+        const dataset = layer.dataset as { type?: string; query?: string };
+        if (dataset.type === 'esql' && dataset.query && !queries.includes(dataset.query)) {
+          queries.push(dataset.query);
+        }
+      }
+    }
+
+    return queries;
+  }
+
+  if ('dataset' in config && config.dataset) {
+    const dataset = config.dataset as { type?: string; query?: string };
+    if (dataset.type === 'esql' && dataset.query) {
+      queries.push(dataset.query);
+    }
+  }
+
+  return queries;
+};
+
 /**
  * Builds inline Lens panel content from natural language.
  */
@@ -83,12 +113,18 @@ export const createVisualizationResolver = ({
         existingPanel?.type === 'lens'
           ? (fromEmbeddablePanel(existingPanel).config as VisualizationConfig)
           : undefined;
+      const existingEsqlQueries = getExistingEsqlQueries(existingConfig);
+      const resolvedEsql =
+        esql ??
+        (operationType === 'edit_visualization_panels' && existingEsqlQueries.length === 1
+          ? existingEsqlQueries[0]
+          : undefined);
 
       const result = await buildVisualizationConfig({
         nlQuery,
         index,
         chartType,
-        esql,
+        esql: resolvedEsql,
         existingConfig: existingConfig ? JSON.stringify(existingConfig) : undefined,
         parsedExistingConfig: existingConfig,
         includeTimeRange: false,

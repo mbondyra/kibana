@@ -95,15 +95,76 @@ describe('createVisualizationResolver', () => {
       existingPanel: {
         uid: 'panel-1',
         type: 'lens',
-        config: { attributes: { type: 'bar' } },
+        config: {
+          attributes: {
+            type: 'bar',
+            dataset: {
+              type: 'esql',
+              query: 'FROM logs-* | STATS count = COUNT(*)',
+            },
+          },
+        },
         grid: { w: 24, h: 12, x: 0, y: 0 },
       },
     });
 
     expect(mockedBuildVisualizationConfig).toHaveBeenCalledWith(
       expect.objectContaining({
-        existingConfig: JSON.stringify({ type: 'bar' }),
-        parsedExistingConfig: { type: 'bar' },
+        esql: 'FROM logs-* | STATS count = COUNT(*)',
+        existingConfig: JSON.stringify({
+          type: 'bar',
+          dataset: {
+            type: 'esql',
+            query: 'FROM logs-* | STATS count = COUNT(*)',
+          },
+        }),
+        parsedExistingConfig: {
+          type: 'bar',
+          dataset: {
+            type: 'esql',
+            query: 'FROM logs-* | STATS count = COUNT(*)',
+          },
+        },
+      })
+    );
+  });
+
+  it('prefers an explicit ES|QL query over the panel query when editing', async () => {
+    mockedBuildVisualizationConfig.mockResolvedValue(
+      createBuildVisualizationConfigResult({ type: 'line' })
+    );
+
+    const resolveVisualizationConfig = createVisualizationResolver({
+      logger,
+      modelProvider,
+      events,
+      esClient,
+    });
+
+    await resolveVisualizationConfig({
+      operationType: 'edit_visualization_panels',
+      identifier: 'panel-1',
+      nlQuery: 'turn this into a line chart',
+      esql: 'FROM metrics-* | STATS avg_cpu = AVG(cpu)',
+      existingPanel: {
+        uid: 'panel-1',
+        type: 'lens',
+        config: {
+          attributes: {
+            type: 'bar',
+            dataset: {
+              type: 'esql',
+              query: 'FROM logs-* | STATS count = COUNT(*)',
+            },
+          },
+        },
+        grid: { w: 24, h: 12, x: 0, y: 0 },
+      },
+    });
+
+    expect(mockedBuildVisualizationConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        esql: 'FROM metrics-* | STATS avg_cpu = AVG(cpu)',
       })
     );
   });
