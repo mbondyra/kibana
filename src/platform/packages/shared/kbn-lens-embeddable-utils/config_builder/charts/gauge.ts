@@ -7,6 +7,7 @@
  * License v3.0 only", or the "Server Side Public License, v 1".
  */
 
+import { resolveGaugeColoringState } from '@kbn/lens-common';
 import type { FormBasedPersistedState, GaugeVisualizationState } from '@kbn/lens-common';
 import type { DataView } from '@kbn/data-views-plugin/public';
 import type { BuildDependencies, LensAttributes, LensGaugeConfig } from '../types';
@@ -27,6 +28,7 @@ function getAccessorName(type: 'goal' | 'max' | 'min' | 'secondary') {
 
 function buildVisualizationState(config: LensGaugeConfig): GaugeVisualizationState {
   const layer = config;
+  const { colorMode, palette } = resolveGaugeColoringState({});
 
   return {
     layerId: DEFAULT_LAYER_ID,
@@ -35,6 +37,8 @@ function buildVisualizationState(config: LensGaugeConfig): GaugeVisualizationSta
     shape: layer.shape || 'horizontalBullet',
     labelMajorMode: 'auto',
     metricAccessor: ACCESSOR,
+    colorMode,
+    palette,
     ...(layer.queryGoalValue
       ? {
           goalAccessor: getAccessorName('goal'),

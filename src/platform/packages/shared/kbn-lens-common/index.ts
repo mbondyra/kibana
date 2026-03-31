@@ -197,6 +197,12 @@ export type {
   LensPagesizeAction,
 } from './visualizations/datatable/types';
 export type { GaugeAccessors, GaugeVisualizationState } from './visualizations/gauge/types';
+export {
+  DEFAULT_GAUGE_PALETTE,
+  DEFAULT_GAUGE_PALETTE_NAME,
+  defaultGaugePaletteParams,
+  resolveGaugeColoringState,
+} from './visualizations/gauge/coloring';
 export type { HeatmapPalette, HeatmapVisualizationState } from './visualizations/heatmap/types';
 export type {
   LegacyMetricState,

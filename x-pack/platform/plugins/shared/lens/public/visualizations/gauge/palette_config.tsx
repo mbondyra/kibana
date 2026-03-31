@@ -6,27 +6,17 @@
  */
 
 import type { RequiredPaletteParamTypes, CustomPaletteParams, PaletteOutput } from '@kbn/coloring';
+import {
+  DEFAULT_GAUGE_PALETTE,
+  DEFAULT_GAUGE_PALETTE_NAME,
+  defaultGaugePaletteParams,
+} from '@kbn/lens-common';
 
-import { defaultPaletteParams as sharedDefaultParams } from '../../shared_components';
+export const DEFAULT_PALETTE_NAME = DEFAULT_GAUGE_PALETTE_NAME;
+export const DEFAULT_COLOR_STEPS = defaultGaugePaletteParams.steps;
+export const DEFAULT_MIN_STOP = defaultGaugePaletteParams.rangeMin;
+export const DEFAULT_MAX_STOP = defaultGaugePaletteParams.rangeMax;
 
-export const DEFAULT_PALETTE_NAME = 'status';
-export const DEFAULT_COLOR_STEPS = 4;
-export const DEFAULT_MIN_STOP = 0;
-export const DEFAULT_MAX_STOP = 100;
+export const defaultPaletteParams = defaultGaugePaletteParams satisfies RequiredPaletteParamTypes;
 
-export const defaultPaletteParams: RequiredPaletteParamTypes = {
-  ...sharedDefaultParams,
-  rangeMin: DEFAULT_MIN_STOP,
-  rangeMax: DEFAULT_MAX_STOP,
-  name: DEFAULT_PALETTE_NAME,
-  steps: DEFAULT_COLOR_STEPS,
-  maxSteps: 5,
-};
-
-export const DEFAULT_PALETTE: PaletteOutput<CustomPaletteParams> = {
-  name: DEFAULT_PALETTE_NAME,
-  type: 'palette',
-  params: {
-    ...defaultPaletteParams,
-  },
-};
+export const DEFAULT_PALETTE = DEFAULT_GAUGE_PALETTE satisfies PaletteOutput<CustomPaletteParams>;

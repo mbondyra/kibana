@@ -26,6 +26,7 @@ import {
 } from '@kbn/expression-gauge-plugin/public';
 import { IconChartGauge } from '@kbn/chart-icons';
 import { LayerTypes } from '@kbn/expression-xy-plugin/public';
+import { resolveGaugeColoringState } from '@kbn/lens-common';
 import type {
   FormBasedPersistedState,
   DatasourceLayers,
@@ -142,17 +143,24 @@ const toExpression = (
     return null;
   }
 
+  const { colorMode: resolvedColorMode, palette: resolvedPalette } = resolveGaugeColoringState(
+    state,
+    {
+      defaultPalette: getDefaultPalette(paletteService),
+    }
+  );
+
   const gaugeFn = buildExpressionFunction<GaugeExpressionFunctionDefinition>('gauge', {
     metric: state.metricAccessor,
     min: state.minAccessor,
     max: state.maxAccessor,
     goal: state.goalAccessor,
     shape: state.shape ?? GaugeShapes.HORIZONTAL_BULLET,
-    colorMode: state?.colorMode ?? 'none',
-    palette: state.palette?.params
+    colorMode: resolvedColorMode,
+    palette: resolvedPalette
       ? paletteService
           .get(CUSTOM_PALETTE)
-          .toExpression(computePaletteParams(paletteService, state.palette))
+          .toExpression(computePaletteParams(paletteService, resolvedPalette))
       : undefined,
     ticksPosition: state.ticksPosition ?? 'auto',
     labelMinor: state.labelMinor,
@@ -224,16 +232,21 @@ export const getGaugeVisualization = ({
   },
 
   initialize(addNewLayer, state, mainPalette) {
+    const { colorMode, palette } = resolveGaugeColoringState(
+      {},
+      {
+        mainPalette,
+        defaultPalette: getDefaultPalette(paletteService),
+      }
+    );
+
     return (
       state || {
         layerId: addNewLayer(),
         layerType: LayerTypes.DATA,
         shape: GaugeShapes.HORIZONTAL_BULLET,
-        colorMode: 'palette',
-        palette:
-          mainPalette?.type === 'legacyPalette'
-            ? mainPalette.value
-            : getDefaultPalette(paletteService),
+        colorMode,
+        palette,
         ticksPosition: 'bands',
         labelMajorMode: 'auto',
       }
@@ -672,7 +685,16 @@ function getConfigurationAccessorsAndPalette(
   paletteService: PaletteRegistry,
   activeData?: FramePublicAPI['activeData']
 ) {
-  const hasColoring = Boolean(state.colorMode !== 'none' && state.palette?.params?.stops);
+  const { colorMode: effectiveColorMode, palette: effectivePalette } = resolveGaugeColoringState(
+    state,
+    {
+      defaultPalette: getDefaultPalette(paletteService),
+    }
+  );
+
+  const hasColoring = Boolean(
+    effectiveColorMode !== 'none' && effectivePalette != null && effectivePalette.params?.stops
+  );
 
   const row = getActiveDataForLayer(state?.layerId, activeData)?.rows?.[0];
   const { metricAccessor } = state ?? {};
@@ -680,12 +702,12 @@ function getConfigurationAccessorsAndPalette(
   const accessors = getAccessorsFromState(state);
 
   let palette;
-  if (row != null && metricAccessor != null && state?.palette != null && hasColoring) {
+  if (row != null && metricAccessor != null && effectivePalette != null && hasColoring) {
     const currentMinMax = {
       min: getMinValue(row, accessors),
       max: getMaxValue(row, accessors),
     };
-    const displayStops = applyPaletteParams(paletteService, state?.palette, currentMinMax);
+    const displayStops = applyPaletteParams(paletteService, effectivePalette, currentMinMax);
     palette = displayStops.map(({ color }) => color);
   }
   return { metricAccessor, accessors, palette };

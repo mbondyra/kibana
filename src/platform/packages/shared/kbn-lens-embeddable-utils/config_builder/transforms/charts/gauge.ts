@@ -6,6 +6,7 @@
  * your election, the "Elastic License 2.0", the "GNU Affero General Public
  * License v3.0 only", or the "Server Side Public License, v 1".
  */
+import { resolveGaugeColoringState } from '@kbn/lens-common';
 import type {
   FormBasedLayer,
   FormBasedPersistedState,
@@ -52,6 +53,10 @@ function getAccessorName(type: 'metric' | 'max' | 'min' | 'goal') {
 
 function buildVisualizationState(config: GaugeState): GaugeVisualizationState {
   const layer = config;
+  const { colorMode, palette } = resolveGaugeColoringState({
+    colorMode: layer.metric.color ? 'palette' : undefined,
+    palette: layer.metric.color ? fromColorByValueAPIToLensState(layer.metric.color) : undefined,
+  });
 
   return {
     layerId: DEFAULT_LAYER_ID,
@@ -69,9 +74,8 @@ function buildVisualizationState(config: GaugeState): GaugeVisualizationState {
         ? 'semiCircle'
         : layer.shape.type
       : 'horizontalBullet',
-    ...(layer.metric.color
-      ? { colorMode: 'palette', palette: fromColorByValueAPIToLensState(layer.metric.color) }
-      : {}),
+    colorMode,
+    palette,
     ticksPosition:
       layer.metric.ticks?.visible === false ? 'hidden' : layer.metric.ticks?.mode ?? 'auto',
     ...(layer.metric.title?.visible === false

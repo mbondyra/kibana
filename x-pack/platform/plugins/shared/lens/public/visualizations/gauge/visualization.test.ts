@@ -80,6 +80,35 @@ describe('gauge', () => {
       });
     });
 
+    test('uses the provided legacy main palette', () => {
+      const mainPalette: { type: 'legacyPalette'; value: PaletteOutput<CustomPaletteParams> } = {
+        type: 'legacyPalette',
+        value: {
+          type: 'palette',
+          name: 'custom',
+          params: {
+            name: 'custom',
+            rangeType: 'number',
+            rangeMin: 0,
+            rangeMax: 100,
+            continuity: 'all',
+            progression: 'fixed',
+            stops: [{ color: 'blue', stop: 0 }],
+          },
+        },
+      };
+
+      expect(getGaugeVisualization(deps).initialize(() => 'l1', undefined, mainPalette)).toEqual({
+        layerId: 'l1',
+        layerType: LayerTypes.DATA,
+        shape: 'horizontalBullet',
+        labelMajorMode: 'auto',
+        ticksPosition: 'bands',
+        colorMode: 'palette',
+        palette: mainPalette.value,
+      });
+    });
+
     test('returns persisted state', () => {
       expect(getGaugeVisualization(deps).initialize(() => 'test-layer', exampleState())).toEqual(
         exampleState()
@@ -131,7 +160,13 @@ describe('gauge', () => {
             groupId: GROUP_ID.METRIC,
             groupLabel: 'Metric',
             isMetricDimension: true,
-            accessors: [{ columnId: 'metric-accessor', triggerIconType: 'none' }],
+            accessors: [
+              {
+                columnId: 'metric-accessor',
+                triggerIconType: 'colorBy',
+                palette: ['blue', 'red', 'yellow', 'green'],
+              },
+            ],
             filterOperations: isNumericDynamicMetric,
             supportsMoreColumns: false,
             requiredMinDimensionCount: 1,
@@ -481,7 +516,21 @@ describe('gauge', () => {
               min: ['min-accessor'],
               max: ['max-accessor'],
               goal: ['goal-accessor'],
-              colorMode: ['none'],
+              colorMode: ['palette'],
+              palette: [
+                {
+                  type: 'expression',
+                  chain: [
+                    {
+                      type: 'function',
+                      function: 'system_palette',
+                      arguments: {
+                        name: ['mocked'],
+                      },
+                    },
+                  ],
+                },
+              ],
               ticksPosition: ['auto'],
               labelMajorMode: ['auto'],
               labelMinor: ['Subtitle'],
@@ -498,6 +547,35 @@ describe('gauge', () => {
         minAccessor: 'min-accessor',
       };
       expect(getGaugeVisualization(deps).toExpression(state, datasourceLayers)).toEqual(null);
+    });
+
+    test('respects explicit colorMode none (no palette)', () => {
+      const state: GaugeVisualizationState = {
+        ...exampleState(),
+        layerId: 'first',
+        metricAccessor: 'metric-accessor',
+        minAccessor: 'min-accessor',
+        maxAccessor: 'max-accessor',
+        colorMode: 'none',
+      };
+      expect(getGaugeVisualization(deps).toExpression(state, datasourceLayers)).toEqual({
+        type: 'expression',
+        chain: [
+          {
+            type: 'function',
+            function: 'gauge',
+            arguments: {
+              metric: ['metric-accessor'],
+              min: ['min-accessor'],
+              max: ['max-accessor'],
+              colorMode: ['none'],
+              ticksPosition: ['auto'],
+              labelMajorMode: ['auto'],
+              shape: ['horizontalBullet'],
+            },
+          },
+        ],
+      });
     });
   });
 
