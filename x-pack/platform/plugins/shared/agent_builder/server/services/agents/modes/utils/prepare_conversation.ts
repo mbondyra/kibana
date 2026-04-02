@@ -181,6 +181,7 @@ export const prepareConversation = async ({
           request: context.request,
           spaceId: context.spaceId,
           savedObjectsClient: context.savedObjectsClient,
+          requestHandlerContext: context.requestHandlerContext,
         }
       : undefined;
 

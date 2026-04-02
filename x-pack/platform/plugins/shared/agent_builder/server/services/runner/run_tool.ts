@@ -36,6 +36,7 @@ import {
   createToolProvider,
   createSkillsService,
 } from './utils';
+import { createRequestHandlerContextForRequest } from './utils/request_handler_context';
 import { toolConfirmationId, createToolConfirmationPrompt } from './utils/prompts';
 import type { RunnerManager } from './runner';
 
@@ -227,6 +228,7 @@ export const createToolHandlerContext = async <TParams = Record<string, unknown>
   const {
     request,
     elasticsearch,
+    featureFlags,
     savedObjects,
     spaces,
     modelProvider,
@@ -247,6 +249,14 @@ export const createToolHandlerContext = async <TParams = Record<string, unknown>
     logger,
     esClient: elasticsearch.client.asScoped(request),
     savedObjectsClient: savedObjects.getScopedClient(request),
+    requestHandlerContext: createRequestHandlerContextForRequest({
+      request,
+      elasticsearch,
+      featureFlags,
+      savedObjects,
+      security: manager.deps.security,
+      uiSettings: manager.deps.uiSettings,
+    }),
     modelProvider,
     runner: manager.getRunner(),
     toolProvider: createToolProvider({

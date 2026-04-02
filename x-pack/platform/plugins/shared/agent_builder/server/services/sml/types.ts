@@ -56,7 +56,7 @@ export interface SmlToAttachmentContext {
   request: KibanaRequest;
   savedObjectsClient: SavedObjectsClientContract;
   spaceId: string;
-  requestHandlerContext?: RequestHandlerContext;
+  requestHandlerContext: RequestHandlerContext;
 }
 
 /**

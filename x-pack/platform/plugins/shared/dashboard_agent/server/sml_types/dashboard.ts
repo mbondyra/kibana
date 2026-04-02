@@ -7,6 +7,7 @@
 
 import type { SmlTypeDefinition } from '@kbn/agent-builder-plugin/server';
 import { DASHBOARD_ATTACHMENT_TYPE, dashboardStateToAttachment } from '@kbn/dashboard-agent-common';
+import type { RequestHandlerContext } from '@kbn/core/server';
 import type {
   DashboardPanel,
   DashboardPluginStart,
@@ -18,6 +19,7 @@ const DASHBOARD_SML_TYPE = 'dashboard';
 
 interface CreateDashboardSmlTypeOptions {
   getDashboardClient: () => Promise<DashboardPluginStart['client']>;
+  getInternalRequestHandlerContext: () => Promise<RequestHandlerContext>;
 }
 
 const toPanelSummary = (panel: DashboardPanel): string[] => {
@@ -61,6 +63,7 @@ const toDashboardSearchContent = (state: DashboardState): string => {
 
 export const createDashboardSmlType = ({
   getDashboardClient,
+  getInternalRequestHandlerContext,
 }: CreateDashboardSmlTypeOptions): SmlTypeDefinition => ({
   id: DASHBOARD_SML_TYPE,
   fetchFrequency: () => '30m',
@@ -88,12 +91,9 @@ export const createDashboardSmlType = ({
 
   getSmlData: async (originId, context) => {
     try {
-      if (!context.requestHandlerContext) {
-        return undefined;
-      }
-
       const dashboardClient = await getDashboardClient();
-      const dashboard = await dashboardClient.read(context.requestHandlerContext, originId);
+      const requestHandlerContext = await getInternalRequestHandlerContext();
+      const dashboard = await dashboardClient.read(requestHandlerContext, originId);
 
       return {
         chunks: [

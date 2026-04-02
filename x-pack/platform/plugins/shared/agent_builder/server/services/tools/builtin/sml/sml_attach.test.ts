@@ -11,6 +11,7 @@ import {
   type ErrorResult,
   type OtherResult,
 } from '@kbn/agent-builder-common/tools/tool_result';
+import type { RequestHandlerContext } from '@kbn/core/server';
 import type { ToolHandlerContext } from '@kbn/agent-builder-server/tools/handler';
 import type { SmlDocument } from '../../../sml';
 import { createSmlAttachTool } from './sml_attach';
@@ -36,6 +37,7 @@ const mockContext = {
   spaceId: 'default',
   esClient: { asCurrentUser: {} },
   request: {},
+  requestHandlerContext: {} as RequestHandlerContext,
   savedObjectsClient: {},
   attachments: { add: mockAttachmentsAdd },
   logger: mockLogger,
@@ -319,6 +321,7 @@ describe('createSmlAttachTool', () => {
     await tool.handler({ chunk_ids: [chunkId] }, mockContext as unknown as ToolHandlerContext);
     expect(toAttachment).toHaveBeenCalledWith(smlDoc, {
       request: mockContext.request,
+      requestHandlerContext: mockContext.requestHandlerContext,
       savedObjectsClient: mockContext.savedObjectsClient,
       spaceId: 'default',
     });

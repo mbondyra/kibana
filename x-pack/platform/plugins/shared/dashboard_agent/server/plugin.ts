@@ -21,6 +21,7 @@ import type {
 import { registerSkills } from './skills';
 import { createDashboardAttachmentType } from './attachment_types';
 import { createDashboardSmlType } from './sml_types';
+import { createInternalRequestHandlerContext } from './utils/request_handler_context';
 
 export class DashboardAgentPlugin
   implements
@@ -45,6 +46,10 @@ export class DashboardAgentPlugin
       const [, startDeps] = await coreSetup.getStartServices();
       return startDeps.dashboard.client;
     };
+    const getInternalRequestHandlerContext = async () => {
+      const [coreStart] = await coreSetup.getStartServices();
+      return createInternalRequestHandlerContext(coreStart);
+    };
 
     setupDeps.agentBuilder.attachments.registerType(
       createDashboardAttachmentType({
@@ -52,7 +57,9 @@ export class DashboardAgentPlugin
         getDashboardClient,
       }) as Parameters<typeof setupDeps.agentBuilder.attachments.registerType>[0]
     );
-    setupDeps.agentBuilder.sml.registerType(createDashboardSmlType({ getDashboardClient }));
+    setupDeps.agentBuilder.sml.registerType(
+      createDashboardSmlType({ getDashboardClient, getInternalRequestHandlerContext })
+    );
     registerSkills(setupDeps.agentBuilder);
     return {};
   }

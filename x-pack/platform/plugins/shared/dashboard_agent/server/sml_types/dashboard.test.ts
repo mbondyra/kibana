@@ -130,6 +130,7 @@ describe('dashboardSmlType', () => {
     };
     const dashboardSmlType = createDashboardSmlType({
       getDashboardClient: async () => createDashboardClient(),
+      getInternalRequestHandlerContext: async () => createRequestHandlerContext(),
     });
 
     const pages = [];
@@ -163,6 +164,7 @@ describe('dashboardSmlType', () => {
     const requestHandlerContext = createRequestHandlerContext();
     const dashboardSmlType = createDashboardSmlType({
       getDashboardClient: async () => createDashboardClient(),
+      getInternalRequestHandlerContext: async () => createRequestHandlerContext(),
     });
 
     const result = await dashboardSmlType.getSmlData('dashboard-1', {
@@ -192,6 +194,7 @@ describe('dashboardSmlType', () => {
     const requestHandlerContext = createRequestHandlerContext();
     const dashboardSmlType = createDashboardSmlType({
       getDashboardClient: async () => createDashboardClient(),
+      getInternalRequestHandlerContext: async () => createRequestHandlerContext(),
     });
 
     const result = await dashboardSmlType.toAttachment(
@@ -249,6 +252,7 @@ describe('dashboardSmlType', () => {
           id: 'dashboard-2',
           data: dashboardStateWithLensApi,
         }),
+      getInternalRequestHandlerContext: async () => createRequestHandlerContext(),
     });
 
     const result = await dashboardSmlType.toAttachment(
@@ -292,9 +296,12 @@ describe('dashboardSmlType', () => {
     ]);
   });
 
-  it('returns undefined for SML reads without request handler context', async () => {
+  it('uses the internal request handler context for SML reads', async () => {
+    const internalRequestHandlerContext = createRequestHandlerContext();
+    const dashboardClient = createDashboardClient();
     const dashboardSmlType = createDashboardSmlType({
-      getDashboardClient: async () => createDashboardClient(),
+      getDashboardClient: async () => dashboardClient,
+      getInternalRequestHandlerContext: async () => internalRequestHandlerContext,
     });
 
     const result = await dashboardSmlType.getSmlData('dashboard-1', {
@@ -302,6 +309,7 @@ describe('dashboardSmlType', () => {
       logger: createLogger(),
     } as never);
 
-    expect(result).toBeUndefined();
+    expect(result).toBeDefined();
+    expect(dashboardClient.read).toHaveBeenCalledWith(internalRequestHandlerContext, 'dashboard-1');
   });
 });

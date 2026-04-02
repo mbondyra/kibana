@@ -7,6 +7,7 @@
 
 import type { ElasticsearchClient } from '@kbn/core-elasticsearch-server';
 import type { KibanaRequest } from '@kbn/core-http-server';
+import type { RequestHandlerContext } from '@kbn/core/server';
 import type { SavedObjectsClientContract } from '@kbn/core-saved-objects-api-server';
 import { loggerMock } from '@kbn/logging-mocks';
 import type { SmlDocument, SmlService } from './types';
@@ -42,6 +43,7 @@ const baseParams = {
   sml: createSmlService(),
   esClient: {} as ElasticsearchClient,
   request: {} as KibanaRequest,
+  requestHandlerContext: {} as RequestHandlerContext,
   spaceId: 'default',
   savedObjectsClient: {} as SavedObjectsClientContract,
   logger: mockLogger,

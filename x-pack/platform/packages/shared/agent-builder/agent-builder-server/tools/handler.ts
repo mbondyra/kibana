@@ -9,6 +9,7 @@ import type { MaybePromise } from '@kbn/utility-types';
 import type { Logger } from '@kbn/logging';
 import type { IScopedClusterClient } from '@kbn/core-elasticsearch-server';
 import type { KibanaRequest } from '@kbn/core-http-server';
+import type { RequestHandlerContext } from '@kbn/core/server';
 import type { SavedObjectsClientContract } from '@kbn/core-saved-objects-api-server';
 import type { ToolResult } from '@kbn/agent-builder-common/tools/tool_result';
 import type { PromptRequest } from '@kbn/agent-builder-common/agents/prompts';
@@ -96,6 +97,11 @@ export interface ToolHandlerContext {
    * Saved objects client scoped to the current user.
    */
   savedObjectsClient: SavedObjectsClientContract;
+  /**
+   * Request handler context scoped to the current user.
+   * Can be the route handler context or a request-scoped synthetic context.
+   */
+  requestHandlerContext: RequestHandlerContext;
   /**
    * Inference model provider scoped to the current user.
    * Can be used to access the inference APIs or chatModel.

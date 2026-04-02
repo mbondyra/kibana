@@ -8,6 +8,7 @@
 import type { Logger } from '@kbn/logging';
 import type { ElasticsearchServiceStart } from '@kbn/core-elasticsearch-server';
 import type { SecurityServiceStart } from '@kbn/core-security-server';
+import type { FeatureFlagsStart } from '@kbn/core-feature-flags-server';
 import type { UiSettingsServiceStart } from '@kbn/core-ui-settings-server';
 import type { SavedObjectsServiceStart } from '@kbn/core-saved-objects-server';
 import type { InferenceServerStart } from '@kbn/inference-plugin/server';
@@ -26,6 +27,7 @@ export interface RunnerFactoryDeps {
   logger: Logger;
   elasticsearch: ElasticsearchServiceStart;
   security: SecurityServiceStart;
+  featureFlags: FeatureFlagsStart;
   uiSettings: UiSettingsServiceStart;
   savedObjects: SavedObjectsServiceStart;
   // plugin deps

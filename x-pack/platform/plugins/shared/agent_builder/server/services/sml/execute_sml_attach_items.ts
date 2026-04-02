@@ -50,7 +50,7 @@ export const resolveSmlAttachItems = async ({
   sml: SmlService;
   esClient: ElasticsearchClient;
   request: KibanaRequest;
-  requestHandlerContext?: RequestHandlerContext;
+  requestHandlerContext: RequestHandlerContext;
   spaceId: string;
   savedObjectsClient: SavedObjectsClientContract;
   logger: Logger;

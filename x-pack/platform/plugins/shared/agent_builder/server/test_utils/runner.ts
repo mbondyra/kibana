@@ -7,7 +7,9 @@
 
 import type { MockedLogger } from '@kbn/logging-mocks';
 import { loggerMock } from '@kbn/logging-mocks';
+import { coreFeatureFlagsMock } from '@kbn/core-feature-flags-server-mocks';
 import {
+  coreMock,
   elasticsearchServiceMock,
   httpServerMock,
   savedObjectsServiceMock,
@@ -286,6 +288,7 @@ export const createAgentHandlerContextMock = (): AgentHandlerContextMock => {
     spaceId: 'default',
     esClient: elasticsearchServiceMock.createScopedClusterClient(),
     savedObjectsClient: savedObjectsServiceMock.createStartContract().getScopedClient({} as any),
+    requestHandlerContext: coreMock.createRequestHandlerContext() as any,
     modelProvider: createModelProviderMock(),
     toolProvider: createToolProviderMock(),
     toolRegistry: createToolRegistryMock(),
@@ -347,6 +350,7 @@ export const createToolHandlerContextMock = (): ToolHandlerContextMock => {
     skills: createSkillsServiceMock(),
     toolManager: createToolManagerMock(),
     savedObjectsClient: savedObjectsServiceMock.createStartContract().getScopedClient({} as any),
+    requestHandlerContext: coreMock.createRequestHandlerContext() as any,
     runContext: { runId: 'mock-run-id', stack: [] },
   };
 };
@@ -368,6 +372,7 @@ export const createHooksServiceStartMock = (): jest.Mocked<HooksServiceStart> =>
 export const createScopedRunnerDepsMock = (): CreateScopedRunnerDepsMock => {
   return {
     elasticsearch: elasticsearchServiceMock.createStart(),
+    featureFlags: coreFeatureFlagsMock.createStart(),
     security: securityServiceMock.createStart(),
     savedObjects: savedObjectsServiceMock.createStartContract(),
     uiSettings: uiSettingsServiceMock.createStartContract(),
@@ -395,6 +400,7 @@ export const createScopedRunnerDepsMock = (): CreateScopedRunnerDepsMock => {
 export const createRunnerDepsMock = (): CreateRunnerDepsMock => {
   return {
     elasticsearch: elasticsearchServiceMock.createStart(),
+    featureFlags: coreFeatureFlagsMock.createStart(),
     security: securityServiceMock.createStart(),
     savedObjects: savedObjectsServiceMock.createStartContract(),
     uiSettings: uiSettingsServiceMock.createStartContract(),

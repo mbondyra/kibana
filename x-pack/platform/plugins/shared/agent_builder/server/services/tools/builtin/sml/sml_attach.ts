@@ -54,13 +54,22 @@ export const createSmlAttachTool = ({
   },
   handler: async ({ chunk_ids: chunkIds }, context) => {
     const smlService = getSmlService();
-    const { spaceId, savedObjectsClient, request, attachments, esClient, logger } = context;
+    const {
+      spaceId,
+      savedObjectsClient,
+      request,
+      requestHandlerContext,
+      attachments,
+      esClient,
+      logger,
+    } = context;
 
     const resolvedItems = await resolveSmlAttachItems({
       chunkIds,
       sml: smlService,
       esClient: esClient.asCurrentUser,
       request,
+      requestHandlerContext,
       spaceId,
       savedObjectsClient,
       logger,
