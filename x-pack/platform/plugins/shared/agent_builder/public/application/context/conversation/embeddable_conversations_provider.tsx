@@ -37,6 +37,9 @@ export const EmbeddableConversationsProvider: React.FC<EmbeddableConversationsPr
   // Track current props, starting with initial props
   const [currentProps, setCurrentProps] = useState<EmbeddableConversationProps>(contextProps);
 
+  // Refs to allow callbacks to access latest values
+  const invalidateConversationRef = useRef<(() => void) | null>(null);
+
   // Register callbacks to allow parent to update props and clear browserApiTools
   const onRegisterCallbacks = contextProps.onRegisterCallbacks;
   useEffect(() => {
@@ -50,6 +53,7 @@ export const EmbeddableConversationsProvider: React.FC<EmbeddableConversationsPr
             ...prevProps,
             attachments: upsertAttachmentsIntoList(prevProps.attachments, [attachment]),
           })),
+        invalidateConversation: () => invalidateConversationRef.current?.(),
       });
     }
   }, [onRegisterCallbacks]);
@@ -149,6 +153,46 @@ export const EmbeddableConversationsProvider: React.FC<EmbeddableConversationsPr
     onConversationCreated,
     onDeleteConversation,
   });
+
+  useEffect(() => {
+    invalidateConversationRef.current = conversationActions.invalidateConversation;
+  }, [conversationActions.invalidateConversation]);
+
+  const handleConversationChange = contextProps.onConversationChange;
+
+  useEffect(() => {
+    let isActive = true;
+
+    if (!handleConversationChange) {
+      return;
+    }
+
+    if (!conversationId) {
+      handleConversationChange({ id: undefined });
+      return;
+    }
+
+    services.conversationsService
+      .get({ conversationId })
+      .then((conversation) => {
+        if (!isActive) {
+          return;
+        }
+
+        handleConversationChange({ id: conversationId, attachments: conversation.attachments });
+      })
+      .catch(() => {
+        if (!isActive) {
+          return;
+        }
+
+        handleConversationChange({ id: conversationId });
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [conversationId, handleConversationChange, services.conversationsService]);
 
   // Resets the {initialMessage} and {autoSendInitialMessage} flags after an initial message has been sent or set in the {ConversationInput} component
   const resetInitialMessage = useCallback(() => {

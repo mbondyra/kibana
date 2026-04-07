@@ -29,7 +29,6 @@ import { childrenUnsavedChanges$ } from '@kbn/presentation-publishing';
 export interface ManualChangesSubscriptionParams {
   agentBuilder: AgentBuilderPluginStart;
   api: DashboardApi;
-  getAttachment: () => DashboardAttachment | undefined;
   getSyncAttachment: (currentSavedObjectId: string | undefined) => DashboardAttachment | undefined;
 }
 
@@ -40,7 +39,6 @@ export interface ManualChangesSubscriptionParams {
 export const createManualChangesSubscription = ({
   agentBuilder,
   api,
-  getAttachment,
   getSyncAttachment,
 }: ManualChangesSubscriptionParams): Subscription => {
   // TODO: we should get it directly from the dashboard plugin
@@ -68,18 +66,13 @@ export const createManualChangesSubscription = ({
       skip(observables.length), // Skip initial emissions from all BehaviorSubjects
       debounceTime(150),
       map((): AttachmentInput | undefined => {
-        const currentAttachment = getAttachment();
-        if (!currentAttachment) {
-          return undefined;
-        }
-
         const currentSavedObjectId = api.savedObjectId$.getValue();
         const syncAttachment = getSyncAttachment(currentSavedObjectId);
 
-        // Only the attachment selected for the current dashboard should own sync.
-        if (!syncAttachment || syncAttachment.id !== currentAttachment.id) {
+        if (!syncAttachment) {
           return undefined;
         }
+
         const currentDashboardState = api.getSerializedState().attributes;
         if (!currentDashboardState) {
           return undefined;
@@ -92,8 +85,8 @@ export const createManualChangesSubscription = ({
 
         return {
           data,
-          id: currentAttachment.id,
-          origin: currentAttachment.origin,
+          id: syncAttachment.id,
+          origin: syncAttachment.origin,
           type: DASHBOARD_ATTACHMENT_TYPE,
         };
       }),

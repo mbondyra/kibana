@@ -74,6 +74,7 @@ const createStartContractMock = (): AgentBuilderPluginStartMock => {
       };
     }),
     addAttachment: jest.fn(),
+    subscribeToConversationChanges: jest.fn(),
     updateAttachmentOrigin: jest.fn(),
   };
 };
