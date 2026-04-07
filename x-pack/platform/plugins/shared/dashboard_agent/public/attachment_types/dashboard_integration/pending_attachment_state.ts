@@ -20,7 +20,7 @@ import {
   getAttachmentFromState,
   type EmptyDashboardAttachmentState,
   type PendingDashboardAttachmentState,
-} from './dashboard_attachment_sessions';
+} from './dashboard_attachment_state';
 import { createOriginSyncSubscription } from './origin_sync_subscription';
 
 export interface ActivatePendingAttachmentStateParams {

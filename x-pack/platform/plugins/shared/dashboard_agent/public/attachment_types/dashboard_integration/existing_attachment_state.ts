@@ -12,7 +12,7 @@ import type { DashboardApi } from '@kbn/dashboard-plugin/public';
 import {
   getAttachmentFromState,
   type ExistingDashboardAttachmentState,
-} from './dashboard_attachment_sessions';
+} from './dashboard_attachment_state';
 import { createOriginSyncSubscription } from './origin_sync_subscription';
 
 export interface CreateExistingAttachmentStateParams {

@@ -13,7 +13,7 @@ import type { DashboardApi } from '@kbn/dashboard-plugin/public';
 import type {
   ExistingDashboardAttachmentState,
   PendingDashboardAttachmentState,
-} from './dashboard_attachment_sessions';
+} from './dashboard_attachment_state';
 import { createDashboardAttachmentStateController } from './dashboard_attachment_state_controller';
 import { createExistingAttachmentState } from './existing_attachment_state';
 import { createPendingAttachmentState } from './pending_attachment_state';

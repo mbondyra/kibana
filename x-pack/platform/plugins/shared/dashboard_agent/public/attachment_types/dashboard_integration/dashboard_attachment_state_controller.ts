@@ -16,7 +16,7 @@ import type {
   DashboardAttachmentState,
   ExistingDashboardAttachmentState,
   PendingDashboardAttachmentState,
-} from './dashboard_attachment_sessions';
+} from './dashboard_attachment_state';
 import { createExistingAttachmentState } from './existing_attachment_state';
 import { createPendingAttachmentState } from './pending_attachment_state';
 import { selectDashboardAttachmentForSync } from './select_dashboard_attachment_for_sync';
