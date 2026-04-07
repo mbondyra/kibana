@@ -8,7 +8,6 @@
 import React from 'react';
 import { EMPTY, switchMap } from 'rxjs';
 import { i18n } from '@kbn/i18n';
-import type { AttachmentLifecycleParams } from '@kbn/agent-builder-browser/attachments';
 import { ActionButtonType } from '@kbn/agent-builder-browser/attachments';
 import { DASHBOARD_ATTACHMENT_TYPE } from '@kbn/dashboard-agent-common';
 import type { DashboardAttachment } from '@kbn/dashboard-agent-common/types';
@@ -22,7 +21,6 @@ import type { AgentBuilderPluginStart } from '@kbn/agent-builder-plugin/public';
 import { DashboardCanvasContent } from './canvas_integration/dashboard_canvas_content';
 import { createDashboardAppIntegration$ } from './dashboard_integration/dashboard_app_integration';
 import { previewAttachmentInDashboard } from './dashboard_integration/preview_attachment';
-import { selectDashboardAttachmentForSync } from './dashboard_integration/select_dashboard_attachment_for_sync';
 
 export const registerDashboardAttachmentUiDefinition = ({
   agentBuilder,
@@ -35,14 +33,23 @@ export const registerDashboardAttachmentUiDefinition = ({
   unifiedSearch: UnifiedSearchPublicPluginStart;
   dashboardPlugin: DashboardStart;
 }): (() => void) => {
-  const { attachments } = agentBuilder;
   let dashboardApi: DashboardApi | undefined;
-  let nextMountedAttachmentId = 0;
-  const mountedDashboardAttachments = new Map<number, () => DashboardAttachment>();
-  // maintains a dashboardApi reference for access in getActionButtons
-  const dashboardAppApiSubscription = dashboardPlugin.dashboardAppClientApi$.subscribe((api) => {
-    dashboardApi = api;
-  });
+  const dashboardAppApiSubscription = dashboardPlugin.dashboardAppClientApi$
+    .pipe(
+      switchMap((api) => {
+        // maintains a dashboardApi reference for access in getActionButtons
+        dashboardApi = api;
+        // integrates dashboard app with agent
+        return api
+          ? createDashboardAppIntegration$({
+              agentBuilder,
+              api,
+              checkSavedDashboardExist,
+            })
+          : EMPTY;
+      })
+    )
+    .subscribe();
 
   const findDashboardsServicePromise = dashboardPlugin.findDashboardsService();
   const checkSavedDashboardExist = async (dashboardId: string) => {
@@ -50,15 +57,7 @@ export const registerDashboardAttachmentUiDefinition = ({
     const result = await findDashboardsService.findById(dashboardId);
     return result.status === 'success';
   };
-  const getSyncAttachment = (currentSavedObjectId: string | undefined) =>
-    selectDashboardAttachmentForSync({
-      attachments: Array.from(mountedDashboardAttachments.values(), (getAttachment) =>
-        getAttachment()
-      ),
-      currentSavedObjectId,
-    });
-
-  attachments.addAttachmentType<DashboardAttachment>(DASHBOARD_ATTACHMENT_TYPE, {
+  agentBuilder.attachments.addAttachmentType<DashboardAttachment>(DASHBOARD_ATTACHMENT_TYPE, {
     getLabel: (attachment) => {
       return (
         attachment.data?.title ||
@@ -68,30 +67,6 @@ export const registerDashboardAttachmentUiDefinition = ({
       );
     },
     getIcon: () => 'productDashboard',
-    onAttachmentMount: (params: AttachmentLifecycleParams<DashboardAttachment>) => {
-      const mountedAttachmentId = nextMountedAttachmentId++;
-      mountedDashboardAttachments.set(mountedAttachmentId, params.getAttachment);
-      const apiSubscription = dashboardPlugin.dashboardAppClientApi$
-        .pipe(
-          switchMap((api) =>
-            api
-              ? createDashboardAppIntegration$({
-                  ...params,
-                  agentBuilder,
-                  api,
-                  checkSavedDashboardExist,
-                  getSyncAttachment,
-                })
-              : EMPTY
-          )
-        )
-        .subscribe();
-
-      return () => {
-        apiSubscription.unsubscribe();
-        mountedDashboardAttachments.delete(mountedAttachmentId);
-      };
-    },
     renderCanvasContent: (props, callbacks) => (
       <DashboardCanvasContent
         {...props}

@@ -16,7 +16,6 @@ import {
   type Observable,
   type Subscription,
 } from 'rxjs';
-import type { AttachmentInput } from '@kbn/agent-builder-common/attachments';
 import {
   DASHBOARD_ATTACHMENT_TYPE,
   dashboardStateToAttachmentData,
@@ -29,8 +28,8 @@ import { childrenUnsavedChanges$ } from '@kbn/presentation-publishing';
 export interface ManualChangesSubscriptionParams {
   agentBuilder: AgentBuilderPluginStart;
   api: DashboardApi;
-  getAttachment: () => DashboardAttachment | undefined;
   getSyncAttachment: (currentSavedObjectId: string | undefined) => DashboardAttachment | undefined;
+  onAttachmentUpsert?: (attachment: DashboardAttachment) => void;
 }
 
 /**
@@ -40,8 +39,8 @@ export interface ManualChangesSubscriptionParams {
 export const createManualChangesSubscription = ({
   agentBuilder,
   api,
-  getAttachment,
   getSyncAttachment,
+  onAttachmentUpsert,
 }: ManualChangesSubscriptionParams): Subscription => {
   // TODO: we should get it directly from the dashboard plugin
   // Collect observables for all trackable dashboard state
@@ -67,19 +66,14 @@ export const createManualChangesSubscription = ({
     .pipe(
       skip(observables.length), // Skip initial emissions from all BehaviorSubjects
       debounceTime(150),
-      map((): AttachmentInput | undefined => {
-        const currentAttachment = getAttachment();
-        if (!currentAttachment) {
-          return undefined;
-        }
-
+      map((): DashboardAttachment | undefined => {
         const currentSavedObjectId = api.savedObjectId$.getValue();
         const syncAttachment = getSyncAttachment(currentSavedObjectId);
 
-        // Only the attachment selected for the current dashboard should own sync.
-        if (!syncAttachment || syncAttachment.id !== currentAttachment.id) {
+        if (!syncAttachment) {
           return undefined;
         }
+
         const currentDashboardState = api.getSerializedState().attributes;
         if (!currentDashboardState) {
           return undefined;
@@ -92,14 +86,15 @@ export const createManualChangesSubscription = ({
 
         return {
           data,
-          id: currentAttachment.id,
-          origin: currentAttachment.origin,
+          id: syncAttachment.id,
+          origin: syncAttachment.origin,
           type: DASHBOARD_ATTACHMENT_TYPE,
         };
       }),
-      filter((attachment): attachment is AttachmentInput => attachment !== undefined),
+      filter((attachment): attachment is DashboardAttachment => attachment !== undefined),
       tap((attachment) => {
         agentBuilder.addAttachment(attachment);
+        onAttachmentUpsert?.(attachment);
       }),
       ignoreElements()
     )

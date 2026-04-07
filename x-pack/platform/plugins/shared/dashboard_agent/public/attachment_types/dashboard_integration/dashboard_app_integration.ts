@@ -7,35 +7,26 @@
 
 import { Observable } from 'rxjs';
 import type { AgentBuilderPluginStart } from '@kbn/agent-builder-plugin/public';
-import type { DashboardAttachment } from '@kbn/dashboard-agent-common/types';
 import type { DashboardApi } from '@kbn/dashboard-plugin/public';
 import { createAgentLiveUpdatesSubscription } from './agent_live_updates_subscription';
+import { createDashboardAttachmentStateController } from './dashboard_attachment_state_controller';
 import { createManualChangesSubscription } from './manual_changes_subscription';
-import { createOriginSyncSubscription } from './origin_sync_subscription';
 
 export interface DashboardAppIntegrationParams {
   agentBuilder: AgentBuilderPluginStart;
   api: DashboardApi;
-  getAttachment: () => DashboardAttachment;
-  getSyncAttachment: (currentSavedObjectId: string | undefined) => DashboardAttachment | undefined;
   checkSavedDashboardExist: (dashboardId: string) => Promise<boolean>;
-  updateOrigin: (origin: string) => Promise<unknown>;
 }
 
 export const registerDashboardAppIntegration = ({
   agentBuilder,
   api,
-  getAttachment,
-  getSyncAttachment,
   checkSavedDashboardExist,
-  updateOrigin,
 }: DashboardAppIntegrationParams): (() => void) => {
-  const originSyncSubscription = createOriginSyncSubscription({
+  const stateController = createDashboardAttachmentStateController({
     api,
-    getAttachment,
-    getSyncAttachment,
+    agentBuilder,
     checkSavedDashboardExist,
-    updateOrigin,
   });
   const agentLiveUpdatesSubscription = createAgentLiveUpdatesSubscription({
     agentBuilder,
@@ -44,14 +35,20 @@ export const registerDashboardAppIntegration = ({
   const manualChangesSubscription = createManualChangesSubscription({
     agentBuilder,
     api,
-    getAttachment,
-    getSyncAttachment,
+    getSyncAttachment: stateController.getSyncAttachment,
+    onAttachmentUpsert: stateController.handleLocalAttachmentUpsert,
   });
+  const unsubscribeConversationChanges = agentBuilder.subscribeToConversationChanges(
+    ({ id: conversationId, attachments }) => {
+      stateController.handleConversationChange({ conversationId, attachments });
+    }
+  );
 
   return () => {
-    originSyncSubscription.unsubscribe();
+    stateController.cleanup();
     agentLiveUpdatesSubscription.unsubscribe();
     manualChangesSubscription.unsubscribe();
+    unsubscribeConversationChanges();
   };
 };
 

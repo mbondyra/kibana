@@ -32,7 +32,7 @@ import type { TriggersAndActionsUIPublicPluginStart } from '@kbn/triggers-action
 import type { UsageCollectionSetup } from '@kbn/usage-collection-plugin/public';
 import type { AttachmentInput, UpdateOriginResponse } from '@kbn/agent-builder-common/attachments';
 import type { EvalsPublicStart } from '@kbn/evals-plugin/public';
-import type { EmbeddableConversationProps } from './embeddable/types';
+import type { ConversationChangeHandler, EmbeddableConversationProps } from './embeddable/types';
 import type { OpenConversationSidebarOptions } from './sidebar/types';
 export interface ConversationSidebarRef {
   close(): void;
@@ -120,6 +120,14 @@ export interface AgentBuilderPluginStart {
   toggleChat: (options?: OpenConversationSidebarOptions) => void;
   setChatConfig: (config: EmbeddableConversationProps) => void;
   clearChatConfig: () => void;
+  /**
+   * Subscribes to conversation binding changes from the active sidebar.
+   * If the sidebar is already open, the listener is called immediately with the latest binding.
+   *
+   * @param listener - Listener invoked when the sidebar binds to a conversation
+   * @returns Cleanup function that removes the listener
+   */
+  subscribeToConversationChanges: (listener: ConversationChangeHandler) => () => void;
   /**
    * Adds an attachment to the active conversation sidebar.
    * If no sidebar is open, the attachment is ignored.
