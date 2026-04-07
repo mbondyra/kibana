@@ -24,7 +24,7 @@ import { selectDashboardAttachmentForSync } from './select_dashboard_attachment_
 export interface DashboardAttachmentStateController {
   getAttachments: () => DashboardAttachment[];
   getSyncAttachment: (currentSavedObjectId: string | undefined) => DashboardAttachment | undefined;
-  handleLocalAttachmentUpsert: (attachment: DashboardAttachment) => void;
+  upsertLocalAttachment: (attachment: DashboardAttachment) => void;
   handleConversationChange: (params: {
     conversationId?: string;
     attachments?: VersionedAttachment[];
@@ -78,13 +78,18 @@ export const createDashboardAttachmentStateController = ({
     });
   };
 
-  const handleLocalAttachmentUpsert = (attachment: DashboardAttachment) => {
+  const trackLocalAttachment = (attachment: DashboardAttachment) => {
     localPendingAttachments.set(attachment.id, attachment);
 
     if (state.pendingState?.attachmentId === attachment.id) {
       state.pendingState.data = attachment.data;
       state.pendingState.localOrigin = attachment.origin;
     }
+  };
+
+  const upsertLocalAttachment = (attachment: DashboardAttachment) => {
+    agentBuilder.addAttachment(attachment);
+    trackLocalAttachment(attachment);
   };
 
   const canReuseExistingState = ({
@@ -227,11 +232,10 @@ export const createDashboardAttachmentStateController = ({
 
     const pendingState = createPendingAttachmentState({
       api,
-      agentBuilder,
       checkSavedDashboardExist,
       conversationId,
       reusableAttachment: reusablePendingAttachment,
-      onAttachmentUpsert: handleLocalAttachmentUpsert,
+      upsertLocalAttachment,
     });
 
     replaceState({
@@ -254,7 +258,7 @@ export const createDashboardAttachmentStateController = ({
         attachments: getAttachments(),
         currentSavedObjectId,
       }),
-    handleLocalAttachmentUpsert,
+    upsertLocalAttachment,
     handleConversationChange,
     cleanup,
   };

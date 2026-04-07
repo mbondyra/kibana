@@ -20,16 +20,14 @@ import {
   DASHBOARD_ATTACHMENT_TYPE,
   dashboardStateToAttachmentData,
 } from '@kbn/dashboard-agent-common';
-import type { AgentBuilderPluginStart } from '@kbn/agent-builder-plugin/public';
 import type { DashboardAttachment } from '@kbn/dashboard-agent-common/types';
 import type { DashboardApi } from '@kbn/dashboard-plugin/public';
 import { childrenUnsavedChanges$ } from '@kbn/presentation-publishing';
 
 export interface ManualChangesSubscriptionParams {
-  agentBuilder: AgentBuilderPluginStart;
   api: DashboardApi;
   getSyncAttachment: (currentSavedObjectId: string | undefined) => DashboardAttachment | undefined;
-  onAttachmentUpsert?: (attachment: DashboardAttachment) => void;
+  upsertLocalAttachment: (attachment: DashboardAttachment) => void;
 }
 
 /**
@@ -37,10 +35,9 @@ export interface ManualChangesSubscriptionParams {
  * and syncs them back to the attachment.
  */
 export const createManualChangesSubscription = ({
-  agentBuilder,
   api,
   getSyncAttachment,
-  onAttachmentUpsert,
+  upsertLocalAttachment,
 }: ManualChangesSubscriptionParams): Subscription => {
   // TODO: we should get it directly from the dashboard plugin
   // Collect observables for all trackable dashboard state
@@ -93,8 +90,7 @@ export const createManualChangesSubscription = ({
       }),
       filter((attachment): attachment is DashboardAttachment => attachment !== undefined),
       tap((attachment) => {
-        agentBuilder.addAttachment(attachment);
-        onAttachmentUpsert?.(attachment);
+        upsertLocalAttachment(attachment);
       }),
       ignoreElements()
     )

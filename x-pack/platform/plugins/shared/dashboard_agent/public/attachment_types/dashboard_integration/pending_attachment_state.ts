@@ -6,7 +6,6 @@
  */
 
 import type { Subscription } from 'rxjs';
-import type { AgentBuilderPluginStart } from '@kbn/agent-builder-plugin/public';
 import type { DashboardApi } from '@kbn/dashboard-plugin/public';
 import {
   DASHBOARD_ATTACHMENT_TYPE,
@@ -25,10 +24,9 @@ import { createOriginSyncSubscription } from './origin_sync_subscription';
 
 export interface ActivatePendingAttachmentStateParams {
   api: DashboardApi;
-  agentBuilder: AgentBuilderPluginStart;
   checkSavedDashboardExist: (dashboardId: string) => Promise<boolean>;
   reusableAttachment?: ActivatePendingAttachmentStateResult['attachment'];
-  onAttachmentUpsert?: (attachment: DashboardAttachment) => void;
+  upsertLocalAttachment: (attachment: DashboardAttachment) => void;
   updateOrigin: (attachment: PendingDashboardAttachment) => void;
 }
 
@@ -42,19 +40,17 @@ export interface ActivatePendingAttachmentStateResult {
 
 export interface CreatePendingAttachmentStateParams {
   api: DashboardApi;
-  agentBuilder: AgentBuilderPluginStart;
   checkSavedDashboardExist: (dashboardId: string) => Promise<boolean>;
   conversationId?: string;
   reusableAttachment?: ActivatePendingAttachmentStateResult['attachment'];
-  onAttachmentUpsert?: (attachment: DashboardAttachment) => void;
+  upsertLocalAttachment: (attachment: DashboardAttachment) => void;
 }
 
 export const activatePendingAttachmentState = ({
   api,
-  agentBuilder,
   checkSavedDashboardExist,
   reusableAttachment,
-  onAttachmentUpsert,
+  upsertLocalAttachment,
   updateOrigin,
 }: ActivatePendingAttachmentStateParams): ActivatePendingAttachmentStateResult | undefined => {
   const initialOrigin = api.savedObjectId$.getValue();
@@ -72,9 +68,8 @@ export const activatePendingAttachmentState = ({
   };
 
   if (!reusableAttachment) {
-    agentBuilder.addAttachment(attachment);
+    upsertLocalAttachment(attachment);
   }
-  onAttachmentUpsert?.(attachment);
 
   const originSyncSubscription = createOriginSyncSubscription({
     api,
@@ -93,8 +88,7 @@ export const activatePendingAttachmentState = ({
         type: DASHBOARD_ATTACHMENT_TYPE,
       };
 
-      agentBuilder.addAttachment(updatedAttachment);
-      onAttachmentUpsert?.(updatedAttachment);
+      upsertLocalAttachment(updatedAttachment);
       updateOrigin(updatedAttachment);
     },
   });
@@ -107,20 +101,18 @@ export const activatePendingAttachmentState = ({
 
 export const createPendingAttachmentState = ({
   api,
-  agentBuilder,
   checkSavedDashboardExist,
   conversationId,
   reusableAttachment,
-  onAttachmentUpsert,
+  upsertLocalAttachment,
 }: CreatePendingAttachmentStateParams):
   | PendingDashboardAttachmentState
   | EmptyDashboardAttachmentState => {
   const pendingState = activatePendingAttachmentState({
     api,
-    agentBuilder,
     checkSavedDashboardExist,
     reusableAttachment,
-    onAttachmentUpsert,
+    upsertLocalAttachment,
     updateOrigin: (updatedAttachment: PendingDashboardAttachment) => {
       if (updatedAttachment.data === undefined) {
         return;
