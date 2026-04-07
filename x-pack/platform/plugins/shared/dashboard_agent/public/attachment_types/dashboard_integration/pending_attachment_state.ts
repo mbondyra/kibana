@@ -5,11 +5,7 @@
  * 2.0.
  */
 
-import type { DashboardApi } from '@kbn/dashboard-plugin/public';
-import {
-  DASHBOARD_ATTACHMENT_TYPE,
-  dashboardStateToAttachmentData,
-} from '@kbn/dashboard-agent-common';
+import { DASHBOARD_ATTACHMENT_TYPE } from '@kbn/dashboard-agent-common';
 import type { DashboardAttachment } from '@kbn/dashboard-agent-common/types';
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -19,46 +15,48 @@ import {
 } from './dashboard_attachment_state';
 
 export interface CreatePendingAttachmentStateParams {
-  api: DashboardApi;
   conversationId?: string;
+  currentDashboardData?: DashboardAttachment['data'];
+  currentOrigin?: string;
   reusableAttachment?: DashboardAttachment & {
     id: string;
     data: NonNullable<DashboardAttachment['data']>;
   };
-  upsertLocalAttachment: (attachment: DashboardAttachment) => void;
+}
+
+export interface CreatePendingAttachmentStateResult {
+  state: PendingDashboardAttachmentState | EmptyDashboardAttachmentState;
+  attachmentToUpsert?: DashboardAttachment;
 }
 
 export const createPendingAttachmentState = ({
-  api,
   conversationId,
+  currentDashboardData,
+  currentOrigin,
   reusableAttachment,
-  upsertLocalAttachment,
-}: CreatePendingAttachmentStateParams):
-  | PendingDashboardAttachmentState
-  | EmptyDashboardAttachmentState => {
-  const initialOrigin = api.savedObjectId$.getValue();
-  const data = dashboardStateToAttachmentData(api.getSerializedState().attributes);
-  if (!data) {
-    return createEmptyState();
+}: CreatePendingAttachmentStateParams): CreatePendingAttachmentStateResult => {
+  if (!currentDashboardData) {
+    return {
+      state: createEmptyState(),
+    };
   }
 
   const attachment = reusableAttachment ?? {
     type: DASHBOARD_ATTACHMENT_TYPE,
-    data,
+    data: currentDashboardData,
     id: uuidv4(),
-    origin: initialOrigin,
+    origin: currentOrigin,
   };
 
-  if (!reusableAttachment) {
-    upsertLocalAttachment(attachment);
-  }
-
   return {
-    kind: 'pending',
-    conversationId,
-    attachmentId: attachment.id,
-    data: attachment.data,
-    persistedOrigin: attachment.origin,
-    localOrigin: undefined,
+    state: {
+      kind: 'pending',
+      conversationId,
+      attachmentId: attachment.id,
+      data: attachment.data,
+      persistedOrigin: attachment.origin,
+      localOrigin: undefined,
+    },
+    attachmentToUpsert: reusableAttachment ? undefined : attachment,
   };
 };

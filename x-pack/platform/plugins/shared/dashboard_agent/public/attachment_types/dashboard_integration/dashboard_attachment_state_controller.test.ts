@@ -10,6 +10,7 @@ import type { AgentBuilderPluginStart } from '@kbn/agent-builder-plugin/public';
 import { DASHBOARD_ATTACHMENT_TYPE } from '@kbn/dashboard-agent-common';
 import type { DashboardAttachment } from '@kbn/dashboard-agent-common/types';
 import type { DashboardApi } from '@kbn/dashboard-plugin/public';
+import { BehaviorSubject } from 'rxjs';
 import type {
   ExistingDashboardAttachmentState,
   PendingDashboardAttachmentState,
@@ -104,6 +105,23 @@ const createPendingState = ({
 };
 
 describe('createDashboardAttachmentStateController', () => {
+  const createMockApi = () =>
+    ({
+      savedObjectId$: new BehaviorSubject<string | undefined>(undefined),
+      getSerializedState: jest.fn().mockReturnValue({
+        attributes: {
+          title: 'Test Dashboard',
+          description: 'Test Description',
+          panels: [],
+        },
+      }),
+      onSave$: {
+        subscribe: jest.fn(() => ({
+          unsubscribe: jest.fn(),
+        })),
+      },
+    } as unknown as DashboardApi);
+
   beforeEach(() => {
     jest.resetAllMocks();
     mockedCreateOriginSyncSubscription.mockReturnValue({
@@ -125,12 +143,12 @@ describe('createDashboardAttachmentStateController', () => {
     });
 
     mockedCreateExistingAttachmentState.mockReturnValue(existingState);
-    mockedCreatePendingAttachmentState.mockReturnValue(
-      createPendingState({ attachmentId: 'pending-1' })
-    );
+    mockedCreatePendingAttachmentState.mockReturnValue({
+      state: createPendingState({ attachmentId: 'pending-1' }),
+    } as never);
 
     const controller = createDashboardAttachmentStateController({
-      api: {} as DashboardApi,
+      api: createMockApi(),
       agentBuilder: {} as AgentBuilderPluginStart,
       checkSavedDashboardExist: jest.fn(),
     });
@@ -188,12 +206,12 @@ describe('createDashboardAttachmentStateController', () => {
       .mockReturnValueOnce(stateA)
       .mockReturnValueOnce(stateB)
       .mockReturnValueOnce(updatedStateB);
-    mockedCreatePendingAttachmentState.mockReturnValue(
-      createPendingState({ attachmentId: 'pending-1' })
-    );
+    mockedCreatePendingAttachmentState.mockReturnValue({
+      state: createPendingState({ attachmentId: 'pending-1' }),
+    } as never);
 
     const controller = createDashboardAttachmentStateController({
-      api: {} as DashboardApi,
+      api: createMockApi(),
       agentBuilder: {} as AgentBuilderPluginStart,
       checkSavedDashboardExist: jest.fn(),
     });
