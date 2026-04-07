@@ -153,11 +153,13 @@ describe('createDashboardAttachmentStateController', () => {
       checkSavedDashboardExist: jest.fn(),
     });
 
-    controller.handleConversationChange({
+    controller.dispatch({
+      type: 'conversation_changed',
       conversationId: 'conversation-1',
       attachments: [attachment],
     });
-    controller.handleConversationChange({
+    controller.dispatch({
+      type: 'conversation_changed',
       conversationId: 'conversation-1',
       attachments: [attachment],
     });
@@ -216,11 +218,13 @@ describe('createDashboardAttachmentStateController', () => {
       checkSavedDashboardExist: jest.fn(),
     });
 
-    controller.handleConversationChange({
+    controller.dispatch({
+      type: 'conversation_changed',
       conversationId: 'conversation-1',
       attachments: [attachmentA, attachmentB],
     });
-    controller.handleConversationChange({
+    controller.dispatch({
+      type: 'conversation_changed',
       conversationId: 'conversation-1',
       attachments: [updatedAttachmentB],
     });
@@ -228,5 +232,23 @@ describe('createDashboardAttachmentStateController', () => {
     expect(mockedCreateOriginSyncSubscription).toHaveBeenCalledTimes(3);
     expect(mockedCreateExistingAttachmentState).toHaveBeenCalledTimes(3);
     expect(controller.getAttachments()).toEqual([selectAttachmentFromState(updatedStateB)]);
+  });
+
+  it('dispatches manual change updates through the reducer path', () => {
+    const controller = createDashboardAttachmentStateController({
+      api: createMockApi(),
+      agentBuilder: {
+        addAttachment: jest.fn(),
+      } as unknown as AgentBuilderPluginStart,
+      checkSavedDashboardExist: jest.fn(),
+    });
+
+    controller.dispatch({
+      type: 'manual_changed',
+      currentOrigin: 'dashboard-1',
+      currentDashboardData: createDashboardAttachment().data,
+    });
+
+    expect(controller.getAttachments()).toEqual([]);
   });
 });

@@ -19,6 +19,7 @@ import { dashboardStateToAttachmentData } from '@kbn/dashboard-agent-common';
 import type { DashboardAttachment } from '@kbn/dashboard-agent-common/types';
 import type { DashboardApi } from '@kbn/dashboard-plugin/public';
 import { childrenUnsavedChanges$ } from '@kbn/presentation-publishing';
+import type { DashboardAttachmentStateAction } from './dashboard_attachment_state_actions';
 
 interface ManualChangeParams {
   currentOrigin?: string;
@@ -27,7 +28,7 @@ interface ManualChangeParams {
 
 export interface ManualChangesSubscriptionParams {
   api: DashboardApi;
-  handleManualChange: (params: ManualChangeParams) => void;
+  dispatch: (action: DashboardAttachmentStateAction) => void;
 }
 
 /**
@@ -36,7 +37,7 @@ export interface ManualChangesSubscriptionParams {
  */
 export const createManualChangesSubscription = ({
   api,
-  handleManualChange,
+  dispatch,
 }: ManualChangesSubscriptionParams): Subscription => {
   // TODO: we should get it directly from the dashboard plugin
   // Collect observables for all trackable dashboard state
@@ -73,7 +74,11 @@ export const createManualChangesSubscription = ({
         };
       }),
       tap((params) => {
-        handleManualChange(params);
+        dispatch({
+          type: 'manual_changed',
+          currentOrigin: params.currentOrigin,
+          currentDashboardData: params.currentDashboardData,
+        });
       }),
       ignoreElements()
     )

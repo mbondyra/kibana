@@ -36,12 +36,16 @@ export const registerDashboardAppIntegration = ({
 
   const manualChangesSubscription = createManualChangesSubscription({
     api,
-    handleManualChange: stateController.handleManualChange,
+    dispatch: stateController.dispatch,
   });
 
   const unsubscribeConversationChanges = agentBuilder.subscribeToConversationChanges(
     ({ id: conversationId, attachments }) => {
-      stateController.handleConversationChange({ conversationId, attachments });
+      stateController.dispatch({
+        type: 'conversation_changed',
+        conversationId,
+        attachments,
+      });
     }
   );
 

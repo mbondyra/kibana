@@ -14,6 +14,7 @@ import {
 import type { DashboardAttachment } from '@kbn/dashboard-agent-common/types';
 import type { DashboardApi } from '@kbn/dashboard-plugin/public';
 import type { Subscription } from 'rxjs';
+import type { DashboardAttachmentStateAction } from './dashboard_attachment_state_actions';
 import type {
   ExistingDashboardAttachmentState,
   PendingDashboardAttachmentState,
@@ -31,15 +32,8 @@ import { createOriginSyncSubscription } from './origin_sync_subscription';
 
 export interface DashboardAttachmentStateController {
   getAttachments: () => DashboardAttachment[];
+  dispatch: (action: DashboardAttachmentStateAction) => void;
   upsertLocalAttachment: (attachment: DashboardAttachment) => void;
-  handleConversationChange: (params: {
-    conversationId?: string;
-    attachments?: VersionedAttachment[];
-  }) => void;
-  handleManualChange: (params: {
-    currentOrigin?: string;
-    currentDashboardData?: DashboardAttachment['data'];
-  }) => void;
   cleanup: () => void;
 }
 
@@ -230,6 +224,23 @@ export const createDashboardAttachmentStateController = ({
     });
   };
 
+  const dispatch = (action: DashboardAttachmentStateAction) => {
+    switch (action.type) {
+      case 'conversation_changed':
+        handleConversationChange({
+          conversationId: action.conversationId,
+          attachments: action.attachments,
+        });
+        return;
+      case 'manual_changed':
+        handleManualChange({
+          currentOrigin: action.currentOrigin,
+          currentDashboardData: action.currentDashboardData,
+        });
+        return;
+    }
+  };
+
   const cleanup = () => {
     localPendingAttachments.clear();
     originSyncSubscriptions.forEach(({ subscription }) => subscription.unsubscribe());
@@ -241,9 +252,8 @@ export const createDashboardAttachmentStateController = ({
 
   return {
     getAttachments,
+    dispatch,
     upsertLocalAttachment,
-    handleConversationChange,
-    handleManualChange,
     cleanup,
   };
 };
