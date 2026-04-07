@@ -14,6 +14,7 @@ import type {
   ExistingDashboardAttachmentState,
   PendingDashboardAttachmentState,
 } from './dashboard_attachment_state';
+import { selectAttachmentFromState } from './dashboard_attachment_state_selectors';
 import { createDashboardAttachmentStateController } from './dashboard_attachment_state_controller';
 import { createExistingAttachmentState } from './existing_attachment_state';
 import { createOriginSyncSubscription } from './origin_sync_subscription';
@@ -30,14 +31,6 @@ jest.mock('./pending_attachment_state');
 const mockedCreateExistingAttachmentState = jest.mocked(createExistingAttachmentState);
 const mockedCreateOriginSyncSubscription = jest.mocked(createOriginSyncSubscription);
 const mockedCreatePendingAttachmentState = jest.mocked(createPendingAttachmentState);
-
-type ExistingStateWithMocks = ExistingDashboardAttachmentState & {
-  cleanupMock: jest.Mock;
-};
-
-type PendingStateWithMocks = PendingDashboardAttachmentState & {
-  cleanupMock: jest.Mock;
-};
 
 const createDashboardAttachment = (
   overrides?: Partial<DashboardAttachment>
@@ -80,26 +73,15 @@ const createExistingState = ({
   conversationId: string;
   data: DashboardAttachment['data'];
   persistedOrigin?: string;
-}): ExistingStateWithMocks => {
-  const cleanupMock = jest.fn();
-  const state: ExistingStateWithMocks = {
+}): ExistingDashboardAttachmentState => {
+  return {
     kind: 'existing',
     attachmentId,
     conversationId,
     data,
     persistedOrigin,
     localOrigin: undefined,
-    cleanup: cleanupMock,
-    cleanupMock,
-    getCurrentAttachment: () => ({
-      id: attachmentId,
-      type: DASHBOARD_ATTACHMENT_TYPE,
-      data,
-      origin: persistedOrigin,
-    }),
   };
-
-  return state;
 };
 
 const createPendingState = ({
@@ -108,9 +90,8 @@ const createPendingState = ({
 }: {
   attachmentId: string;
   conversationId?: string;
-}): PendingStateWithMocks => {
+}): PendingDashboardAttachmentState => {
   const data = createDashboardAttachment().data;
-  const cleanupMock = jest.fn();
 
   return {
     kind: 'pending',
@@ -119,14 +100,6 @@ const createPendingState = ({
     data,
     persistedOrigin: undefined,
     localOrigin: undefined,
-    cleanup: cleanupMock,
-    cleanupMock,
-    getCurrentAttachment: () => ({
-      id: attachmentId,
-      type: DASHBOARD_ATTACHMENT_TYPE,
-      data,
-      origin: undefined,
-    }),
   };
 };
 
@@ -172,8 +145,7 @@ describe('createDashboardAttachmentStateController', () => {
     });
 
     expect(mockedCreateExistingAttachmentState).toHaveBeenCalledTimes(1);
-    expect(existingState.cleanupMock).not.toHaveBeenCalled();
-    expect(controller.getAttachments()).toEqual([existingState.getCurrentAttachment()]);
+    expect(controller.getAttachments()).toEqual([selectAttachmentFromState(existingState)]);
   });
 
   it('cleans up removed states and recreates changed ones', () => {
@@ -235,10 +207,8 @@ describe('createDashboardAttachmentStateController', () => {
       attachments: [updatedAttachmentB],
     });
 
-    expect(stateA.cleanupMock).toHaveBeenCalledTimes(1);
-    expect(stateB.cleanupMock).toHaveBeenCalledTimes(1);
-    expect(updatedStateB.cleanupMock).not.toHaveBeenCalled();
+    expect(mockedCreateOriginSyncSubscription).toHaveBeenCalledTimes(3);
     expect(mockedCreateExistingAttachmentState).toHaveBeenCalledTimes(3);
-    expect(controller.getAttachments()).toEqual([updatedStateB.getCurrentAttachment()]);
+    expect(controller.getAttachments()).toEqual([selectAttachmentFromState(updatedStateB)]);
   });
 });

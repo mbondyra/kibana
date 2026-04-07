@@ -16,11 +16,15 @@ import {
 import type { DashboardAttachment } from '@kbn/dashboard-agent-common/types';
 import type { DashboardApi } from '@kbn/dashboard-plugin/public';
 import deepEqual from 'fast-deep-equal';
+import type { Subscription } from 'rxjs';
 import type {
-  DashboardAttachmentState,
   ExistingDashboardAttachmentState,
   PendingDashboardAttachmentState,
 } from './dashboard_attachment_state';
+import {
+  selectAttachmentsFromStates,
+  selectStateKey,
+} from './dashboard_attachment_state_selectors';
 import { createExistingAttachmentState } from './existing_attachment_state';
 import { createPendingAttachmentState } from './pending_attachment_state';
 import { createOriginSyncSubscription } from './origin_sync_subscription';
@@ -46,6 +50,15 @@ export const createDashboardAttachmentStateController = ({
   agentBuilder: AgentBuilderPluginStart;
   checkSavedDashboardExist: (dashboardId: string) => Promise<boolean>;
 }): DashboardAttachmentStateController => {
+  type ManagedDashboardAttachmentState =
+    | ExistingDashboardAttachmentState
+    | PendingDashboardAttachmentState;
+  interface OriginSyncConfig {
+    key: string;
+    attachmentOrigin: string | undefined;
+    updateOrigin: (origin: string) => void;
+  }
+
   let state: {
     existingStates: ExistingDashboardAttachmentState[];
     pendingState?: PendingDashboardAttachmentState;
@@ -53,35 +66,57 @@ export const createDashboardAttachmentStateController = ({
     existingStates: [],
   };
   const localPendingAttachments = new Map<string, DashboardAttachment>();
+  const originSyncSubscriptions = new Map<
+    string,
+    {
+      attachmentOrigin: string | undefined;
+      subscription: Subscription;
+    }
+  >();
 
-  const getStates = (): DashboardAttachmentState[] => {
-    return state.pendingState
-      ? [...state.existingStates, state.pendingState]
-      : [...state.existingStates];
-  };
+  const getStates = (currentState: typeof state = state): ManagedDashboardAttachmentState[] =>
+    currentState.pendingState
+      ? [...currentState.existingStates, currentState.pendingState]
+      : [...currentState.existingStates];
 
-  const replaceState = (nextState: typeof state) => {
+  const replaceState = (nextState: typeof state, originSyncConfigs: OriginSyncConfig[] = []) => {
     const currentStates = getStates();
-    const nextStates: DashboardAttachmentState[] = nextState.pendingState
-      ? [...nextState.existingStates, nextState.pendingState]
-      : [...nextState.existingStates];
-    const nextStateSet = new Set(nextStates);
+    const nextStates = getStates(nextState);
+    const nextStateKeys = new Set(nextStates.map(selectStateKey));
 
-    currentStates.forEach((currentState) => {
-      if (!nextStateSet.has(currentState)) {
-        currentState.cleanup();
+    for (const currentState of currentStates) {
+      const currentStateKey = selectStateKey(currentState);
+      if (!nextStateKeys.has(currentStateKey)) {
+        originSyncSubscriptions.get(currentStateKey)?.subscription.unsubscribe();
+        originSyncSubscriptions.delete(currentStateKey);
       }
-    });
+    }
+
+    for (const { key, attachmentOrigin, updateOrigin } of originSyncConfigs) {
+      const existingSubscription = originSyncSubscriptions.get(key);
+      if (
+        existingSubscription !== undefined &&
+        existingSubscription.attachmentOrigin === attachmentOrigin
+      ) {
+        continue;
+      }
+
+      existingSubscription?.subscription.unsubscribe();
+      originSyncSubscriptions.set(key, {
+        attachmentOrigin,
+        subscription: createOriginSyncSubscription({
+          api,
+          attachmentOrigin,
+          checkSavedDashboardExist,
+          updateOrigin,
+        }),
+      });
+    }
 
     state = nextState;
   };
 
-  const getAttachments = (): DashboardAttachment[] => {
-    return getStates().flatMap((currentState) => {
-      const attachment = currentState.getCurrentAttachment();
-      return attachment ? [attachment] : [];
-    });
-  };
+  const getAttachments = (): DashboardAttachment[] => selectAttachmentsFromStates(getStates());
 
   const trackLocalAttachment = (attachment: DashboardAttachment) => {
     localPendingAttachments.set(attachment.id, attachment);
@@ -97,43 +132,15 @@ export const createDashboardAttachmentStateController = ({
     trackLocalAttachment(attachment);
   };
 
-  const attachOriginSync = <
-    T extends ExistingDashboardAttachmentState | PendingDashboardAttachmentState
-  >({
-    currentState,
-    attachmentOrigin,
-    applyOrigin,
-  }: {
-    currentState: T;
-    attachmentOrigin: string | undefined;
-    applyOrigin: (origin: string) => void;
-  }): T => {
-    const originSyncSubscription = createOriginSyncSubscription({
-      api,
-      attachmentOrigin,
-      checkSavedDashboardExist,
-      updateOrigin: applyOrigin,
-    });
-    const previousCleanup = currentState.cleanup;
-
-    currentState.cleanup = () => {
-      originSyncSubscription.unsubscribe();
-      previousCleanup();
-    };
-
-    return currentState;
-  };
-
   const canReuseExistingState = ({
     currentState,
     attachment,
     conversationId,
   }: {
-    currentState: DashboardAttachmentState;
+    currentState: ExistingDashboardAttachmentState;
     attachment: VersionedAttachment;
     conversationId: string;
   }) =>
-    currentState.kind === 'existing' &&
     currentState.conversationId === conversationId &&
     currentState.attachmentId === attachment.id &&
     currentState.persistedOrigin === attachment.origin &&
@@ -212,36 +219,42 @@ export const createDashboardAttachmentStateController = ({
     const existingDashboardAttachments = attachments?.filter(isDashboardAttachment) ?? [];
 
     if (existingDashboardAttachments.length > 0 && conversationId) {
-      replaceState({
-        existingStates: existingDashboardAttachments.map((attachment) => {
-          const previousState = findPreviousState({
-            attachmentId: attachment.id,
-            conversationId,
-          });
+      const originSyncConfigs: OriginSyncConfig[] = [];
+      replaceState(
+        {
+          existingStates: existingDashboardAttachments.map((attachment) => {
+            const previousState = findPreviousState({
+              attachmentId: attachment.id,
+              conversationId,
+            });
 
-          if (
-            previousState &&
-            canReuseExistingState({ currentState: previousState, attachment, conversationId })
-          ) {
-            return previousState;
-          }
+            if (
+              previousState &&
+              canReuseExistingState({ currentState: previousState, attachment, conversationId })
+            ) {
+              return previousState;
+            }
 
-          const existingState = createExistingAttachmentState({
-            conversationId,
-            attachment,
-            localOrigin: previousState ? previousState.localOrigin : undefined,
-          });
+            const existingState = createExistingAttachmentState({
+              conversationId,
+              attachment,
+              localOrigin: previousState ? previousState.localOrigin : undefined,
+            });
 
-          return attachOriginSync({
-            currentState: existingState,
-            attachmentOrigin: attachment.origin,
-            applyOrigin: (origin) => {
-              agentBuilder.updateAttachmentOrigin(conversationId, attachment.id, origin);
-              existingState.localOrigin = origin;
-            },
-          });
-        }),
-      });
+            originSyncConfigs.push({
+              key: selectStateKey(existingState),
+              attachmentOrigin: attachment.origin,
+              updateOrigin: (origin) => {
+                agentBuilder.updateAttachmentOrigin(conversationId, attachment.id, origin);
+                existingState.localOrigin = origin;
+              },
+            });
+
+            return existingState;
+          }),
+        },
+        originSyncConfigs
+      );
 
       return;
     }
@@ -276,15 +289,18 @@ export const createDashboardAttachmentStateController = ({
       upsertLocalAttachment,
     });
 
-    replaceState({
-      existingStates: [],
-      pendingState:
-        pendingState.kind === 'empty'
-          ? undefined
-          : attachOriginSync({
-              currentState: pendingState,
+    replaceState(
+      {
+        existingStates: [],
+        pendingState: pendingState.kind === 'empty' ? undefined : pendingState,
+      },
+      pendingState.kind === 'empty'
+        ? []
+        : [
+            {
+              key: selectStateKey(pendingState),
               attachmentOrigin: pendingState.localOrigin ?? pendingState.persistedOrigin,
-              applyOrigin: (origin) => {
+              updateOrigin: (origin) => {
                 if (!pendingState.data) {
                   return;
                 }
@@ -293,17 +309,20 @@ export const createDashboardAttachmentStateController = ({
                   data: pendingState.data,
                   id: pendingState.attachmentId,
                   origin,
-                  type: pendingState.getCurrentAttachment()?.type ?? DASHBOARD_ATTACHMENT_TYPE,
+                  type: DASHBOARD_ATTACHMENT_TYPE,
                 };
 
                 upsertLocalAttachment(updatedAttachment);
               },
-            }),
-    });
+            },
+          ]
+    );
   };
 
   const cleanup = () => {
     localPendingAttachments.clear();
+    originSyncSubscriptions.forEach(({ subscription }) => subscription.unsubscribe());
+    originSyncSubscriptions.clear();
     replaceState({
       existingStates: [],
     });

@@ -7,10 +7,7 @@
 
 import type { VersionedAttachment } from '@kbn/agent-builder-common/attachments';
 import { getLatestVersion } from '@kbn/agent-builder-common/attachments';
-import {
-  getAttachmentFromState,
-  type ExistingDashboardAttachmentState,
-} from './dashboard_attachment_state';
+import { type ExistingDashboardAttachmentState } from './dashboard_attachment_state';
 
 export interface CreateExistingAttachmentStateParams {
   conversationId: string;
@@ -23,16 +20,12 @@ export const createExistingAttachmentState = ({
   attachment,
   localOrigin,
 }: CreateExistingAttachmentStateParams): ExistingDashboardAttachmentState => {
-  const state: ExistingDashboardAttachmentState = {
+  return {
     kind: 'existing',
     conversationId,
     attachmentId: attachment.id,
     data: getLatestVersion(attachment)?.data as ExistingDashboardAttachmentState['data'],
     persistedOrigin: attachment.origin,
     localOrigin,
-    cleanup: () => {},
-    getCurrentAttachment: () => getAttachmentFromState(state),
   };
-
-  return state;
 };

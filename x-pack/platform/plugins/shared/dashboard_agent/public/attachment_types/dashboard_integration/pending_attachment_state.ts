@@ -14,7 +14,6 @@ import type { DashboardAttachment } from '@kbn/dashboard-agent-common/types';
 import { v4 as uuidv4 } from 'uuid';
 import {
   createEmptyState,
-  getAttachmentFromState,
   type EmptyDashboardAttachmentState,
   type PendingDashboardAttachmentState,
 } from './dashboard_attachment_state';
@@ -54,16 +53,12 @@ export const createPendingAttachmentState = ({
     upsertLocalAttachment(attachment);
   }
 
-  const state: PendingDashboardAttachmentState = {
+  return {
     kind: 'pending',
     conversationId,
     attachmentId: attachment.id,
     data: attachment.data,
     persistedOrigin: attachment.origin,
     localOrigin: undefined,
-    cleanup: () => {},
-    getCurrentAttachment: () => getAttachmentFromState(state),
   };
-
-  return state;
 };

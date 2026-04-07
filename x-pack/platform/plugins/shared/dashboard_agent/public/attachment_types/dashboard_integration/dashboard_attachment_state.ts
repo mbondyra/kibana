@@ -5,12 +5,10 @@
  * 2.0.
  */
 
-import { DASHBOARD_ATTACHMENT_TYPE } from '@kbn/dashboard-agent-common';
 import type { DashboardAttachment } from '@kbn/dashboard-agent-common/types';
 
 export interface DashboardAttachmentStateBase {
-  cleanup: () => void;
-  getCurrentAttachment: () => DashboardAttachment | undefined;
+  kind: string;
 }
 
 export type DashboardAttachmentStateWithData = DashboardAttachmentStateBase & {
@@ -42,21 +40,4 @@ export type DashboardAttachmentState =
 
 export const createEmptyState = (): EmptyDashboardAttachmentState => ({
   kind: 'empty',
-  cleanup: () => {},
-  getCurrentAttachment: () => undefined,
 });
-
-export const getAttachmentFromState = (
-  state: DashboardAttachmentStateWithData
-): DashboardAttachment | undefined => {
-  if (!state.data) {
-    return undefined;
-  }
-
-  return {
-    id: state.attachmentId,
-    type: DASHBOARD_ATTACHMENT_TYPE,
-    data: state.data,
-    origin: state.localOrigin ?? state.persistedOrigin,
-  };
-};
