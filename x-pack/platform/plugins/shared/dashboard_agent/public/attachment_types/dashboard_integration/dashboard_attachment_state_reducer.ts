@@ -10,6 +10,7 @@ import { getLatestVersion } from '@kbn/agent-builder-common/attachments';
 import { DASHBOARD_ATTACHMENT_TYPE, isDashboardAttachment } from '@kbn/dashboard-agent-common';
 import type { DashboardAttachment } from '@kbn/dashboard-agent-common/types';
 import deepEqual from 'fast-deep-equal';
+import type { DashboardAttachmentStateAction } from './dashboard_attachment_state_actions';
 import type {
   ExistingDashboardAttachmentState,
   PendingDashboardAttachmentState,
@@ -35,29 +36,20 @@ export interface OriginSyncDescriptor {
   attachmentOrigin: string | undefined;
 }
 
-export interface ReduceConversationChangeParams {
-  state: DashboardAttachmentControllerState;
-  conversationId?: string;
-  attachments?: VersionedAttachment[];
+export interface DashboardAttachmentReducerContext {
   currentOrigin?: string;
   currentDashboardData?: DashboardAttachment['data'];
   localPendingAttachments: DashboardAttachment[];
 }
 
-export interface ReduceConversationChangeResult {
+export interface ReduceConversationChangeParams {
+  conversationId?: string;
+  attachments?: VersionedAttachment[];
+}
+
+export interface ReduceDashboardAttachmentStateResult {
   state: DashboardAttachmentControllerState;
   originSyncDescriptors: OriginSyncDescriptor[];
-  attachmentsToUpsert: DashboardAttachment[];
-}
-
-export interface ReduceManualChangeParams {
-  state: DashboardAttachmentControllerState;
-  currentOrigin?: string;
-  currentDashboardData?: DashboardAttachment['data'];
-}
-
-export interface ReduceManualChangeResult {
-  state: DashboardAttachmentControllerState;
   attachmentsToUpsert: DashboardAttachment[];
 }
 
@@ -136,14 +128,17 @@ const findReusablePendingAttachment = ({
   );
 };
 
-export const reduceConversationChange = ({
+const reduceConversationChanged = ({
   state,
   conversationId,
   attachments,
   currentOrigin,
   currentDashboardData,
   localPendingAttachments,
-}: ReduceConversationChangeParams): ReduceConversationChangeResult => {
+}: {
+  state: DashboardAttachmentControllerState;
+} & ReduceConversationChangeParams &
+  DashboardAttachmentReducerContext): ReduceDashboardAttachmentStateResult => {
   const existingDashboardAttachments = attachments?.filter(isDashboardAttachment) ?? [];
 
   if (existingDashboardAttachments.length > 0 && conversationId) {
@@ -242,14 +237,17 @@ export const reduceConversationChange = ({
   };
 };
 
-export const reduceManualChange = ({
+const reduceManualChanged = ({
   state,
   currentOrigin,
   currentDashboardData,
-}: ReduceManualChangeParams): ReduceManualChangeResult => {
+}: {
+  state: DashboardAttachmentControllerState;
+} & DashboardAttachmentReducerContext): ReduceDashboardAttachmentStateResult => {
   if (!currentDashboardData) {
     return {
       state,
+      originSyncDescriptors: [],
       attachmentsToUpsert: [],
     };
   }
@@ -264,12 +262,14 @@ export const reduceManualChange = ({
   if (!syncAttachment) {
     return {
       state,
+      originSyncDescriptors: [],
       attachmentsToUpsert: [],
     };
   }
 
   return {
     state,
+    originSyncDescriptors: [],
     attachmentsToUpsert: [
       {
         data: currentDashboardData,
@@ -279,4 +279,29 @@ export const reduceManualChange = ({
       },
     ],
   };
+};
+
+export const reduceDashboardAttachmentState = ({
+  state,
+  action,
+  context,
+}: {
+  state: DashboardAttachmentControllerState;
+  action: DashboardAttachmentStateAction;
+  context: DashboardAttachmentReducerContext;
+}): ReduceDashboardAttachmentStateResult => {
+  switch (action.type) {
+    case 'conversation_changed':
+      return reduceConversationChanged({
+        state,
+        conversationId: action.conversationId,
+        attachments: action.attachments,
+        ...context,
+      });
+    case 'manual_changed':
+      return reduceManualChanged({
+        state,
+        ...context,
+      });
+  }
 };

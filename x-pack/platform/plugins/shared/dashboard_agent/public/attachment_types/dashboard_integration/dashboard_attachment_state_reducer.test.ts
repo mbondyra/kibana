@@ -8,10 +8,11 @@
 import type { VersionedAttachment } from '@kbn/agent-builder-common/attachments';
 import { DASHBOARD_ATTACHMENT_TYPE } from '@kbn/dashboard-agent-common';
 import type { DashboardAttachment } from '@kbn/dashboard-agent-common/types';
+import type { DashboardAttachmentStateAction } from './dashboard_attachment_state_actions';
 import {
+  type DashboardAttachmentReducerContext,
   type DashboardAttachmentControllerState,
-  reduceConversationChange,
-  reduceManualChange,
+  reduceDashboardAttachmentState,
 } from './dashboard_attachment_state_reducer';
 
 const createDashboardAttachment = (
@@ -52,7 +53,25 @@ const createState = (
   ...overrides,
 });
 
-describe('reduceConversationChange', () => {
+const reduceState = ({
+  state,
+  action,
+  context,
+}: {
+  state: DashboardAttachmentControllerState;
+  action: DashboardAttachmentStateAction;
+  context: Partial<DashboardAttachmentReducerContext>;
+}) =>
+  reduceDashboardAttachmentState({
+    state,
+    action,
+    context: {
+      localPendingAttachments: [],
+      ...context,
+    },
+  });
+
+describe('reduceDashboardAttachmentState', () => {
   it('reuses an unchanged existing attachment state', () => {
     const attachment = createDashboardAttachment({
       id: 'attachment-1',
@@ -67,15 +86,19 @@ describe('reduceConversationChange', () => {
       localOrigin: undefined,
     };
 
-    const result = reduceConversationChange({
+    const result = reduceState({
       state: createState({
         existingStates: [existingState],
       }),
-      conversationId: 'conversation-1',
-      attachments: [createVersionedAttachment(attachment)],
-      currentOrigin: 'dashboard-1',
-      currentDashboardData: attachment.data,
-      localPendingAttachments: [],
+      action: {
+        type: 'conversation_changed',
+        conversationId: 'conversation-1',
+        attachments: [createVersionedAttachment(attachment)],
+      },
+      context: {
+        currentOrigin: 'dashboard-1',
+        currentDashboardData: attachment.data,
+      },
     });
 
     expect(result.state.existingStates[0]).toBe(existingState);
@@ -93,15 +116,19 @@ describe('reduceConversationChange', () => {
       localOrigin: undefined,
     };
 
-    const result = reduceConversationChange({
+    const result = reduceState({
       state: createState({
         pendingState,
       }),
-      conversationId: 'conversation-2',
-      attachments: [],
-      currentOrigin: 'dashboard-1',
-      currentDashboardData: pendingState.data,
-      localPendingAttachments: [],
+      action: {
+        type: 'conversation_changed',
+        conversationId: 'conversation-2',
+        attachments: [],
+      },
+      context: {
+        currentOrigin: 'dashboard-1',
+        currentDashboardData: pendingState.data,
+      },
     });
 
     expect(result.state.pendingState).toEqual({
@@ -115,13 +142,17 @@ describe('reduceConversationChange', () => {
   it('returns a new pending attachment to publish when no reusable draft exists', () => {
     const dashboardData = createDashboardAttachment().data;
 
-    const result = reduceConversationChange({
+    const result = reduceState({
       state: createState(),
-      conversationId: 'conversation-1',
-      attachments: [],
-      currentOrigin: undefined,
-      currentDashboardData: dashboardData,
-      localPendingAttachments: [],
+      action: {
+        type: 'conversation_changed',
+        conversationId: 'conversation-1',
+        attachments: [],
+      },
+      context: {
+        currentOrigin: undefined,
+        currentDashboardData: dashboardData,
+      },
     });
 
     expect(result.state.pendingState).toEqual(
@@ -143,14 +174,16 @@ describe('reduceConversationChange', () => {
       }),
     ]);
   });
-});
-
-describe('reduceManualChange', () => {
   it('returns no attachment when there is no matching sync target', () => {
-    const result = reduceManualChange({
+    const result = reduceState({
       state: createState(),
-      currentOrigin: 'dashboard-1',
-      currentDashboardData: createDashboardAttachment().data,
+      action: {
+        type: 'manual_changed',
+      },
+      context: {
+        currentOrigin: 'dashboard-1',
+        currentDashboardData: createDashboardAttachment().data,
+      },
     });
 
     expect(result.attachmentsToUpsert).toEqual([]);
@@ -163,7 +196,7 @@ describe('reduceManualChange', () => {
       title: 'Updated Title',
     };
 
-    const result = reduceManualChange({
+    const result = reduceState({
       state: createState({
         existingStates: [
           {
@@ -176,8 +209,13 @@ describe('reduceManualChange', () => {
           },
         ],
       }),
-      currentOrigin: 'dashboard-1',
-      currentDashboardData: updatedData,
+      action: {
+        type: 'manual_changed',
+      },
+      context: {
+        currentOrigin: 'dashboard-1',
+        currentDashboardData: updatedData,
+      },
     });
 
     expect(result.attachmentsToUpsert).toEqual([
@@ -196,7 +234,7 @@ describe('reduceManualChange', () => {
       title: 'Updated Draft Title',
     };
 
-    const result = reduceManualChange({
+    const result = reduceState({
       state: createState({
         pendingState: {
           kind: 'pending',
@@ -207,8 +245,13 @@ describe('reduceManualChange', () => {
           localOrigin: undefined,
         },
       }),
-      currentOrigin: undefined,
-      currentDashboardData: updatedData,
+      action: {
+        type: 'manual_changed',
+      },
+      context: {
+        currentOrigin: undefined,
+        currentDashboardData: updatedData,
+      },
     });
 
     expect(result.attachmentsToUpsert).toEqual([

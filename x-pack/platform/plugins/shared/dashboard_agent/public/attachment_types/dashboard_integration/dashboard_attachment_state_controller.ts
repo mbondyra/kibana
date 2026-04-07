@@ -5,7 +5,6 @@
  * 2.0.
  */
 
-import type { VersionedAttachment } from '@kbn/agent-builder-common/attachments';
 import type { AgentBuilderPluginStart } from '@kbn/agent-builder-plugin/public';
 import {
   DASHBOARD_ATTACHMENT_TYPE,
@@ -20,9 +19,9 @@ import type {
   PendingDashboardAttachmentState,
 } from './dashboard_attachment_state';
 import {
+  type DashboardAttachmentReducerContext,
   type DashboardAttachmentControllerState,
-  reduceConversationChange,
-  reduceManualChange,
+  reduceDashboardAttachmentState,
 } from './dashboard_attachment_state_reducer';
 import {
   selectAttachmentsFromStates,
@@ -144,26 +143,7 @@ export const createDashboardAttachmentStateController = ({
     }
   };
 
-  const handleConversationChange = ({
-    conversationId,
-    attachments,
-  }: {
-    conversationId?: string;
-    attachments?: VersionedAttachment[];
-  }) => {
-    const currentOrigin = api.savedObjectId$.getValue();
-    const currentDashboardData = dashboardStateToAttachmentData(
-      api.getSerializedState().attributes
-    );
-    const nextState = reduceConversationChange({
-      state,
-      conversationId,
-      attachments,
-      currentOrigin,
-      currentDashboardData,
-      localPendingAttachments: Array.from(localPendingAttachments.values()),
-    });
-
+  const applyReducerResult = (nextState: ReturnType<typeof reduceDashboardAttachmentState>) => {
     nextState.attachmentsToUpsert.forEach((attachment) => {
       upsertLocalAttachment(attachment);
     });
@@ -206,39 +186,19 @@ export const createDashboardAttachmentStateController = ({
     );
   };
 
-  const handleManualChange = ({
-    currentOrigin,
-    currentDashboardData,
-  }: {
-    currentOrigin?: string;
-    currentDashboardData?: DashboardAttachment['data'];
-  }) => {
-    const nextState = reduceManualChange({
-      state,
-      currentOrigin,
-      currentDashboardData,
-    });
-
-    nextState.attachmentsToUpsert.forEach((attachment) => {
-      upsertLocalAttachment(attachment);
-    });
-  };
-
   const dispatch = (action: DashboardAttachmentStateAction) => {
-    switch (action.type) {
-      case 'conversation_changed':
-        handleConversationChange({
-          conversationId: action.conversationId,
-          attachments: action.attachments,
-        });
-        return;
-      case 'manual_changed':
-        handleManualChange({
-          currentOrigin: action.currentOrigin,
-          currentDashboardData: action.currentDashboardData,
-        });
-        return;
-    }
+    const context: DashboardAttachmentReducerContext = {
+      currentOrigin: api.savedObjectId$.getValue(),
+      currentDashboardData: dashboardStateToAttachmentData(api.getSerializedState().attributes),
+      localPendingAttachments: Array.from(localPendingAttachments.values()),
+    };
+    const nextState = reduceDashboardAttachmentState({
+      state,
+      action,
+      context,
+    });
+
+    applyReducerResult(nextState);
   };
 
   const cleanup = () => {
