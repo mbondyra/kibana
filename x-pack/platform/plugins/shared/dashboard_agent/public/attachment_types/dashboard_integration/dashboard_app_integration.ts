@@ -36,8 +36,7 @@ export const registerDashboardAppIntegration = ({
 
   const manualChangesSubscription = createManualChangesSubscription({
     api,
-    getSyncAttachment: stateController.getSyncAttachment,
-    upsertLocalAttachment: stateController.upsertLocalAttachment,
+    handleManualChange: stateController.handleManualChange,
   });
 
   const unsubscribeConversationChanges = agentBuilder.subscribeToConversationChanges(

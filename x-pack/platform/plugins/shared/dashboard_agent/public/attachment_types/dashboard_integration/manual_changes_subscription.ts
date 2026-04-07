@@ -7,7 +7,6 @@
 
 import {
   debounceTime,
-  filter,
   ignoreElements,
   map,
   merge,
@@ -16,18 +15,19 @@ import {
   type Observable,
   type Subscription,
 } from 'rxjs';
-import {
-  DASHBOARD_ATTACHMENT_TYPE,
-  dashboardStateToAttachmentData,
-} from '@kbn/dashboard-agent-common';
+import { dashboardStateToAttachmentData } from '@kbn/dashboard-agent-common';
 import type { DashboardAttachment } from '@kbn/dashboard-agent-common/types';
 import type { DashboardApi } from '@kbn/dashboard-plugin/public';
 import { childrenUnsavedChanges$ } from '@kbn/presentation-publishing';
 
+interface ManualChangeParams {
+  currentOrigin?: string;
+  currentDashboardData?: DashboardAttachment['data'];
+}
+
 export interface ManualChangesSubscriptionParams {
   api: DashboardApi;
-  getSyncAttachment: (currentSavedObjectId: string | undefined) => DashboardAttachment | undefined;
-  upsertLocalAttachment: (attachment: DashboardAttachment) => void;
+  handleManualChange: (params: ManualChangeParams) => void;
 }
 
 /**
@@ -36,8 +36,7 @@ export interface ManualChangesSubscriptionParams {
  */
 export const createManualChangesSubscription = ({
   api,
-  getSyncAttachment,
-  upsertLocalAttachment,
+  handleManualChange,
 }: ManualChangesSubscriptionParams): Subscription => {
   // TODO: we should get it directly from the dashboard plugin
   // Collect observables for all trackable dashboard state
@@ -63,34 +62,18 @@ export const createManualChangesSubscription = ({
     .pipe(
       skip(observables.length), // Skip initial emissions from all BehaviorSubjects
       debounceTime(150),
-      map((): DashboardAttachment | undefined => {
-        const currentSavedObjectId = api.savedObjectId$.getValue();
-        const syncAttachment = getSyncAttachment(currentSavedObjectId);
-
-        if (!syncAttachment) {
-          return undefined;
-        }
-
+      map((): ManualChangeParams => {
         const currentDashboardState = api.getSerializedState().attributes;
-        if (!currentDashboardState) {
-          return undefined;
-        }
-
-        const data = dashboardStateToAttachmentData(currentDashboardState);
-        if (!data) {
-          return undefined;
-        }
 
         return {
-          data,
-          id: syncAttachment.id,
-          origin: syncAttachment.origin,
-          type: DASHBOARD_ATTACHMENT_TYPE,
+          currentDashboardData: currentDashboardState
+            ? dashboardStateToAttachmentData(currentDashboardState)
+            : undefined,
+          currentOrigin: api.savedObjectId$.getValue(),
         };
       }),
-      filter((attachment): attachment is DashboardAttachment => attachment !== undefined),
-      tap((attachment) => {
-        upsertLocalAttachment(attachment);
+      tap((params) => {
+        handleManualChange(params);
       }),
       ignoreElements()
     )

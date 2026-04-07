@@ -21,21 +21,24 @@ import type {
 import {
   type DashboardAttachmentControllerState,
   reduceConversationChange,
+  reduceManualChange,
 } from './dashboard_attachment_state_reducer';
 import {
   selectAttachmentsFromStates,
   selectStateKey,
 } from './dashboard_attachment_state_selectors';
 import { createOriginSyncSubscription } from './origin_sync_subscription';
-import { selectDashboardAttachmentForSync } from './select_dashboard_attachment_for_sync';
 
 export interface DashboardAttachmentStateController {
   getAttachments: () => DashboardAttachment[];
-  getSyncAttachment: (currentSavedObjectId: string | undefined) => DashboardAttachment | undefined;
   upsertLocalAttachment: (attachment: DashboardAttachment) => void;
   handleConversationChange: (params: {
     conversationId?: string;
     attachments?: VersionedAttachment[];
+  }) => void;
+  handleManualChange: (params: {
+    currentOrigin?: string;
+    currentDashboardData?: DashboardAttachment['data'];
   }) => void;
   cleanup: () => void;
 }
@@ -209,6 +212,24 @@ export const createDashboardAttachmentStateController = ({
     );
   };
 
+  const handleManualChange = ({
+    currentOrigin,
+    currentDashboardData,
+  }: {
+    currentOrigin?: string;
+    currentDashboardData?: DashboardAttachment['data'];
+  }) => {
+    const nextState = reduceManualChange({
+      state,
+      currentOrigin,
+      currentDashboardData,
+    });
+
+    nextState.attachmentsToUpsert.forEach((attachment) => {
+      upsertLocalAttachment(attachment);
+    });
+  };
+
   const cleanup = () => {
     localPendingAttachments.clear();
     originSyncSubscriptions.forEach(({ subscription }) => subscription.unsubscribe());
@@ -220,13 +241,9 @@ export const createDashboardAttachmentStateController = ({
 
   return {
     getAttachments,
-    getSyncAttachment: (currentSavedObjectId: string | undefined) =>
-      selectDashboardAttachmentForSync({
-        attachments: getAttachments(),
-        currentSavedObjectId,
-      }),
     upsertLocalAttachment,
     handleConversationChange,
+    handleManualChange,
     cleanup,
   };
 };

@@ -7,16 +7,20 @@
 
 import type { VersionedAttachment } from '@kbn/agent-builder-common/attachments';
 import { getLatestVersion } from '@kbn/agent-builder-common/attachments';
-import { isDashboardAttachment } from '@kbn/dashboard-agent-common';
+import { DASHBOARD_ATTACHMENT_TYPE, isDashboardAttachment } from '@kbn/dashboard-agent-common';
 import type { DashboardAttachment } from '@kbn/dashboard-agent-common/types';
 import deepEqual from 'fast-deep-equal';
 import type {
   ExistingDashboardAttachmentState,
   PendingDashboardAttachmentState,
 } from './dashboard_attachment_state';
-import { selectStateKey } from './dashboard_attachment_state_selectors';
+import {
+  selectAttachmentsFromStates,
+  selectStateKey,
+} from './dashboard_attachment_state_selectors';
 import { createExistingAttachmentState } from './existing_attachment_state';
 import { createPendingAttachmentState } from './pending_attachment_state';
+import { selectDashboardAttachmentForSync } from './select_dashboard_attachment_for_sync';
 
 export interface DashboardAttachmentControllerState {
   existingStates: ExistingDashboardAttachmentState[];
@@ -43,6 +47,17 @@ export interface ReduceConversationChangeParams {
 export interface ReduceConversationChangeResult {
   state: DashboardAttachmentControllerState;
   originSyncDescriptors: OriginSyncDescriptor[];
+  attachmentsToUpsert: DashboardAttachment[];
+}
+
+export interface ReduceManualChangeParams {
+  state: DashboardAttachmentControllerState;
+  currentOrigin?: string;
+  currentDashboardData?: DashboardAttachment['data'];
+}
+
+export interface ReduceManualChangeResult {
+  state: DashboardAttachmentControllerState;
   attachmentsToUpsert: DashboardAttachment[];
 }
 
@@ -224,5 +239,44 @@ export const reduceConversationChange = ({
             },
           ],
     attachmentsToUpsert: attachmentToUpsert ? [attachmentToUpsert] : [],
+  };
+};
+
+export const reduceManualChange = ({
+  state,
+  currentOrigin,
+  currentDashboardData,
+}: ReduceManualChangeParams): ReduceManualChangeResult => {
+  if (!currentDashboardData) {
+    return {
+      state,
+      attachmentsToUpsert: [],
+    };
+  }
+
+  const syncAttachment = selectDashboardAttachmentForSync({
+    attachments: selectAttachmentsFromStates(
+      state.pendingState ? [...state.existingStates, state.pendingState] : state.existingStates
+    ),
+    currentSavedObjectId: currentOrigin,
+  });
+
+  if (!syncAttachment) {
+    return {
+      state,
+      attachmentsToUpsert: [],
+    };
+  }
+
+  return {
+    state,
+    attachmentsToUpsert: [
+      {
+        data: currentDashboardData,
+        id: syncAttachment.id,
+        origin: syncAttachment.origin,
+        type: DASHBOARD_ATTACHMENT_TYPE,
+      },
+    ],
   };
 };

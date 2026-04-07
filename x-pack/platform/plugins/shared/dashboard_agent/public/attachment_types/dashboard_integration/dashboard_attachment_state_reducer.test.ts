@@ -11,6 +11,7 @@ import type { DashboardAttachment } from '@kbn/dashboard-agent-common/types';
 import {
   type DashboardAttachmentControllerState,
   reduceConversationChange,
+  reduceManualChange,
 } from './dashboard_attachment_state_reducer';
 
 const createDashboardAttachment = (
@@ -140,6 +141,83 @@ describe('reduceConversationChange', () => {
       expect.objectContaining({
         kind: 'pending',
       }),
+    ]);
+  });
+});
+
+describe('reduceManualChange', () => {
+  it('returns no attachment when there is no matching sync target', () => {
+    const result = reduceManualChange({
+      state: createState(),
+      currentOrigin: 'dashboard-1',
+      currentDashboardData: createDashboardAttachment().data,
+    });
+
+    expect(result.attachmentsToUpsert).toEqual([]);
+    expect(result.state).toEqual(createState());
+  });
+
+  it('returns an updated existing attachment when the current dashboard matches', () => {
+    const updatedData = {
+      ...createDashboardAttachment().data,
+      title: 'Updated Title',
+    };
+
+    const result = reduceManualChange({
+      state: createState({
+        existingStates: [
+          {
+            kind: 'existing',
+            conversationId: 'conversation-1',
+            attachmentId: 'attachment-1',
+            data: createDashboardAttachment().data,
+            persistedOrigin: 'dashboard-1',
+            localOrigin: undefined,
+          },
+        ],
+      }),
+      currentOrigin: 'dashboard-1',
+      currentDashboardData: updatedData,
+    });
+
+    expect(result.attachmentsToUpsert).toEqual([
+      {
+        id: 'attachment-1',
+        type: DASHBOARD_ATTACHMENT_TYPE,
+        data: updatedData,
+        origin: 'dashboard-1',
+      },
+    ]);
+  });
+
+  it('returns an updated pending attachment when editing an unsaved draft', () => {
+    const updatedData = {
+      ...createDashboardAttachment().data,
+      title: 'Updated Draft Title',
+    };
+
+    const result = reduceManualChange({
+      state: createState({
+        pendingState: {
+          kind: 'pending',
+          conversationId: 'conversation-1',
+          attachmentId: 'pending-1',
+          data: createDashboardAttachment().data,
+          persistedOrigin: undefined,
+          localOrigin: undefined,
+        },
+      }),
+      currentOrigin: undefined,
+      currentDashboardData: updatedData,
+    });
+
+    expect(result.attachmentsToUpsert).toEqual([
+      {
+        id: 'pending-1',
+        type: DASHBOARD_ATTACHMENT_TYPE,
+        data: updatedData,
+        origin: undefined,
+      },
     ]);
   });
 });
