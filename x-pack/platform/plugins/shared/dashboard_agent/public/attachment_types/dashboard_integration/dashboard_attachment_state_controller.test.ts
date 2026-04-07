@@ -16,13 +16,28 @@ import type {
 } from './dashboard_attachment_state';
 import { createDashboardAttachmentStateController } from './dashboard_attachment_state_controller';
 import { createExistingAttachmentState } from './existing_attachment_state';
+import { createOriginSyncSubscription } from './origin_sync_subscription';
 import { createPendingAttachmentState } from './pending_attachment_state';
 
 jest.mock('./existing_attachment_state');
+jest.mock('./origin_sync_subscription', () => ({
+  createOriginSyncSubscription: jest.fn(() => ({
+    unsubscribe: jest.fn(),
+  })),
+}));
 jest.mock('./pending_attachment_state');
 
 const mockedCreateExistingAttachmentState = jest.mocked(createExistingAttachmentState);
+const mockedCreateOriginSyncSubscription = jest.mocked(createOriginSyncSubscription);
 const mockedCreatePendingAttachmentState = jest.mocked(createPendingAttachmentState);
+
+type ExistingStateWithMocks = ExistingDashboardAttachmentState & {
+  cleanupMock: jest.Mock;
+};
+
+type PendingStateWithMocks = PendingDashboardAttachmentState & {
+  cleanupMock: jest.Mock;
+};
 
 const createDashboardAttachment = (
   overrides?: Partial<DashboardAttachment>
@@ -65,15 +80,17 @@ const createExistingState = ({
   conversationId: string;
   data: DashboardAttachment['data'];
   persistedOrigin?: string;
-}): ExistingDashboardAttachmentState => {
-  const state: ExistingDashboardAttachmentState = {
+}): ExistingStateWithMocks => {
+  const cleanupMock = jest.fn();
+  const state: ExistingStateWithMocks = {
     kind: 'existing',
     attachmentId,
     conversationId,
     data,
     persistedOrigin,
     localOrigin: undefined,
-    cleanup: jest.fn(),
+    cleanup: cleanupMock,
+    cleanupMock,
     getCurrentAttachment: () => ({
       id: attachmentId,
       type: DASHBOARD_ATTACHMENT_TYPE,
@@ -91,8 +108,9 @@ const createPendingState = ({
 }: {
   attachmentId: string;
   conversationId?: string;
-}): PendingDashboardAttachmentState => {
+}): PendingStateWithMocks => {
   const data = createDashboardAttachment().data;
+  const cleanupMock = jest.fn();
 
   return {
     kind: 'pending',
@@ -101,7 +119,8 @@ const createPendingState = ({
     data,
     persistedOrigin: undefined,
     localOrigin: undefined,
-    cleanup: jest.fn(),
+    cleanup: cleanupMock,
+    cleanupMock,
     getCurrentAttachment: () => ({
       id: attachmentId,
       type: DASHBOARD_ATTACHMENT_TYPE,
@@ -114,19 +133,21 @@ const createPendingState = ({
 describe('createDashboardAttachmentStateController', () => {
   beforeEach(() => {
     jest.resetAllMocks();
+    mockedCreateOriginSyncSubscription.mockReturnValue({
+      unsubscribe: jest.fn(),
+    } as never);
   });
 
   it('reuses unchanged existing states by attachment id', () => {
-    const attachment = createVersionedAttachment(
-      createDashboardAttachment({
-        id: 'dashboard-attachment-1',
-        origin: 'dashboard-1',
-      })
-    );
+    const dashboardAttachment = createDashboardAttachment({
+      id: 'dashboard-attachment-1',
+      origin: 'dashboard-1',
+    });
+    const attachment = createVersionedAttachment(dashboardAttachment);
     const existingState = createExistingState({
       attachmentId: 'dashboard-attachment-1',
       conversationId: 'conversation-1',
-      data: attachment.versions[0].data,
+      data: dashboardAttachment.data,
       persistedOrigin: 'dashboard-1',
     });
 
@@ -151,46 +172,43 @@ describe('createDashboardAttachmentStateController', () => {
     });
 
     expect(mockedCreateExistingAttachmentState).toHaveBeenCalledTimes(1);
-    expect(existingState.cleanup).not.toHaveBeenCalled();
+    expect(existingState.cleanupMock).not.toHaveBeenCalled();
     expect(controller.getAttachments()).toEqual([existingState.getCurrentAttachment()]);
   });
 
   it('cleans up removed states and recreates changed ones', () => {
-    const attachmentA = createVersionedAttachment(
-      createDashboardAttachment({
-        id: 'dashboard-attachment-a',
-        origin: 'dashboard-a',
-      })
-    );
-    const attachmentB = createVersionedAttachment(
-      createDashboardAttachment({
-        id: 'dashboard-attachment-b',
-        origin: 'dashboard-b',
-      })
-    );
-    const updatedAttachmentB = createVersionedAttachment(
-      createDashboardAttachment({
-        id: 'dashboard-attachment-b',
-        origin: 'dashboard-b-updated',
-      })
-    );
+    const dashboardAttachmentA = createDashboardAttachment({
+      id: 'dashboard-attachment-a',
+      origin: 'dashboard-a',
+    });
+    const dashboardAttachmentB = createDashboardAttachment({
+      id: 'dashboard-attachment-b',
+      origin: 'dashboard-b',
+    });
+    const updatedDashboardAttachmentB = createDashboardAttachment({
+      id: 'dashboard-attachment-b',
+      origin: 'dashboard-b-updated',
+    });
+    const attachmentA = createVersionedAttachment(dashboardAttachmentA);
+    const attachmentB = createVersionedAttachment(dashboardAttachmentB);
+    const updatedAttachmentB = createVersionedAttachment(updatedDashboardAttachmentB);
 
     const stateA = createExistingState({
       attachmentId: 'dashboard-attachment-a',
       conversationId: 'conversation-1',
-      data: attachmentA.versions[0].data,
+      data: dashboardAttachmentA.data,
       persistedOrigin: 'dashboard-a',
     });
     const stateB = createExistingState({
       attachmentId: 'dashboard-attachment-b',
       conversationId: 'conversation-1',
-      data: attachmentB.versions[0].data,
+      data: dashboardAttachmentB.data,
       persistedOrigin: 'dashboard-b',
     });
     const updatedStateB = createExistingState({
       attachmentId: 'dashboard-attachment-b',
       conversationId: 'conversation-1',
-      data: updatedAttachmentB.versions[0].data,
+      data: updatedDashboardAttachmentB.data,
       persistedOrigin: 'dashboard-b-updated',
     });
 
@@ -217,9 +235,9 @@ describe('createDashboardAttachmentStateController', () => {
       attachments: [updatedAttachmentB],
     });
 
-    expect(stateA.cleanup).toHaveBeenCalledTimes(1);
-    expect(stateB.cleanup).toHaveBeenCalledTimes(1);
-    expect(updatedStateB.cleanup).not.toHaveBeenCalled();
+    expect(stateA.cleanupMock).toHaveBeenCalledTimes(1);
+    expect(stateB.cleanupMock).toHaveBeenCalledTimes(1);
+    expect(updatedStateB.cleanupMock).not.toHaveBeenCalled();
     expect(mockedCreateExistingAttachmentState).toHaveBeenCalledTimes(3);
     expect(controller.getAttachments()).toEqual([updatedStateB.getCurrentAttachment()]);
   });

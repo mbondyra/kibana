@@ -5,11 +5,9 @@
  * 2.0.
  */
 
-import type { Subscription } from 'rxjs';
 import type { DashboardApi } from '@kbn/dashboard-plugin/public';
 import {
   DASHBOARD_ATTACHMENT_TYPE,
-  type PendingDashboardAttachment,
   dashboardStateToAttachmentData,
 } from '@kbn/dashboard-agent-common';
 import type { DashboardAttachment } from '@kbn/dashboard-agent-common/types';
@@ -20,47 +18,32 @@ import {
   type EmptyDashboardAttachmentState,
   type PendingDashboardAttachmentState,
 } from './dashboard_attachment_state';
-import { createOriginSyncSubscription } from './origin_sync_subscription';
-
-export interface ActivatePendingAttachmentStateParams {
-  api: DashboardApi;
-  checkSavedDashboardExist: (dashboardId: string) => Promise<boolean>;
-  reusableAttachment?: ActivatePendingAttachmentStateResult['attachment'];
-  upsertLocalAttachment: (attachment: DashboardAttachment) => void;
-  updateOrigin: (attachment: PendingDashboardAttachment) => void;
-}
-
-export interface ActivatePendingAttachmentStateResult {
-  attachment: PendingDashboardAttachment & {
-    id: string;
-    data: NonNullable<PendingDashboardAttachment['data']>;
-  };
-  originSyncSubscription: Subscription;
-}
 
 export interface CreatePendingAttachmentStateParams {
   api: DashboardApi;
-  checkSavedDashboardExist: (dashboardId: string) => Promise<boolean>;
   conversationId?: string;
-  reusableAttachment?: ActivatePendingAttachmentStateResult['attachment'];
+  reusableAttachment?: DashboardAttachment & {
+    id: string;
+    data: NonNullable<DashboardAttachment['data']>;
+  };
   upsertLocalAttachment: (attachment: DashboardAttachment) => void;
 }
 
-export const activatePendingAttachmentState = ({
+export const createPendingAttachmentState = ({
   api,
-  checkSavedDashboardExist,
+  conversationId,
   reusableAttachment,
   upsertLocalAttachment,
-  updateOrigin,
-}: ActivatePendingAttachmentStateParams): ActivatePendingAttachmentStateResult | undefined => {
+}: CreatePendingAttachmentStateParams):
+  | PendingDashboardAttachmentState
+  | EmptyDashboardAttachmentState => {
   const initialOrigin = api.savedObjectId$.getValue();
-
   const data = dashboardStateToAttachmentData(api.getSerializedState().attributes);
   if (!data) {
-    return undefined;
+    return createEmptyState();
   }
 
-  const attachment: ActivatePendingAttachmentStateResult['attachment'] = reusableAttachment ?? {
+  const attachment = reusableAttachment ?? {
     type: DASHBOARD_ATTACHMENT_TYPE,
     data,
     id: uuidv4(),
@@ -71,72 +54,14 @@ export const activatePendingAttachmentState = ({
     upsertLocalAttachment(attachment);
   }
 
-  const originSyncSubscription = createOriginSyncSubscription({
-    api,
-    attachmentOrigin: initialOrigin,
-    checkSavedDashboardExist,
-    updateOrigin: (origin) => {
-      const dashboardData = dashboardStateToAttachmentData(api.getSerializedState().attributes);
-      if (!dashboardData) {
-        return;
-      }
-
-      const updatedAttachment: PendingDashboardAttachment = {
-        data: dashboardData,
-        id: attachment.id,
-        origin,
-        type: DASHBOARD_ATTACHMENT_TYPE,
-      };
-
-      upsertLocalAttachment(updatedAttachment);
-      updateOrigin(updatedAttachment);
-    },
-  });
-
-  return {
-    attachment,
-    originSyncSubscription,
-  };
-};
-
-export const createPendingAttachmentState = ({
-  api,
-  checkSavedDashboardExist,
-  conversationId,
-  reusableAttachment,
-  upsertLocalAttachment,
-}: CreatePendingAttachmentStateParams):
-  | PendingDashboardAttachmentState
-  | EmptyDashboardAttachmentState => {
-  const pendingState = activatePendingAttachmentState({
-    api,
-    checkSavedDashboardExist,
-    reusableAttachment,
-    upsertLocalAttachment,
-    updateOrigin: (updatedAttachment: PendingDashboardAttachment) => {
-      if (updatedAttachment.data === undefined) {
-        return;
-      }
-
-      state.data = updatedAttachment.data;
-      state.localOrigin = updatedAttachment.origin;
-    },
-  });
-
-  if (!pendingState) {
-    return createEmptyState();
-  }
-
   const state: PendingDashboardAttachmentState = {
     kind: 'pending',
     conversationId,
-    attachmentId: pendingState.attachment.id,
-    data: pendingState.attachment.data,
-    persistedOrigin: pendingState.attachment.origin,
+    attachmentId: attachment.id,
+    data: attachment.data,
+    persistedOrigin: attachment.origin,
     localOrigin: undefined,
-    cleanup: () => {
-      pendingState.originSyncSubscription.unsubscribe();
-    },
+    cleanup: () => {},
     getCurrentAttachment: () => getAttachmentFromState(state),
   };
 

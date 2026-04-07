@@ -7,27 +7,18 @@
 
 import type { VersionedAttachment } from '@kbn/agent-builder-common/attachments';
 import { getLatestVersion } from '@kbn/agent-builder-common/attachments';
-import type { AgentBuilderPluginStart } from '@kbn/agent-builder-plugin/public';
-import type { DashboardApi } from '@kbn/dashboard-plugin/public';
 import {
   getAttachmentFromState,
   type ExistingDashboardAttachmentState,
 } from './dashboard_attachment_state';
-import { createOriginSyncSubscription } from './origin_sync_subscription';
 
 export interface CreateExistingAttachmentStateParams {
-  api: DashboardApi;
-  agentBuilder: AgentBuilderPluginStart;
-  checkSavedDashboardExist: (dashboardId: string) => Promise<boolean>;
   conversationId: string;
   attachment: VersionedAttachment;
   localOrigin?: string;
 }
 
 export const createExistingAttachmentState = ({
-  api,
-  agentBuilder,
-  checkSavedDashboardExist,
   conversationId,
   attachment,
   localOrigin,
@@ -39,21 +30,9 @@ export const createExistingAttachmentState = ({
     data: getLatestVersion(attachment)?.data as ExistingDashboardAttachmentState['data'],
     persistedOrigin: attachment.origin,
     localOrigin,
-    cleanup: () => {
-      originSyncSubscription.unsubscribe();
-    },
+    cleanup: () => {},
     getCurrentAttachment: () => getAttachmentFromState(state),
   };
-
-  const originSyncSubscription = createOriginSyncSubscription({
-    api,
-    attachmentOrigin: attachment.origin,
-    checkSavedDashboardExist,
-    updateOrigin: (origin) => {
-      agentBuilder.updateAttachmentOrigin(conversationId, attachment.id, origin);
-      state.localOrigin = origin;
-    },
-  });
 
   return state;
 };

@@ -28,15 +28,18 @@ export const registerDashboardAppIntegration = ({
     agentBuilder,
     checkSavedDashboardExist,
   });
+
   const agentLiveUpdatesSubscription = createAgentLiveUpdatesSubscription({
     agentBuilder,
     api,
   });
+
   const manualChangesSubscription = createManualChangesSubscription({
     api,
     getSyncAttachment: stateController.getSyncAttachment,
     upsertLocalAttachment: stateController.upsertLocalAttachment,
   });
+
   const unsubscribeConversationChanges = agentBuilder.subscribeToConversationChanges(
     ({ id: conversationId, attachments }) => {
       stateController.handleConversationChange({ conversationId, attachments });

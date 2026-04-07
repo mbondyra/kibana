@@ -8,7 +8,11 @@
 import type { VersionedAttachment } from '@kbn/agent-builder-common/attachments';
 import { getLatestVersion } from '@kbn/agent-builder-common/attachments';
 import type { AgentBuilderPluginStart } from '@kbn/agent-builder-plugin/public';
-import { dashboardStateToAttachmentData, isDashboardAttachment } from '@kbn/dashboard-agent-common';
+import {
+  DASHBOARD_ATTACHMENT_TYPE,
+  dashboardStateToAttachmentData,
+  isDashboardAttachment,
+} from '@kbn/dashboard-agent-common';
 import type { DashboardAttachment } from '@kbn/dashboard-agent-common/types';
 import type { DashboardApi } from '@kbn/dashboard-plugin/public';
 import deepEqual from 'fast-deep-equal';
@@ -19,6 +23,7 @@ import type {
 } from './dashboard_attachment_state';
 import { createExistingAttachmentState } from './existing_attachment_state';
 import { createPendingAttachmentState } from './pending_attachment_state';
+import { createOriginSyncSubscription } from './origin_sync_subscription';
 import { selectDashboardAttachmentForSync } from './select_dashboard_attachment_for_sync';
 
 export interface DashboardAttachmentStateController {
@@ -90,6 +95,33 @@ export const createDashboardAttachmentStateController = ({
   const upsertLocalAttachment = (attachment: DashboardAttachment) => {
     agentBuilder.addAttachment(attachment);
     trackLocalAttachment(attachment);
+  };
+
+  const attachOriginSync = <
+    T extends ExistingDashboardAttachmentState | PendingDashboardAttachmentState
+  >({
+    currentState,
+    attachmentOrigin,
+    applyOrigin,
+  }: {
+    currentState: T;
+    attachmentOrigin: string | undefined;
+    applyOrigin: (origin: string) => void;
+  }): T => {
+    const originSyncSubscription = createOriginSyncSubscription({
+      api,
+      attachmentOrigin,
+      checkSavedDashboardExist,
+      updateOrigin: applyOrigin,
+    });
+    const previousCleanup = currentState.cleanup;
+
+    currentState.cleanup = () => {
+      originSyncSubscription.unsubscribe();
+      previousCleanup();
+    };
+
+    return currentState;
   };
 
   const canReuseExistingState = ({
@@ -194,13 +226,19 @@ export const createDashboardAttachmentStateController = ({
             return previousState;
           }
 
-          return createExistingAttachmentState({
-            api,
-            agentBuilder,
-            checkSavedDashboardExist,
+          const existingState = createExistingAttachmentState({
             conversationId,
             attachment,
             localOrigin: previousState ? previousState.localOrigin : undefined,
+          });
+
+          return attachOriginSync({
+            currentState: existingState,
+            attachmentOrigin: attachment.origin,
+            applyOrigin: (origin) => {
+              agentBuilder.updateAttachmentOrigin(conversationId, attachment.id, origin);
+              existingState.localOrigin = origin;
+            },
           });
         }),
       });
@@ -212,6 +250,7 @@ export const createDashboardAttachmentStateController = ({
     const currentOrigin = api.savedObjectId$.getValue();
 
     if (
+      previousPendingState &&
       canReusePendingState({
         currentState: previousPendingState,
         origin: currentOrigin,
@@ -232,7 +271,6 @@ export const createDashboardAttachmentStateController = ({
 
     const pendingState = createPendingAttachmentState({
       api,
-      checkSavedDashboardExist,
       conversationId,
       reusableAttachment: reusablePendingAttachment,
       upsertLocalAttachment,
@@ -240,7 +278,27 @@ export const createDashboardAttachmentStateController = ({
 
     replaceState({
       existingStates: [],
-      pendingState: pendingState.kind === 'empty' ? undefined : pendingState,
+      pendingState:
+        pendingState.kind === 'empty'
+          ? undefined
+          : attachOriginSync({
+              currentState: pendingState,
+              attachmentOrigin: pendingState.localOrigin ?? pendingState.persistedOrigin,
+              applyOrigin: (origin) => {
+                if (!pendingState.data) {
+                  return;
+                }
+
+                const updatedAttachment: DashboardAttachment = {
+                  data: pendingState.data,
+                  id: pendingState.attachmentId,
+                  origin,
+                  type: pendingState.getCurrentAttachment()?.type ?? DASHBOARD_ATTACHMENT_TYPE,
+                };
+
+                upsertLocalAttachment(updatedAttachment);
+              },
+            }),
     });
   };
 
