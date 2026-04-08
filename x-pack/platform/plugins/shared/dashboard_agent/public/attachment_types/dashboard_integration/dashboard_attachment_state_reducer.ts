@@ -24,7 +24,7 @@ import { createPendingAttachmentState } from './pending_attachment_state';
 import { selectDashboardAttachmentForSync } from './select_dashboard_attachment_for_sync';
 
 export interface DashboardAttachmentControllerState {
-  existingStates: ExistingDashboardAttachmentState[];
+  existingAttachments: ExistingDashboardAttachmentState[];
   pendingState?: PendingDashboardAttachmentState;
 }
 
@@ -39,7 +39,7 @@ export interface OriginSyncDescriptor {
 export interface DashboardAttachmentReducerContext {
   currentOrigin?: string;
   currentDashboardData?: DashboardAttachment['data'];
-  localPendingAttachments: DashboardAttachment[];
+  pendingAttachments: DashboardAttachment[];
 }
 
 export interface ReduceConversationChangeParams {
@@ -87,15 +87,15 @@ const canReusePendingState = ({
 };
 
 const findPreviousExistingState = ({
-  existingStates,
+  existingAttachments,
   attachmentId,
   conversationId,
 }: {
-  existingStates: ExistingDashboardAttachmentState[];
+  existingAttachments: ExistingDashboardAttachmentState[];
   attachmentId: string;
   conversationId: string;
 }) =>
-  existingStates.find(
+  existingAttachments.find(
     (currentState) =>
       currentState.conversationId === conversationId && currentState.attachmentId === attachmentId
   );
@@ -103,11 +103,11 @@ const findPreviousExistingState = ({
 const findReusablePendingAttachment = ({
   currentOrigin,
   currentDashboardData,
-  localPendingAttachments,
+  pendingAttachments,
 }: {
   currentOrigin?: string;
   currentDashboardData?: DashboardAttachment['data'];
-  localPendingAttachments: DashboardAttachment[];
+  pendingAttachments: DashboardAttachment[];
 }):
   | (DashboardAttachment & {
       id: string;
@@ -118,7 +118,7 @@ const findReusablePendingAttachment = ({
     return undefined;
   }
 
-  return localPendingAttachments.find(
+  return pendingAttachments.find(
     (
       attachment
     ): attachment is DashboardAttachment & {
@@ -134,7 +134,7 @@ const reduceConversationChanged = ({
   attachments,
   currentOrigin,
   currentDashboardData,
-  localPendingAttachments,
+  pendingAttachments,
 }: {
   state: DashboardAttachmentControllerState;
 } & ReduceConversationChangeParams &
@@ -143,9 +143,9 @@ const reduceConversationChanged = ({
 
   if (existingDashboardAttachments.length > 0 && conversationId) {
     const originSyncDescriptors: OriginSyncDescriptor[] = [];
-    const existingStates = existingDashboardAttachments.map((attachment) => {
+    const existingAttachments = existingDashboardAttachments.map((attachment) => {
       const previousState = findPreviousExistingState({
-        existingStates: state.existingStates,
+        existingAttachments: state.existingAttachments,
         attachmentId: attachment.id,
         conversationId,
       });
@@ -176,7 +176,7 @@ const reduceConversationChanged = ({
 
     return {
       state: {
-        existingStates,
+        existingAttachments,
       },
       originSyncDescriptors,
       attachmentsToUpsert: [],
@@ -193,7 +193,7 @@ const reduceConversationChanged = ({
   ) {
     return {
       state: {
-        existingStates: [],
+        existingAttachments: [],
         pendingState: {
           ...state.pendingState,
           conversationId,
@@ -207,7 +207,7 @@ const reduceConversationChanged = ({
   const reusablePendingAttachment = findReusablePendingAttachment({
     currentOrigin,
     currentDashboardData,
-    localPendingAttachments,
+    pendingAttachments,
   });
 
   const { state: pendingState, attachmentToUpsert } = createPendingAttachmentState({
@@ -219,7 +219,7 @@ const reduceConversationChanged = ({
 
   return {
     state: {
-      existingStates: [],
+      existingAttachments: [],
       pendingState: pendingState.kind === 'empty' ? undefined : pendingState,
     },
     originSyncDescriptors:
@@ -254,7 +254,7 @@ const reduceManualChanged = ({
 
   const syncAttachment = selectDashboardAttachmentForSync({
     attachments: selectAttachmentsFromStates(
-      state.pendingState ? [...state.existingStates, state.pendingState] : state.existingStates
+      state.pendingState ? [...state.existingAttachments, state.pendingState] : state.existingAttachments
     ),
     currentSavedObjectId: currentOrigin,
   });

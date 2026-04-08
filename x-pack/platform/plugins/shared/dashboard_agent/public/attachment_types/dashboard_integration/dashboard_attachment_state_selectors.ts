@@ -29,7 +29,7 @@ export const selectAttachmentFromState = (
   };
 };
 
-export const selectAttachmentsFromStates = (
+export const selectAttachments = (
   states: readonly DashboardAttachmentState[]
 ): DashboardAttachment[] =>
   states.flatMap((state) => {

@@ -165,7 +165,6 @@ describe('createDashboardAttachmentStateController', () => {
     });
 
     expect(mockedCreateExistingAttachmentState).toHaveBeenCalledTimes(1);
-    expect(controller.getAttachments()).toEqual([selectAttachmentFromState(existingState)]);
   });
 
   it('cleans up removed states and recreates changed ones', () => {
@@ -231,7 +230,6 @@ describe('createDashboardAttachmentStateController', () => {
 
     expect(mockedCreateOriginSyncSubscription).toHaveBeenCalledTimes(3);
     expect(mockedCreateExistingAttachmentState).toHaveBeenCalledTimes(3);
-    expect(controller.getAttachments()).toEqual([selectAttachmentFromState(updatedStateB)]);
   });
 
   it('dispatches manual change updates through the reducer path', () => {
@@ -249,6 +247,5 @@ describe('createDashboardAttachmentStateController', () => {
       currentDashboardData: createDashboardAttachment().data,
     });
 
-    expect(controller.getAttachments()).toEqual([]);
   });
 });

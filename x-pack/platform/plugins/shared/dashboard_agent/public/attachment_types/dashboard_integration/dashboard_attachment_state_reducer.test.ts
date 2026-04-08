@@ -49,7 +49,7 @@ const createVersionedAttachment = (
 const createState = (
   overrides?: Partial<DashboardAttachmentControllerState>
 ): DashboardAttachmentControllerState => ({
-  existingStates: [],
+  existingAttachments: [],
   ...overrides,
 });
 
@@ -66,7 +66,7 @@ const reduceState = ({
     state,
     action,
     context: {
-      localPendingAttachments: [],
+      pendingAttachments: [],
       ...context,
     },
   });
@@ -88,7 +88,7 @@ describe('reduceDashboardAttachmentState', () => {
 
     const result = reduceState({
       state: createState({
-        existingStates: [existingState],
+        existingAttachments: [existingState],
       }),
       action: {
         type: 'conversation_changed',
@@ -101,7 +101,7 @@ describe('reduceDashboardAttachmentState', () => {
       },
     });
 
-    expect(result.state.existingStates[0]).toBe(existingState);
+    expect(result.state.existingAttachments[0]).toBe(existingState);
     expect(result.originSyncDescriptors).toEqual([]);
     expect(result.attachmentsToUpsert).toEqual([]);
   });
@@ -198,7 +198,7 @@ describe('reduceDashboardAttachmentState', () => {
 
     const result = reduceState({
       state: createState({
-        existingStates: [
+        existingAttachments: [
           {
             kind: 'existing',
             conversationId: 'conversation-1',

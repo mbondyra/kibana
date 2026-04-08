@@ -30,10 +30,17 @@ import {
 import { createOriginSyncSubscription } from './origin_sync_subscription';
 
 export interface DashboardAttachmentStateController {
-  getAttachments: () => DashboardAttachment[];
   dispatch: (action: DashboardAttachmentStateAction) => void;
-  upsertLocalAttachment: (attachment: DashboardAttachment) => void;
   cleanup: () => void;
+}
+
+type ManagedDashboardAttachmentState =
+  | ExistingDashboardAttachmentState
+  | PendingDashboardAttachmentState;
+interface OriginSyncConfig {
+  key: string;
+  attachmentOrigin: string | undefined;
+  updateOrigin: (origin: string) => void;
 }
 
 export const createDashboardAttachmentStateController = ({
@@ -45,19 +52,11 @@ export const createDashboardAttachmentStateController = ({
   agentBuilder: AgentBuilderPluginStart;
   checkSavedDashboardExist: (dashboardId: string) => Promise<boolean>;
 }): DashboardAttachmentStateController => {
-  type ManagedDashboardAttachmentState =
-    | ExistingDashboardAttachmentState
-    | PendingDashboardAttachmentState;
-  interface OriginSyncConfig {
-    key: string;
-    attachmentOrigin: string | undefined;
-    updateOrigin: (origin: string) => void;
-  }
-
+ 
   let state: DashboardAttachmentControllerState = {
-    existingStates: [],
+    existingAttachments: [],
   };
-  const localPendingAttachments = new Map<string, DashboardAttachment>();
+  const pendingAttachments = new Map<string, DashboardAttachment>();
   const originSyncSubscriptions = new Map<
     string,
     {
@@ -66,14 +65,14 @@ export const createDashboardAttachmentStateController = ({
     }
   >();
 
-  const getStates = (currentState: typeof state = state): ManagedDashboardAttachmentState[] =>
+  const getAllAttachments = (currentState: typeof state = state): ManagedDashboardAttachmentState[] =>
     currentState.pendingState
-      ? [...currentState.existingStates, currentState.pendingState]
-      : [...currentState.existingStates];
+      ? [...currentState.existingAttachments, currentState.pendingState]
+      : [...currentState.existingAttachments];
 
   const replaceState = (nextState: typeof state, originSyncConfigs: OriginSyncConfig[] = []) => {
-    const currentStates = getStates();
-    const nextStates = getStates(nextState);
+    const currentStates = getAllAttachments();
+    const nextStates = getAllAttachments(nextState);
     const nextStateKeys = new Set(nextStates.map(selectStateKey));
 
     for (const currentState of currentStates) {
@@ -108,10 +107,8 @@ export const createDashboardAttachmentStateController = ({
     state = nextState;
   };
 
-  const getAttachments = (): DashboardAttachment[] => selectAttachmentsFromStates(getStates());
-
   const trackLocalAttachment = (attachment: DashboardAttachment) => {
-    localPendingAttachments.set(attachment.id, attachment);
+    pendingAttachments.set(attachment.id, attachment);
 
     if (state.pendingState?.attachmentId === attachment.id) {
       state.pendingState.data = attachment.data;
@@ -133,7 +130,7 @@ export const createDashboardAttachmentStateController = ({
     attachmentId: string;
     origin: string;
   }) => {
-    const existingState = state.existingStates.find(
+    const existingState = state.existingAttachments.find(
       (currentState) =>
         currentState.conversationId === conversationId && currentState.attachmentId === attachmentId
     );
@@ -190,7 +187,7 @@ export const createDashboardAttachmentStateController = ({
     const context: DashboardAttachmentReducerContext = {
       currentOrigin: api.savedObjectId$.getValue(),
       currentDashboardData: dashboardStateToAttachmentData(api.getSerializedState().attributes),
-      localPendingAttachments: Array.from(localPendingAttachments.values()),
+      pendingAttachments: Array.from(pendingAttachments.values()),
     };
     const nextState = reduceDashboardAttachmentState({
       state,
@@ -202,18 +199,16 @@ export const createDashboardAttachmentStateController = ({
   };
 
   const cleanup = () => {
-    localPendingAttachments.clear();
+    pendingAttachments.clear();
     originSyncSubscriptions.forEach(({ subscription }) => subscription.unsubscribe());
     originSyncSubscriptions.clear();
     replaceState({
-      existingStates: [],
+      existingAttachments: [],
     });
   };
 
   return {
-    getAttachments,
     dispatch,
-    upsertLocalAttachment,
     cleanup,
   };
 };
