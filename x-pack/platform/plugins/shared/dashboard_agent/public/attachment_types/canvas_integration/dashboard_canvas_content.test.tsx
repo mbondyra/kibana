@@ -13,10 +13,6 @@ import { DashboardRenderer } from '@kbn/dashboard-plugin/public';
 import type { ActionButton } from '@kbn/agent-builder-browser/attachments';
 import type { DashboardAttachment } from '@kbn/dashboard-agent-common/types';
 import type { Filter, Query } from '@kbn/es-query';
-import {
-  clearUnifiedSearchPersistedState,
-  setPersistedState,
-} from './use_dashboard_preview_unified_search';
 import { DashboardCanvasContent } from './dashboard_canvas_content';
 import { DASHBOARD_ATTACHMENT_TYPE } from '@kbn/dashboard-agent-common';
 
@@ -98,7 +94,6 @@ describe('DashboardCanvasContent', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    clearUnifiedSearchPersistedState('test-dashboard-id');
   });
 
   const simulateDashboardApiAvailable = (mockApi: DashboardApi) => {
@@ -260,25 +255,6 @@ describe('DashboardCanvasContent', () => {
     expect(props.filterManager.setFilters).toHaveBeenCalledWith(nextFilters);
     expect(mockApi.setFilters).toHaveBeenCalledWith(nextFilters);
     expect(mockApi.setFilters).toHaveBeenCalledTimes(1);
-  });
-
-  it('hydrates unified search state from persisted preview state', async () => {
-    setPersistedState('test-dashboard-id', {
-      filters: [{ meta: { key: 'host.name' } }] as Filter[],
-      query: { query: 'host.name: "web-01"', language: 'kuery' },
-      timeRange: { from: 'now-1h', to: 'now' },
-    });
-
-    await renderDashboardCanvasContent();
-
-    expect(getLatestSearchBarProps()).toEqual(
-      expect.objectContaining({
-        filters: [{ meta: { key: 'host.name' } }],
-        query: { query: 'host.name: "web-01"', language: 'kuery' },
-        dateRangeFrom: 'now-1h',
-        dateRangeTo: 'now',
-      })
-    );
   });
 
   it('updates query bar index patterns when dashboard data views are published', async () => {
