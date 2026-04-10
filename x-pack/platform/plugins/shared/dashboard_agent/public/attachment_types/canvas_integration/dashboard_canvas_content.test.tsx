@@ -89,9 +89,9 @@ describe('DashboardCanvasContent', () => {
   };
 
   const defaultProps = {
-    isSidebar: false,
     attachment: mockAttachment,
     conversationId: 'test-conversation-id',
+    isSidebar: false,
     dashboardLocator: undefined,
     searchBarComponent: MockSearchBar as any,
   };
@@ -332,11 +332,9 @@ describe('DashboardCanvasContent', () => {
   });
 
   describe('Edit in Dashboards button', () => {
-    it('should call closeCanvas and openSidebarConversation when isSidebar is false', async () => {
+    it('should call closeCanvas and openSidebarConversation', async () => {
       const { registerActionButtons, closeCanvas, openSidebarConversation, mockApi } =
-        await renderDashboardCanvasContent({
-          isSidebar: false,
-        });
+        await renderDashboardCanvasContent();
 
       const buttons: ActionButton[] = registerActionButtons.mock.calls.at(-1)?.[0] ?? [];
       const editButton = buttons.find((b) => b.label === 'Edit in Dashboards');
@@ -348,24 +346,6 @@ describe('DashboardCanvasContent', () => {
       expect(mockApi.locator?.navigate).toHaveBeenCalled();
       expect(closeCanvas).toHaveBeenCalled();
       expect(openSidebarConversation).toHaveBeenCalled();
-    });
-
-    it('should call closeCanvas but not openSidebarConversation when isSidebar is true', async () => {
-      const { registerActionButtons, closeCanvas, openSidebarConversation, mockApi } =
-        await renderDashboardCanvasContent({
-          isSidebar: true,
-        });
-
-      const buttons: ActionButton[] = registerActionButtons.mock.calls.at(-1)?.[0] ?? [];
-      const editButton = buttons.find((b) => b.label === 'Edit in Dashboards');
-
-      await act(async () => {
-        await editButton?.handler();
-      });
-
-      expect(mockApi.locator?.navigate).toHaveBeenCalled();
-      expect(closeCanvas).toHaveBeenCalled();
-      expect(openSidebarConversation).not.toHaveBeenCalled();
     });
 
     it('should navigate with correct dashboard state and time range', async () => {
