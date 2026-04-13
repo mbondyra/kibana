@@ -302,43 +302,6 @@ describe('runSaveLensVisualization', () => {
         expect(props.redirectToOrigin).not.toHaveBeenCalled();
         expect(toasts.addSuccess).not.toHaveBeenCalled();
       });
-
-      it('adds panels in place when tryAddEmbeddablePackagesToOpenDashboard succeeds', async () => {
-        const dashboardId = faker.string.uuid();
-        const tryAddEmbeddablePackagesToOpenDashboard = jest.fn().mockResolvedValue(true);
-        const { props, saveProps, options, redirectToDashboardFn, toasts } = getDefaultArgs(
-          { tryAddEmbeddablePackagesToOpenDashboard },
-          { newCopyOnSave: true, saveToLibrary: false, dashboardId }
-        );
-        await runSaveLensVisualization(props, saveProps, options);
-
-        expect(tryAddEmbeddablePackagesToOpenDashboard).toHaveBeenCalledWith({
-          targetDashboardId: dashboardId,
-          packages: expect.arrayContaining([
-            expect.objectContaining({
-              type: LENS_EMBEDDABLE_TYPE,
-              serializedState: expect.objectContaining({ ref_id: undefined }),
-            }),
-          ]),
-        });
-        expect(props.onAppLeave).toHaveBeenCalled();
-        expect(redirectToDashboardFn).not.toHaveBeenCalled();
-        expect(toasts.addSuccess).toHaveBeenCalled();
-      });
-
-      it('redirects when tryAddEmbeddablePackagesToOpenDashboard returns false', async () => {
-        const dashboardId = faker.string.uuid();
-        const tryAddEmbeddablePackagesToOpenDashboard = jest.fn().mockResolvedValue(false);
-        const { props, saveProps, options, redirectToDashboardFn, toasts } = getDefaultArgs(
-          { tryAddEmbeddablePackagesToOpenDashboard },
-          { newCopyOnSave: true, saveToLibrary: false, dashboardId }
-        );
-        await runSaveLensVisualization(props, saveProps, options);
-
-        expect(tryAddEmbeddablePackagesToOpenDashboard).toHaveBeenCalled();
-        expect(redirectToDashboardFn).toHaveBeenCalled();
-        expect(toasts.addSuccess).not.toHaveBeenCalled();
-      });
     });
   });
 

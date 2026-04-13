@@ -8,6 +8,8 @@
  */
 
 import { cloneDeep } from 'lodash';
+import type { Observable } from 'rxjs';
+import { Subject } from 'rxjs';
 import { Storage } from '@kbn/kibana-utils-plugin/public';
 import type { ApplicationStart, PublicAppInfo } from '@kbn/core/public';
 import type { EmbeddableEditorState, EmbeddablePackageState } from './types';
@@ -30,6 +32,7 @@ export class EmbeddableStateTransfer {
   public isTransferInProgress: boolean;
   private storage: Storage;
   private appList: ReadonlyMap<string, PublicAppInfo> | undefined;
+  private readonly incomingEmbeddablePackagesWrittenForApp$ = new Subject<string>();
 
   constructor(
     private navigateToApp: ApplicationStart['navigateToApp'],
@@ -50,6 +53,14 @@ export class EmbeddableStateTransfer {
    * @param appId - The id of the app to fetch the title for
    */
   public getAppNameFromId = (appId: string): string | undefined => this.appList?.get(appId)?.title;
+
+  /**
+   * Emits the destination app id after embeddable package state is written and navigation completes,
+   * so hosts (e.g. Dashboard) can consume session storage when already mounted.
+   */
+  public getIncomingEmbeddablePackagesWritten$(): Observable<string> {
+    return this.incomingEmbeddablePackagesWrittenForApp$.asObservable();
+  }
 
   /**
    * Fetches an {@link EmbeddableEditorState | editor state} from the sessionStorage for the provided app id
@@ -233,5 +244,12 @@ export class EmbeddableStateTransfer {
       openInNewTab: options?.openInNewTab,
       skipAppLeave: options?.skipAppLeave,
     });
+    if (
+      key === EMBEDDABLE_PACKAGE_STATE_KEY &&
+      Array.isArray(options?.state) &&
+      options.state.length > 0
+    ) {
+      this.incomingEmbeddablePackagesWrittenForApp$.next(appId);
+    }
   }
 }

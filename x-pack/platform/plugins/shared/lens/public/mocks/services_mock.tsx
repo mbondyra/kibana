@@ -154,6 +154,5 @@ export function makeDefaultServices(
     kql: kqlPluginMock.createStartContract(),
     contentManagement: contentManagementMock.createStartContract(),
     eventAnnotationService: {} as EventAnnotationServiceType,
-    tryAddEmbeddablePackagesToOpenDashboard: undefined,
   };
 }

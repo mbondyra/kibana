@@ -27,10 +27,7 @@ import type { LensAppProps } from './types';
 import type { SaveProps } from './app';
 import { APP_ID, getFullPath } from '../../common/constants';
 import { getFromPreloaded } from '../state_management/init_middleware/load_initial';
-import {
-  buildEmbeddablePackagesForLensDashboardRedirect,
-  redirectToDashboard,
-} from './save_modal_container_helpers';
+import { redirectToDashboard } from './save_modal_container_helpers';
 import { isLegacyEditorEmbeddable } from './app_helpers';
 import { transformToApiConfig } from '../react_embeddable/helper';
 
@@ -71,7 +68,6 @@ export type SaveModalContainerProps = {
     | 'userProfile'
     | 'stateTransfer'
     | 'lensDocumentService'
-    | 'tryAddEmbeddablePackagesToOpenDashboard'
   >;
   initialContext?: VisualizeFieldContext | VisualizeEditorContext;
   // is this visualization managed by the system?
@@ -266,7 +262,6 @@ export type SaveVisualizationProps = Simplify<
       | 'stateTransfer'
       | 'attributeService'
       | 'savedObjectsTagging'
-      | 'tryAddEmbeddablePackagesToOpenDashboard'
     >
 >;
 
@@ -292,7 +287,6 @@ export const runSaveLensVisualization = async (
     application,
     lensDocumentService,
     controlsState,
-    tryAddEmbeddablePackagesToOpenDashboard,
   } = props;
 
   if (!lastKnownDoc) {
@@ -391,40 +385,8 @@ export const runSaveLensVisualization = async (
     // of args here in case the user is within a by value chart AND want's to save it in the library
     // without redirect?
     if (saveProps.dashboardId) {
-      const embeddableInput = { ...newDoc, ref_id: savedObjectId };
-      const packages = buildEmbeddablePackagesForLensDashboardRedirect({
-        embeddableInput,
-        controlsState,
-      });
-
-      const addedToOpenDashboard = await tryAddEmbeddablePackagesToOpenDashboard?.({
-        targetDashboardId: saveProps.dashboardId,
-        packages,
-      });
-
-      if (addedToOpenDashboard) {
-        notifications.toasts.addSuccess(
-          i18n.translate('xpack.lens.app.saveVisualization.successNotificationText', {
-            defaultMessage: `Saved ''{visTitle}''`,
-            values: {
-              visTitle: docToSave.title,
-            },
-          })
-        );
-
-        if (savedObjectId && savedObjectId !== originalSavedObjectId) {
-          chrome.recentlyAccessed.add(getFullPath(savedObjectId), docToSave.title, savedObjectId);
-          stateTransfer.clearEditorState?.(APP_ID);
-        }
-
-        return {
-          persistedDoc: newDoc.attributes,
-          isLinkedToOriginatingApp: false,
-        };
-      }
-
       redirectToDashboard({
-        embeddableInput,
+        embeddableInput: { ...newDoc, ref_id: savedObjectId },
         dashboardId: saveProps.dashboardId,
         stateTransfer,
         originatingApp: props.originatingApp,

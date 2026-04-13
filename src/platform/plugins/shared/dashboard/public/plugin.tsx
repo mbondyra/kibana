@@ -368,34 +368,6 @@ export class DashboardPlugin
       this.deepLinksUpdater.next(() => ({ deepLinks }));
     }
 
-    if (plugins.lens) {
-      plugins.lens.registerDashboardInPlaceSaveHandler(async ({ targetDashboardId, packages }) => {
-        if (targetDashboardId === 'new') {
-          return false;
-        }
-        const activeApi = this.dashboardAppApi$.getValue();
-        if (!activeApi || !activeApi.isEditableByUser) {
-          return false;
-        }
-        const activeDashboardId = activeApi.savedObjectId$.getValue();
-        if (!activeDashboardId || activeDashboardId !== targetDashboardId) {
-          return false;
-        }
-        for (let i = 0; i < packages.length; i++) {
-          const pkg = packages[i];
-          const isLast = i === packages.length - 1;
-          await activeApi.addNewPanel(
-            {
-              panelType: pkg.type,
-              serializedState: pkg.serializedState,
-            },
-            { displaySuccessMessage: false, scrollToPanel: isLast }
-          );
-        }
-        return true;
-      });
-    }
-
     return {
       findDashboardsService: async () => {
         const { findService } = await import('./dashboard_client');

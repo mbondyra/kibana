@@ -8,6 +8,7 @@
  */
 
 import { DASHBOARD_APP_LOCATOR } from '@kbn/deeplinks-analytics';
+import { i18n } from '@kbn/i18n';
 import { useExecutionContext } from '@kbn/kibana-react-plugin/public';
 import { createKbnUrlStateStorage } from '@kbn/kibana-utils-plugin/public';
 import type { ViewMode } from '@kbn/presentation-publishing';
@@ -225,6 +226,50 @@ export function DashboardApp({
     const { stopWatchingExpandedPanel } = startSyncingExpandedPanelState({ dashboardApi, history });
     return () => stopWatchingExpandedPanel();
   }, [dashboardApi, history]);
+
+  useEffect(() => {
+    if (!dashboardApi) {
+      return;
+    }
+    const stateTransfer = embeddableService.getStateTransfer();
+    const subscription = stateTransfer
+      .getIncomingEmbeddablePackagesWritten$()
+      .subscribe((appId) => {
+        if (appId !== DASHBOARD_APP_ID) {
+          return;
+        }
+        const packages = stateTransfer.getIncomingEmbeddablePackage(DASHBOARD_APP_ID, true);
+        if (!packages?.length || !dashboardApi.isEditableByUser) {
+          return;
+        }
+        void (async () => {
+          try {
+            for (let i = 0; i < packages.length; i++) {
+              const pkg = packages[i];
+              const isLast = i === packages.length - 1;
+              await dashboardApi.addNewPanel(
+                {
+                  panelType: pkg.type,
+                  serializedState: pkg.serializedState,
+                },
+                { displaySuccessMessage: isLast, scrollToPanel: isLast }
+              );
+            }
+          } catch (error) {
+            coreServices.notifications.toasts.addDanger({
+              title: i18n.translate(
+                'dashboard.embeddableStateTransfer.applyIncomingPanelsErrorTitle',
+                {
+                  defaultMessage: 'Could not add panels from navigation state',
+                }
+              ),
+              body: error instanceof Error ? error.message : String(error),
+            });
+          }
+        })();
+      });
+    return () => subscription.unsubscribe();
+  }, [dashboardApi]);
 
   /**
    * When the dashboard container is created, or re-created, start syncing dashboard state with the URL

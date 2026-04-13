@@ -29,7 +29,6 @@ import type {
   CellValueContext,
   EmbeddableEditorBreadcrumb,
   EmbeddableEditorState,
-  EmbeddablePackageState,
   EmbeddableStateTransfer,
 } from '@kbn/embeddable-plugin/public';
 import type { SavedObjectsResolveResponse } from '@kbn/core-saved-objects-api-server';
@@ -181,14 +180,6 @@ export interface LensAppServices extends StartServices {
   serverless?: ServerlessPluginStart;
   cps?: CPSPluginStart;
   kql: KqlPluginStart;
-  /**
-   * When saving a visualization to a dashboard, if the user is already on that dashboard,
-   * adds panels in-place via the Dashboard API instead of navigating with embeddable state transfer.
-   */
-  tryAddEmbeddablePackagesToOpenDashboard?: (args: {
-    targetDashboardId: string;
-    packages: EmbeddablePackageState[];
-  }) => Promise<boolean>;
 }
 
 export type StartServices = Pick<

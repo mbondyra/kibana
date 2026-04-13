@@ -178,6 +178,26 @@ describe('embeddable state transfer', () => {
     expect(stateTransfer.isTransferInProgress).toEqual(false);
   });
 
+  it('emits destination app id from getIncomingEmbeddablePackagesWritten$ after packages are sent', async () => {
+    const listener = jest.fn();
+    const sub = stateTransfer.getIncomingEmbeddablePackagesWritten$().subscribe(listener);
+    await stateTransfer.navigateToWithEmbeddablePackages(destinationApp, {
+      state: [{ type: 'coolestType', serializedState: { savedObjectId: '150' } }],
+    });
+    expect(listener).toHaveBeenCalledWith(destinationApp);
+    sub.unsubscribe();
+  });
+
+  it('does not emit from getIncomingEmbeddablePackagesWritten$ when embeddable package list is empty', async () => {
+    const listener = jest.fn();
+    const sub = stateTransfer.getIncomingEmbeddablePackagesWritten$().subscribe(listener);
+    await stateTransfer.navigateToWithEmbeddablePackages(destinationApp, {
+      state: [],
+    });
+    expect(listener).not.toHaveBeenCalled();
+    sub.unsubscribe();
+  });
+
   it('can fetch an incoming editor state', async () => {
     store.set(EMBEDDABLE_STATE_TRANSFER_STORAGE_KEY, {
       [EMBEDDABLE_EDITOR_STATE_KEY]: {
