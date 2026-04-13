@@ -53,6 +53,23 @@ import {
 } from './url';
 import type { DashboardInternalApi } from '../dashboard_api/types';
 
+const readPassThroughContextFromHistoryState = (state: unknown): SerializableRecord | undefined => {
+  if (!state || typeof state !== 'object' || !('passThroughContext' in state)) {
+    return undefined;
+  }
+  return state.passThroughContext as SerializableRecord;
+};
+
+/**
+ * After merging locator / navigateToApp dashboard fields, history should not still carry
+ * those keys (they survive reload). Keep only `passThroughContext` so embeddables can read
+ * it via `getPassThroughContext` from `location.state`.
+ */
+const historyStateAfterConsumingLocator = (raw: unknown): SerializableRecord | undefined => {
+  const passThrough = readPassThroughContextFromHistoryState(raw);
+  return passThrough !== undefined ? { passThroughContext: passThrough } : undefined;
+};
+
 export interface DashboardAppProps {
   history: History;
   savedDashboardId?: string;
@@ -147,9 +164,12 @@ export function DashboardApp({
     const searchSessionIdFromURL = getSearchSessionIdFromURL(history);
 
     const getInitialInput = () => {
+      const scopedHistory = getScopedHistory();
+      const rawLocationState = scopedHistory.location.state;
+
       let stateFromLocator: Partial<DashboardState> = {};
       try {
-        stateFromLocator = extractDashboardState(getScopedHistory().location.state);
+        stateFromLocator = extractDashboardState(rawLocationState);
       } catch (e) {
         // eslint-disable-next-line no-console
         console.warn('Unable to extract dashboard state from locator. Error: ', e);
@@ -161,6 +181,22 @@ export function DashboardApp({
       } catch (e) {
         // eslint-disable-next-line no-console
         console.warn('Unable to extract dashboard state from URL. Error: ', e);
+      }
+
+      // Locator / navigateToApp puts payload on `history.state`, which survives a full reload.
+      // After merging it into the initial dashboard input above, strip consumed dashboard keys
+      // from history so a later refresh does not re-apply stale overrides. Preserve
+      // `passThroughContext` only so `getPassThroughContext` can keep reading from location.
+      if (Object.keys(stateFromLocator).length > 0) {
+        try {
+          scopedHistory.replace({
+            ...scopedHistory.location,
+            state: historyStateAfterConsumingLocator(rawLocationState),
+          });
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.warn('Unable to strip consumed locator state from history. Error: ', e);
+        }
       }
 
       // Override all state with URL + Locator input
@@ -199,8 +235,7 @@ export function DashboardApp({
       },
       getInitialInput,
       getPassThroughContext: () =>
-        (getScopedHistory().location.state as { passThroughContext?: SerializableRecord })
-          ?.passThroughContext,
+        readPassThroughContextFromHistoryState(getScopedHistory().location.state),
       validateLoadedSavedObject: validateOutcome,
       fullScreenMode:
         kbnUrlStateStorage.get<{ fullScreenMode?: boolean }>(DASHBOARD_STATE_STORAGE_KEY)
