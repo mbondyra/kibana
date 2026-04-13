@@ -15,6 +15,32 @@ import {
   type LensSerializedState,
 } from '@kbn/lens-common';
 
+export const buildEmbeddablePackagesForLensDashboardRedirect = ({
+  embeddableInput,
+  controlsState,
+}: {
+  embeddableInput: LensSerializedState;
+  controlsState?: ControlPanelsState;
+}): EmbeddablePackageState[] => {
+  const embeddablePackages: EmbeddablePackageState[] = [
+    {
+      type: LENS_EMBEDDABLE_TYPE,
+      serializedState: embeddableInput,
+    },
+  ];
+
+  Object.values(controlsState ?? {}).forEach((control) => {
+    embeddablePackages.push({
+      type: control.type,
+      serializedState: {
+        ...omit(control, ['type', 'order', 'width', 'grow']), // add as panel rather than pinned, so strip out unnecessary info
+      },
+    });
+  });
+
+  return embeddablePackages;
+};
+
 export const redirectToDashboard = ({
   embeddableInput,
   dashboardId,
@@ -32,21 +58,9 @@ export const redirectToDashboard = ({
 }) => {
   const appId = originatingApp || 'dashboards';
 
-  const embeddablePackages: EmbeddablePackageState[] = [
-    {
-      type: LENS_EMBEDDABLE_TYPE,
-      serializedState: embeddableInput,
-    },
-  ];
-
-  // Add each control to the embeddable package (if any)
-  Object.values(controlsState ?? {}).forEach((control) => {
-    embeddablePackages.push({
-      type: control.type,
-      serializedState: {
-        ...omit(control, ['type', 'order', 'width', 'grow']), // add as panel rather than pinned, so strip out unnecessary info
-      },
-    });
+  const embeddablePackages = buildEmbeddablePackagesForLensDashboardRedirect({
+    embeddableInput,
+    controlsState,
   });
 
   stateTransfer.navigateToWithEmbeddablePackages(appId, {

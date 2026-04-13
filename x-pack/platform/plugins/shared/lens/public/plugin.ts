@@ -130,6 +130,10 @@ import { LensAppLocatorDefinition } from '../common/locator/locator';
 
 import type { LensAttributes } from '../server/content_management';
 import type { EditLensConfigurationProps } from './app_plugin/shared/edit_on_the_fly/get_edit_lens_configuration';
+import {
+  registerLensDashboardInPlaceSaveHandler,
+  type LensDashboardInPlaceSaveHandler,
+} from './dashboard_in_place_save_registry';
 import { LensRenderer } from './react_embeddable/renderer/lens_custom_renderer_component';
 import {
   ACTION_CREATE_ESQL_CHART,
@@ -277,6 +281,14 @@ export interface LensPublicStart {
     chartInfo: ChartInfoApi;
     suggestions: LensSuggestionsApi;
   }>;
+
+  /**
+   * Lets the Dashboard plugin register the in-place dashboard save handler (same contract as
+   * tryAddEmbeddablePackagesToOpenDashboard on LensAppServices) without Lens depending on the Dashboard plugin.
+   */
+  registerDashboardInPlaceSaveHandler: (
+    handler: LensDashboardInPlaceSaveHandler | undefined
+  ) => void;
 }
 
 export type EditLensConfigPanelComponent = React.ComponentType<EditLensConfigurationProps>;
@@ -753,6 +765,7 @@ export class LensPlugin {
     return {
       EmbeddableComponent: LensRenderer,
       SaveModalComponent: getSaveModalComponent(core, startDependencies),
+      registerDashboardInPlaceSaveHandler: registerLensDashboardInPlaceSaveHandler,
       navigateToPrefilledEditor: (
         input,
         { openInNewTab = false, originatingApp = '', originatingPath, skipAppLeave = false } = {}

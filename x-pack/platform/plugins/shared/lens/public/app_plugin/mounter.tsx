@@ -27,7 +27,6 @@ import { KibanaRenderContextProvider } from '@kbn/react-kibana-context-render';
 import { EuiLoadingSpinner } from '@elastic/eui';
 import { syncGlobalQueryStateWithUrl } from '@kbn/data-plugin/public';
 import { withSuspense } from '@kbn/shared-ux-utility';
-
 import type {
   LensSerializedState,
   MainHistoryLocationState,
@@ -44,6 +43,7 @@ import { ProjectRoutingAccess } from '@kbn/cps-utils';
 import { App } from './app';
 import { addHelpMenuToAppChrome } from '../help_menu_util';
 import type { LensPluginStartDependencies } from '../plugin';
+import { getLensDashboardInPlaceSaveHandler } from '../dashboard_in_place_save_registry';
 import { LENS_EDIT_BY_VALUE, APP_ID } from '../../common/constants';
 import type { RedirectToOriginProps, HistoryLocationState } from './types';
 import type { LensRootStore } from '../state_management';
@@ -138,6 +138,13 @@ export async function getLensServices(
     locator,
     serverless,
     cps,
+    tryAddEmbeddablePackagesToOpenDashboard: async (args) => {
+      const fn = getLensDashboardInPlaceSaveHandler();
+      if (!fn) {
+        return false;
+      }
+      return fn(args);
+    },
     ...coreStart,
   };
 }

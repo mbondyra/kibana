@@ -130,5 +130,6 @@ export {
 export type { EditorFrameServiceProviderProps } from './editor_frame_service/editor_frame_service_context';
 
 export type { LensPublicStart, LensPublicSetup, LensSuggestionsApi } from './plugin';
+export type { LensDashboardInPlaceSaveHandler } from './dashboard_in_place_save_registry';
 
 export const plugin = () => new LensPlugin();
