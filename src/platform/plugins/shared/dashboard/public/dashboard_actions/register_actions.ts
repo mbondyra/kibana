@@ -9,12 +9,14 @@
 
 import {
   ADD_PANEL_TRIGGER,
+  APPLY_INCOMING_EMBEDDABLE_PACKAGES_TRIGGER,
   ON_OPEN_PANEL_MENU,
   PANEL_NOTIFICATION_TRIGGER,
 } from '@kbn/ui-actions-plugin/common/trigger_ids';
 import type { DashboardStartDependencies } from '../plugin';
 import {
   ACTION_ADD_SECTION,
+  ACTION_APPLY_INCOMING_EMBEDDABLE_PACKAGES_FROM_STATE_TRANSFER,
   ACTION_ADD_TO_LIBRARY,
   ACTION_CLONE_PANEL,
   ACTION_COPY_TO_DASHBOARD,
@@ -26,6 +28,20 @@ import {
 
 export const registerActions = async (plugins: DashboardStartDependencies) => {
   const { uiActions, share } = plugins;
+
+  uiActions.registerActionAsync(
+    ACTION_APPLY_INCOMING_EMBEDDABLE_PACKAGES_FROM_STATE_TRANSFER,
+    async () => {
+      const { ApplyIncomingEmbeddablePackagesAction } = await import(
+        '../dashboard_renderer/dashboard_module'
+      );
+      return new ApplyIncomingEmbeddablePackagesAction();
+    }
+  );
+  uiActions.attachAction(
+    APPLY_INCOMING_EMBEDDABLE_PACKAGES_TRIGGER,
+    ACTION_APPLY_INCOMING_EMBEDDABLE_PACKAGES_FROM_STATE_TRANSFER
+  );
 
   uiActions.registerActionAsync(ACTION_CLONE_PANEL, async () => {
     const { ClonePanelAction } = await import('../dashboard_renderer/dashboard_module');

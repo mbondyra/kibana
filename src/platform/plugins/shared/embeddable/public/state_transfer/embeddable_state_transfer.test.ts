@@ -12,6 +12,8 @@ import { Storage } from '@kbn/kibana-utils-plugin/public';
 import { EmbeddableStateTransfer } from '.';
 import type { ApplicationStart, PublicAppInfo } from '@kbn/core/public';
 import { EMBEDDABLE_EDITOR_STATE_KEY, EMBEDDABLE_PACKAGE_STATE_KEY } from './types';
+import { APPLY_INCOMING_EMBEDDABLE_PACKAGES_TRIGGER } from '@kbn/ui-actions-plugin/common/trigger_ids';
+import type { UiActionsStart } from '@kbn/ui-actions-plugin/public';
 import { EMBEDDABLE_STATE_TRANSFER_STORAGE_KEY } from './embeddable_state_transfer';
 import { Subject } from 'rxjs';
 
@@ -178,24 +180,39 @@ describe('embeddable state transfer', () => {
     expect(stateTransfer.isTransferInProgress).toEqual(false);
   });
 
-  it('emits destination app id from getIncomingEmbeddablePackagesWritten$ after packages are sent', async () => {
-    const listener = jest.fn();
-    const sub = stateTransfer.getIncomingEmbeddablePackagesWritten$().subscribe(listener);
+  it('invokes uiActions.executeTriggerActions after navigateToWithEmbeddablePackages when uiActions is provided', async () => {
+    const executeTriggerActions = jest.fn().mockResolvedValue(undefined);
+    const uiActions = { executeTriggerActions } as unknown as UiActionsStart;
+    stateTransfer = new EmbeddableStateTransfer(
+      application.navigateToApp,
+      currentAppId$,
+      undefined,
+      store,
+      uiActions
+    );
     await stateTransfer.navigateToWithEmbeddablePackages(destinationApp, {
       state: [{ type: 'coolestType', serializedState: { savedObjectId: '150' } }],
     });
-    expect(listener).toHaveBeenCalledWith(destinationApp);
-    sub.unsubscribe();
+    expect(executeTriggerActions).toHaveBeenCalledWith(APPLY_INCOMING_EMBEDDABLE_PACKAGES_TRIGGER, {
+      destinationAppId: destinationApp,
+      stateTransfer,
+    });
   });
 
-  it('does not emit from getIncomingEmbeddablePackagesWritten$ when embeddable package list is empty', async () => {
-    const listener = jest.fn();
-    const sub = stateTransfer.getIncomingEmbeddablePackagesWritten$().subscribe(listener);
+  it('does not invoke uiActions when embeddable package list is empty', async () => {
+    const executeTriggerActions = jest.fn().mockResolvedValue(undefined);
+    const uiActions = { executeTriggerActions } as unknown as UiActionsStart;
+    stateTransfer = new EmbeddableStateTransfer(
+      application.navigateToApp,
+      currentAppId$,
+      undefined,
+      store,
+      uiActions
+    );
     await stateTransfer.navigateToWithEmbeddablePackages(destinationApp, {
       state: [],
     });
-    expect(listener).not.toHaveBeenCalled();
-    sub.unsubscribe();
+    expect(executeTriggerActions).not.toHaveBeenCalled();
   });
 
   it('can fetch an incoming editor state', async () => {

@@ -8,7 +8,6 @@
  */
 
 import { DASHBOARD_APP_LOCATOR } from '@kbn/deeplinks-analytics';
-import { i18n } from '@kbn/i18n';
 import { useExecutionContext } from '@kbn/kibana-react-plugin/public';
 import { createKbnUrlStateStorage } from '@kbn/kibana-utils-plugin/public';
 import type { ViewMode } from '@kbn/presentation-publishing';
@@ -31,6 +30,7 @@ import {
   shareService,
 } from '../services/kibana_services';
 import { DASHBOARD_STATE_STORAGE_KEY, createDashboardEditUrl } from '../utils/urls';
+import { setActiveDashboardForIncomingEmbeddablePackages } from './active_dashboard_for_state_transfer';
 import { useDashboardMountContext } from './hooks/dashboard_mount_context';
 import { useDashboardOutcomeValidation } from './hooks/use_dashboard_outcome_validation';
 import { useObservabilityAIAssistantContext } from './hooks/use_observability_ai_assistant_context';
@@ -228,47 +228,10 @@ export function DashboardApp({
   }, [dashboardApi, history]);
 
   useEffect(() => {
-    if (!dashboardApi) {
-      return;
-    }
-    const stateTransfer = embeddableService.getStateTransfer();
-    const subscription = stateTransfer
-      .getIncomingEmbeddablePackagesWritten$()
-      .subscribe((appId) => {
-        if (appId !== DASHBOARD_APP_ID) {
-          return;
-        }
-        const packages = stateTransfer.getIncomingEmbeddablePackage(DASHBOARD_APP_ID, true);
-        if (!packages?.length || !dashboardApi.isEditableByUser) {
-          return;
-        }
-        void (async () => {
-          try {
-            for (let i = 0; i < packages.length; i++) {
-              const pkg = packages[i];
-              const isLast = i === packages.length - 1;
-              await dashboardApi.addNewPanel(
-                {
-                  panelType: pkg.type,
-                  serializedState: pkg.serializedState,
-                },
-                { displaySuccessMessage: isLast, scrollToPanel: isLast }
-              );
-            }
-          } catch (error) {
-            coreServices.notifications.toasts.addDanger({
-              title: i18n.translate(
-                'dashboard.embeddableStateTransfer.applyIncomingPanelsErrorTitle',
-                {
-                  defaultMessage: 'Could not add panels from navigation state',
-                }
-              ),
-              body: error instanceof Error ? error.message : String(error),
-            });
-          }
-        })();
-      });
-    return () => subscription.unsubscribe();
+    setActiveDashboardForIncomingEmbeddablePackages(dashboardApi);
+    return () => {
+      setActiveDashboardForIncomingEmbeddablePackages(undefined);
+    };
   }, [dashboardApi]);
 
   /**

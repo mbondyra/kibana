@@ -69,7 +69,9 @@ export class EmbeddablePublicPlugin implements Plugin<EmbeddableSetup, Embeddabl
     this.stateTransferService = new EmbeddableStateTransfer(
       core.application.navigateToApp,
       core.application.currentAppId$,
-      this.appList
+      this.appList,
+      undefined,
+      deps.uiActions
     );
 
     const embeddableStart: EmbeddableStart = {
@@ -83,7 +85,8 @@ export class EmbeddablePublicPlugin implements Plugin<EmbeddableSetup, Embeddabl
               core.application.navigateToApp,
               core.application.currentAppId$,
               this.appList,
-              storage
+              storage,
+              deps.uiActions
             )
           : this.stateTransferService,
       hasLegacyURLTransform,

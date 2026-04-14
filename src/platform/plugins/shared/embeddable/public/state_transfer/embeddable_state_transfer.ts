@@ -8,10 +8,10 @@
  */
 
 import { cloneDeep } from 'lodash';
-import type { Observable } from 'rxjs';
-import { Subject } from 'rxjs';
 import { Storage } from '@kbn/kibana-utils-plugin/public';
 import type { ApplicationStart, PublicAppInfo } from '@kbn/core/public';
+import { APPLY_INCOMING_EMBEDDABLE_PACKAGES_TRIGGER } from '@kbn/ui-actions-plugin/common/trigger_ids';
+import type { UiActionsStart } from '@kbn/ui-actions-plugin/public';
 import type { EmbeddableEditorState, EmbeddablePackageState } from './types';
 import {
   isEmbeddableEditorState,
@@ -32,13 +32,13 @@ export class EmbeddableStateTransfer {
   public isTransferInProgress: boolean;
   private storage: Storage;
   private appList: ReadonlyMap<string, PublicAppInfo> | undefined;
-  private readonly incomingEmbeddablePackagesWrittenForApp$ = new Subject<string>();
 
   constructor(
     private navigateToApp: ApplicationStart['navigateToApp'],
     currentAppId$: ApplicationStart['currentAppId$'],
     appList?: ReadonlyMap<string, PublicAppInfo> | undefined,
-    customStorage?: Storage
+    customStorage?: Storage,
+    private readonly uiActions?: UiActionsStart
   ) {
     this.storage = customStorage ? customStorage : new Storage(sessionStorage);
     this.isTransferInProgress = false;
@@ -53,14 +53,6 @@ export class EmbeddableStateTransfer {
    * @param appId - The id of the app to fetch the title for
    */
   public getAppNameFromId = (appId: string): string | undefined => this.appList?.get(appId)?.title;
-
-  /**
-   * Emits the destination app id after embeddable package state is written and navigation completes,
-   * so hosts (e.g. Dashboard) can consume session storage when already mounted.
-   */
-  public getIncomingEmbeddablePackagesWritten$(): Observable<string> {
-    return this.incomingEmbeddablePackagesWrittenForApp$.asObservable();
-  }
 
   /**
    * Fetches an {@link EmbeddableEditorState | editor state} from the sessionStorage for the provided app id
@@ -247,9 +239,13 @@ export class EmbeddableStateTransfer {
     if (
       key === EMBEDDABLE_PACKAGE_STATE_KEY &&
       Array.isArray(options?.state) &&
-      options.state.length > 0
+      options.state.length > 0 &&
+      this.uiActions
     ) {
-      this.incomingEmbeddablePackagesWrittenForApp$.next(appId);
+      void this.uiActions.executeTriggerActions(APPLY_INCOMING_EMBEDDABLE_PACKAGES_TRIGGER, {
+        destinationAppId: appId,
+        stateTransfer: this,
+      });
     }
   }
 }

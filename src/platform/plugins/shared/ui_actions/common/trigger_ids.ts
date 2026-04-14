@@ -78,3 +78,7 @@ export const SECURITY_CELL_ACTIONS_DEFAULT = 'security-default-cellActions';
 export const SECURITY_CELL_ACTIONS_DETAILS_FLYOUT = 'security-detailsFlyout-cellActions';
 export const SECURITY_CELL_ACTIONS_ALERTS_COUNT = 'security-alertsCount-cellActions';
 export const SECURITY_CELL_ACTIONS_CASE_EVENTS = 'security-case-events-cellActions';
+
+/** Fired after embeddable package state is written to session storage and navigation completes. */
+export const APPLY_INCOMING_EMBEDDABLE_PACKAGES_TRIGGER =
+  'APPLY_INCOMING_EMBEDDABLE_PACKAGES_TRIGGER';

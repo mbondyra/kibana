@@ -49,6 +49,7 @@ import {
   SECURITY_CELL_ACTIONS_DETAILS_FLYOUT,
   SECURITY_CELL_ACTIONS_ALERTS_COUNT,
   SECURITY_CELL_ACTIONS_CASE_EVENTS,
+  APPLY_INCOMING_EMBEDDABLE_PACKAGES_TRIGGER,
 } from '../common/trigger_ids';
 import type { Trigger } from './types';
 
@@ -319,4 +320,14 @@ export const triggers: { [key: string]: Trigger } = {
   [SECURITY_CELL_ACTIONS_DETAILS_FLYOUT]: { id: SECURITY_CELL_ACTIONS_DETAILS_FLYOUT },
   [SECURITY_CELL_ACTIONS_ALERTS_COUNT]: { id: SECURITY_CELL_ACTIONS_ALERTS_COUNT },
   [SECURITY_CELL_ACTIONS_CASE_EVENTS]: { id: SECURITY_CELL_ACTIONS_CASE_EVENTS },
+  [APPLY_INCOMING_EMBEDDABLE_PACKAGES_TRIGGER]: {
+    id: APPLY_INCOMING_EMBEDDABLE_PACKAGES_TRIGGER,
+    title: i18n.translate('uiActions.triggers.applyIncomingEmbeddablePackages.title', {
+      defaultMessage: 'Apply incoming embeddable packages',
+    }),
+    description: i18n.translate('uiActions.triggers.applyIncomingEmbeddablePackages.description', {
+      defaultMessage:
+        'After navigation with embeddable state transfer, hosts can consume pending packages from session storage.',
+    }),
+  },
 };
