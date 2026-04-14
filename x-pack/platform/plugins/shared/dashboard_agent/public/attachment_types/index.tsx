@@ -8,7 +8,6 @@
 import React from 'react';
 import { EMPTY, switchMap } from 'rxjs';
 import { i18n } from '@kbn/i18n';
-import type { AttachmentLifecycleParams } from '@kbn/agent-builder-browser/attachments';
 import { ActionButtonType } from '@kbn/agent-builder-browser/attachments';
 import type { DataPublicPluginStart } from '@kbn/data-plugin/public';
 import { DASHBOARD_ATTACHMENT_TYPE } from '@kbn/dashboard-agent-common';
@@ -40,14 +39,23 @@ export const registerDashboardAttachmentUiDefinition = ({
   filterManager: DataPublicPluginStart['query']['filterManager'];
   dashboardPlugin: DashboardStart;
 }): (() => void) => {
-  const { attachments } = agentBuilder;
   let dashboardApi: DashboardApi | undefined;
-  let nextMountedAttachmentId = 0;
-  const mountedDashboardAttachments = new Map<number, () => DashboardAttachment>();
-  // maintains a dashboardApi reference for access in getActionButtons
-  const dashboardAppApiSubscription = dashboardPlugin.dashboardAppClientApi$.subscribe((api) => {
-    dashboardApi = api;
-  });
+  const dashboardAppApiSubscription = dashboardPlugin.dashboardAppClientApi$
+    .pipe(
+      switchMap((api) => {
+        // maintains a dashboardApi reference for access in getActionButtons
+        dashboardApi = api;
+        // TODO: make sure this only runs async if there's a conversation open!, currently this runs on dashboard plugin start which is not ideal
+        return api
+          ? createDashboardAppIntegration$({
+              agentBuilder,
+              api,
+              checkSavedDashboardExist,
+            })
+          : EMPTY;
+      })
+    )
+    .subscribe();
 
   const findDashboardsServicePromise = dashboardPlugin.findDashboardsService();
   const checkSavedDashboardExist = async (dashboardId: string) => {
@@ -55,15 +63,7 @@ export const registerDashboardAttachmentUiDefinition = ({
     const result = await findDashboardsService.findById(dashboardId);
     return result.status === 'success';
   };
-  const getSyncAttachment = (currentSavedObjectId: string | undefined) =>
-    selectDashboardAttachmentForSync({
-      attachments: Array.from(mountedDashboardAttachments.values(), (getAttachment) =>
-        getAttachment()
-      ),
-      currentSavedObjectId,
-    });
-
-  attachments.addAttachmentType<DashboardAttachment>(DASHBOARD_ATTACHMENT_TYPE, {
+  agentBuilder.attachments.addAttachmentType<DashboardAttachment>(DASHBOARD_ATTACHMENT_TYPE, {
     getLabel: (attachment) => {
       return (
         attachment.data?.title ||
@@ -73,30 +73,6 @@ export const registerDashboardAttachmentUiDefinition = ({
       );
     },
     getIcon: () => 'productDashboard',
-    onAttachmentMount: (params: AttachmentLifecycleParams<DashboardAttachment>) => {
-      const mountedAttachmentId = nextMountedAttachmentId++;
-      mountedDashboardAttachments.set(mountedAttachmentId, params.getAttachment);
-      const apiSubscription = dashboardPlugin.dashboardAppClientApi$
-        .pipe(
-          switchMap((api) =>
-            api
-              ? createDashboardAppIntegration$({
-                  ...params,
-                  agentBuilder,
-                  api,
-                  checkSavedDashboardExist,
-                  getSyncAttachment,
-                })
-              : EMPTY
-          )
-        )
-        .subscribe();
-
-      return () => {
-        apiSubscription.unsubscribe();
-        mountedDashboardAttachments.delete(mountedAttachmentId);
-      };
-    },
     renderCanvasContent: (props, callbacks) => (
       <DashboardCanvasContent
         {...props}

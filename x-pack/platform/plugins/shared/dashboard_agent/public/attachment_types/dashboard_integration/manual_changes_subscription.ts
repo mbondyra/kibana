@@ -7,7 +7,6 @@
 
 import {
   debounceTime,
-  filter,
   ignoreElements,
   map,
   merge,
@@ -16,21 +15,20 @@ import {
   type Observable,
   type Subscription,
 } from 'rxjs';
-import type { AttachmentInput } from '@kbn/agent-builder-common/attachments';
-import {
-  DASHBOARD_ATTACHMENT_TYPE,
-  dashboardStateToAttachmentData,
-} from '@kbn/dashboard-agent-common';
-import type { AgentBuilderPluginStart } from '@kbn/agent-builder-plugin/public';
+import { dashboardStateToAttachmentData } from '@kbn/dashboard-agent-common';
 import type { DashboardAttachment } from '@kbn/dashboard-agent-common/types';
 import type { DashboardApi } from '@kbn/dashboard-plugin/public';
 import { childrenUnsavedChanges$ } from '@kbn/presentation-publishing';
+import type { DashboardAttachmentStateAction } from './dashboard_attachment_state_actions';
+
+interface ManualChangeParams {
+  currentOrigin?: string;
+  currentDashboardData?: DashboardAttachment['data'];
+}
 
 export interface ManualChangesSubscriptionParams {
-  agentBuilder: AgentBuilderPluginStart;
   api: DashboardApi;
-  getAttachment: () => DashboardAttachment | undefined;
-  getSyncAttachment: (currentSavedObjectId: string | undefined) => DashboardAttachment | undefined;
+  dispatch: (action: DashboardAttachmentStateAction) => void;
 }
 
 /**
@@ -38,10 +36,8 @@ export interface ManualChangesSubscriptionParams {
  * and syncs them back to the attachment.
  */
 export const createManualChangesSubscription = ({
-  agentBuilder,
   api,
-  getAttachment,
-  getSyncAttachment,
+  dispatch,
 }: ManualChangesSubscriptionParams): Subscription => {
   // TODO: we should get it directly from the dashboard plugin
   // Collect observables for all trackable dashboard state
@@ -67,39 +63,22 @@ export const createManualChangesSubscription = ({
     .pipe(
       skip(observables.length), // Skip initial emissions from all BehaviorSubjects
       debounceTime(150),
-      map((): AttachmentInput | undefined => {
-        const currentAttachment = getAttachment();
-        if (!currentAttachment) {
-          return undefined;
-        }
-
-        const currentSavedObjectId = api.savedObjectId$.getValue();
-        const syncAttachment = getSyncAttachment(currentSavedObjectId);
-
-        // Only the attachment selected for the current dashboard should own sync.
-        if (!syncAttachment || syncAttachment.id !== currentAttachment.id) {
-          return undefined;
-        }
+      map((): ManualChangeParams => {
         const currentDashboardState = api.getSerializedState().attributes;
-        if (!currentDashboardState) {
-          return undefined;
-        }
-
-        const data = dashboardStateToAttachmentData(currentDashboardState);
-        if (!data) {
-          return undefined;
-        }
 
         return {
-          data,
-          id: currentAttachment.id,
-          origin: currentAttachment.origin,
-          type: DASHBOARD_ATTACHMENT_TYPE,
+          currentDashboardData: currentDashboardState
+            ? dashboardStateToAttachmentData(currentDashboardState)
+            : undefined,
+          currentOrigin: api.savedObjectId$.getValue(),
         };
       }),
-      filter((attachment): attachment is AttachmentInput => attachment !== undefined),
-      tap((attachment) => {
-        agentBuilder.addAttachment(attachment);
+      tap((params) => {
+        dispatch({
+          type: 'manual_changed',
+          currentOrigin: params.currentOrigin,
+          currentDashboardData: params.currentDashboardData,
+        });
       }),
       ignoreElements()
     )
