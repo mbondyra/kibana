@@ -6,52 +6,118 @@
  */
 
 import { Observable } from 'rxjs';
+import { getLatestVersion } from '@kbn/agent-builder-common/attachments';
 import type { AgentBuilderPluginStart } from '@kbn/agent-builder-plugin/public';
-import type { DashboardAttachment } from '@kbn/dashboard-agent-common/types';
 import type { DashboardApi } from '@kbn/dashboard-plugin/public';
+import type { DashboardAttachment } from '@kbn/dashboard-agent-common/types';
+import {
+  isDashboardAttachment,
+  dashboardStateToAttachmentData,
+  DASHBOARD_ATTACHMENT_TYPE,
+} from '@kbn/dashboard-agent-common';
 import { createAgentLiveUpdatesSubscription } from './agent_live_updates_subscription';
 import { createManualChangesSubscription } from './manual_changes_subscription';
+import {
+  createIdGenerator,
+  createNewAttachmentIdRegenerationSubscription,
+} from './new_attachment_id_regeneration_subscription';
 import { createOriginSyncSubscription } from './origin_sync_subscription';
 
 export interface DashboardAppIntegrationParams {
   agentBuilder: AgentBuilderPluginStart;
   api: DashboardApi;
-  getAttachment: () => DashboardAttachment;
-  getSyncAttachment: (currentSavedObjectId: string | undefined) => DashboardAttachment | undefined;
   checkSavedDashboardExist: (dashboardId: string) => Promise<boolean>;
-  updateOrigin: (origin: string) => Promise<unknown>;
+}
+
+interface State {
+  attachments: DashboardAttachment[] | undefined;
+  conversationId: string | undefined;
 }
 
 export const registerDashboardAppIntegration = ({
   agentBuilder,
   api,
-  getAttachment,
-  getSyncAttachment,
   checkSavedDashboardExist,
-  updateOrigin,
 }: DashboardAppIntegrationParams): (() => void) => {
-  const originSyncSubscription = createOriginSyncSubscription({
-    api,
-    getAttachment,
-    getSyncAttachment,
-    checkSavedDashboardExist,
-    updateOrigin,
-  });
+  const draftAttachmentId = createIdGenerator();
+
+  const state: State = {
+    attachments: undefined,
+    conversationId: undefined,
+  };
+
+  const addAttachmentFromDashboard = () => {
+    const dashboardId = api.savedObjectId$.getValue();
+    const syncAttachment = state.attachments?.find(({ origin }) => origin === dashboardId);
+    // update an existing linked attachment, or add a draft attachment only when the conversation is new
+    if (syncAttachment || !state.conversationId) {
+      agentBuilder.addAttachment({
+        id: syncAttachment?.id ?? draftAttachmentId.current,
+        origin: dashboardId,
+        type: DASHBOARD_ATTACHMENT_TYPE,
+        data: dashboardStateToAttachmentData(api.getSerializedState().attributes),
+      });
+    }
+  };
+
+  const unsubscribeConversationChanges = agentBuilder.subscribeToConversationChanges(
+    ({ id: conversationId, attachments }) => {
+      const dashboardAttachments = attachments
+        ?.filter(isDashboardAttachment)
+        .flatMap((attachment): DashboardAttachment[] => {
+          const latestVersionData = getLatestVersion(attachment)?.data;
+
+          return latestVersionData
+            ? [
+                {
+                  id: attachment.id,
+                  type: attachment.type,
+                  data: latestVersionData,
+                  origin: attachment.origin,
+                },
+              ]
+            : [];
+        });
+
+      state.attachments = dashboardAttachments;
+      state.conversationId = conversationId;
+      addAttachmentFromDashboard();
+    }
+  );
+
   const agentLiveUpdatesSubscription = createAgentLiveUpdatesSubscription({
     agentBuilder,
     api,
   });
-  const manualChangesSubscription = createManualChangesSubscription({
+
+  const newAttachmentIdRegenerationSubscription = createNewAttachmentIdRegenerationSubscription({
     agentBuilder,
+    draftAttachmentId,
+  });
+
+  const originSyncSubscription = createOriginSyncSubscription({
     api,
-    getAttachment,
-    getSyncAttachment,
+    checkSavedDashboardExist,
+    getAttachments: () => state.attachments,
+    updateOrigin: (id: string, origin: string) =>
+      state.conversationId
+        ? agentBuilder.updateAttachmentOrigin(state.conversationId, id, origin)
+        : undefined,
+  });
+
+  const manualChangesSubscription = createManualChangesSubscription({
+    api,
+    onManualChanges: addAttachmentFromDashboard,
   });
 
   return () => {
-    originSyncSubscription.unsubscribe();
     agentLiveUpdatesSubscription.unsubscribe();
+    newAttachmentIdRegenerationSubscription.unsubscribe();
+    originSyncSubscription.unsubscribe();
     manualChangesSubscription.unsubscribe();
+    unsubscribeConversationChanges();
+    state.attachments = undefined;
+    state.conversationId = undefined;
   };
 };
 
