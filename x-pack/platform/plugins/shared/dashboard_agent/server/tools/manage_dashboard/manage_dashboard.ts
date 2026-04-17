@@ -47,7 +47,7 @@ export const manageDashboardTool = (): BuiltinSkillBoundedTool<typeof manageDash
   return {
     id: dashboardTools.manageDashboard,
     type: ToolType.builtin,
-    description: `Create or update an in-memory dashboard with visualizations.
+    description: `Create or update an dashboard with visualizations.
 
 This tool executes ordered dashboard operations against a dashboard attachment in conversation context.
 

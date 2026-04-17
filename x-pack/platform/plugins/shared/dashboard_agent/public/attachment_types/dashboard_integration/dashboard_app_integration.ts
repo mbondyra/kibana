@@ -34,13 +34,14 @@ interface State {
   conversationId: string | undefined;
 }
 
+// for draft attachments, we want to keep stable ids across dashboards even if dashboardApi changes (we move to another dashboard)
+const draftAttachmentId = createIdGenerator();
+
 export const registerDashboardAppIntegration = ({
   agentBuilder,
   api,
   checkSavedDashboardExist,
 }: DashboardAppIntegrationParams): (() => void) => {
-  const draftAttachmentId = createIdGenerator();
-
   const state: State = {
     attachments: undefined,
     conversationId: undefined,
