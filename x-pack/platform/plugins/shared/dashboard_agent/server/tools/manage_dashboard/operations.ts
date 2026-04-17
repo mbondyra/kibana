@@ -201,7 +201,7 @@ export const dashboardOperationSchema = z.discriminatedUnion('operation', [
 export type DashboardOperation = z.infer<typeof dashboardOperationSchema>;
 
 interface ExecuteDashboardOperationsParams {
-  dashboardData: DashboardAttachmentData;
+  dashboardData?: DashboardAttachmentData;
   operations: DashboardOperation[];
   logger: Logger;
   resolvePanelsFromAttachments: (
@@ -379,6 +379,14 @@ const materializeResolvedVisualizationPanels = ({
   return successfulPanels;
 };
 
+
+const createEmptyDashboardData = (): DashboardAttachmentData => ({
+  title: 'User Dashboard',
+  description: undefined,
+  panels: [],
+});
+
+
 export const executeDashboardOperations = async ({
   dashboardData,
   operations,
@@ -389,7 +397,7 @@ export const executeDashboardOperations = async ({
   dashboardData: DashboardAttachmentData;
   failures: VisualizationFailure[];
 }> => {
-  let nextDashboardData = structuredClone(dashboardData);
+  let nextDashboardData = structuredClone(dashboardData ?? createEmptyDashboardData());
   const failures: VisualizationFailure[] = [];
   const visualizationCreationRequests = collectVisualizationCreationRequests(operations);
   const resolvedVisualizationCreationRequests = await resolveVisualizationCreationRequests({

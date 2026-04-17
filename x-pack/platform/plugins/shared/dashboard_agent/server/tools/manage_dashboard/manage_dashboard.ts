@@ -37,12 +37,6 @@ const manageDashboardSchema = z.object({
   operations: z.array(dashboardOperationSchema).min(1),
 });
 
-const createEmptyDashboardData = (): DashboardAttachmentData => ({
-  title: '',
-  description: '',
-  panels: [],
-});
-
 export const manageDashboardTool = (): BuiltinSkillBoundedTool<typeof manageDashboardSchema> => {
   return {
     id: dashboardTools.manageDashboard,
@@ -70,7 +64,6 @@ Use operations[] to:
         const isNewDashboard = !latestVersion;
 
         const dashboardAttachmentId = previousAttachmentId ?? uuidv4();
-        const currentDashboardData = latestVersion?.data ?? createEmptyDashboardData();
         const resolveVisualizationConfig = createVisualizationResolver({
           logger,
           modelProvider,
@@ -79,7 +72,7 @@ Use operations[] to:
         });
 
         const operationResult = await executeDashboardOperations({
-          dashboardData: currentDashboardData,
+          dashboardData: latestVersion?.data,
           operations,
           logger,
           resolvePanelsFromAttachments: (attachmentInputs) =>
