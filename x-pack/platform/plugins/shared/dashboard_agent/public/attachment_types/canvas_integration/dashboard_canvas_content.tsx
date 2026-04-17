@@ -16,7 +16,11 @@ import type { UseEuiTheme } from '@elastic/eui';
 import { DashboardRenderer } from '@kbn/dashboard-plugin/public';
 import { useMemoCss } from '@kbn/css-utils/public/use_memo_css';
 import type { DashboardAttachment } from '@kbn/dashboard-agent-common/types';
-import { attachmentDataToDashboardState } from '@kbn/dashboard-agent-common';
+import { attachmentDataToDashboardState, EMPTY_DASHBOARD_STATE } from '@kbn/dashboard-agent-common';
+import {
+  DashboardPreviewErrorCallout,
+  DashboardRendererErrorBoundary,
+} from './dashboard_renderer_error_boundary';
 import type { SavedObjectStatus } from './use_register_canvas_action_buttons';
 import { useDashboardPreviewUnifiedSearch } from './use_dashboard_preview_unified_search';
 import { useRegisterCanvasActionButtons } from './use_register_canvas_action_buttons';
@@ -53,12 +57,8 @@ const dashboardCanvasContentStyles = {
       flexShrink: 0,
       padding: `0 ${euiTheme.size.s}`,
     }),
-  callout: ({ euiTheme }: UseEuiTheme) =>
-    css({
-      marginTop: euiTheme.size.s,
-      marginBottom: euiTheme.size.s,
-    }),
 };
+
 
 export const DashboardCanvasContent = ({
   attachment,
@@ -82,12 +82,20 @@ export const DashboardCanvasContent = ({
   checkSavedDashboardExist: (dashboardId: string) => Promise<boolean>;
   canWriteDashboards: boolean;
 }) => {
-  const [dashboardApi, setDashboardApi] = useState<DashboardApi | undefined>();
   const styles = useMemoCss(dashboardCanvasContentStyles);
   const attachmentOrigin = attachment.origin;
+  const [dashboardApi, setDashboardApi] = useState<DashboardApi | undefined>();
   const [savedObjectStatus, setSavedObjectStatus] = useState<SavedObjectStatus>({
     status: 'idle',
   });
+
+  const dashboardState = useMemo(() => {
+    try {
+      return attachmentDataToDashboardState(attachment.data);
+    } catch {
+      return undefined;
+    }
+  }, [attachment.data]);
 
   useEffect(
     function checkSavedObjectExists() {
@@ -118,13 +126,9 @@ export const DashboardCanvasContent = ({
     [attachmentOrigin, checkSavedDashboardExist]
   );
 
-  const dashboardState = useMemo(
-    () => attachmentDataToDashboardState(attachment.data),
-    [attachment.data]
-  );
   const { filters, query, searchBarProps, timeRange } = useDashboardPreviewUnifiedSearch({
     dashboardApi,
-    dashboardState,
+    dashboardState: dashboardState ?? EMPTY_DASHBOARD_STATE,
     filterManager,
   });
 
@@ -145,6 +149,7 @@ export const DashboardCanvasContent = ({
     }),
     [dashboardState, filters, query, timeRange]
   );
+
   const getExistingDashboardId = useCallback(
     () =>
       savedObjectStatus.status === 'resolved' && savedObjectStatus.exists
@@ -164,6 +169,16 @@ export const DashboardCanvasContent = ({
     closeCanvas,
   });
 
+  if (!dashboardState) {
+    return (
+      <div css={styles.root}>
+        <div css={styles.renderer}>
+          <DashboardPreviewErrorCallout />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div css={styles.root}>
       <div css={styles.searchBar}>
@@ -171,16 +186,18 @@ export const DashboardCanvasContent = ({
       </div>
       <div css={styles.renderer}>
         {savedObjectStatus.status !== 'resolved' ? null : (
-          <DashboardRenderer
-            getCreationOptions={getCreationOptions}
-            showPlainSpinner
-            locator={dashboardLocator}
-            savedObjectId={getExistingDashboardId()}
-            onApiAvailable={(api) => {
-              api.setViewMode('view');
-              setDashboardApi(api);
-            }}
-          />
+          <DashboardRendererErrorBoundary resetKey={attachment.data}>
+            <DashboardRenderer
+              getCreationOptions={getCreationOptions}
+              showPlainSpinner
+              locator={dashboardLocator}
+              savedObjectId={getExistingDashboardId()}
+              onApiAvailable={(api) => {
+                api.setViewMode('view');
+                setDashboardApi(api);
+              }}
+            />
+          </DashboardRendererErrorBoundary>
         )}
       </div>
     </div>

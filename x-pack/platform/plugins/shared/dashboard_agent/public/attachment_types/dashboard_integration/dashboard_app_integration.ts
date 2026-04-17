@@ -89,6 +89,12 @@ export const registerDashboardAppIntegration = ({
   const agentLiveUpdatesSubscription = createAgentLiveUpdatesSubscription({
     agentBuilder,
     api,
+    setAttachments: (attachments: DashboardAttachment[]) => {
+      // attachments can already be added so we may compare lengths here and it's enough
+      if (state.attachments?.length !== attachments.length) {
+        state.attachments = attachments;
+      }
+    },
   });
 
   const newAttachmentIdRegenerationSubscription = createNewAttachmentIdRegenerationSubscription({

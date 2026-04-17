@@ -30,7 +30,13 @@ import type { VisualizationFailure } from './utils';
 
 export const setMetadataOperationSchema = z.object({
   operation: z.literal('set_metadata'),
-  title: z.string().optional(),
+  title: z
+    .string()
+    .min(1)
+    .optional()
+    .describe(
+      "Non-empty dashboard title. If the current title is empty, missing, or a placeholder, invent one from the dashboard's contents."
+    ),
   description: z.string().optional(),
 });
 

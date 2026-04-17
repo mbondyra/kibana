@@ -31,6 +31,8 @@ Do **not** use this skill when:
 
 ## Core Instructions
 
+Every dashboard MUST have a non-empty \`title\`. If the attached dashboard's title is empty, missing, or \`"User Dashboard"\`, your first operation MUST be \`set_metadata\` with a title you invent from its contents.
+
 For dashboard discovery:
 - When a user asks what dashboards are available, search for existing saved dashboards with \`platform.core.sml_search\`.
 - Use specific keywords from the user's request. For a broad listing of available dashboards, you may use \`keywords: ["*"]\`.
@@ -56,7 +58,6 @@ For a new dashboard:
 - Use \`add_section\` when panels naturally group into distinct topics or the dashboard is large enough that sections improve scanability. Include \`panels\` on the section when you can create that section's inline visualizations immediately.
 
 For an existing dashboard:
-- If the attached dashboard title is missing, undefined, or an empty string, your first operation MUST be \`set_metadata\` to generate and set a non-empty title before any other dashboard changes.
 - Reuse \`data.dashboardAttachment.id\` from the latest dashboard tool result as \`dashboardAttachmentId\`.
 - Use \`remove_panels\` to remove existing panels by \`id\`.
 - Use \`create_visualization_panels\` to add new Lens visualization panels inline.
