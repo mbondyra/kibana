@@ -10,17 +10,30 @@ import { render, act, waitFor } from '@testing-library/react';
 import { BehaviorSubject, Subject } from 'rxjs';
 import type { DashboardApi } from '@kbn/dashboard-plugin/public';
 import { DashboardRenderer } from '@kbn/dashboard-plugin/public';
+import { analyticsServiceMock } from '@kbn/core-analytics-browser-mocks';
 import type { ActionButton } from '@kbn/agent-builder-browser/attachments';
 import type { DashboardAttachment } from '@kbn/dashboard-agent-common/types';
 import type { Filter, Query } from '@kbn/es-query';
+import { KibanaErrorBoundaryProvider } from '@kbn/shared-ux-error-boundary';
 import { DashboardCanvasContent } from './dashboard_canvas_content';
+import * as dashboardAgentCommon from '@kbn/dashboard-agent-common';
 import { DASHBOARD_ATTACHMENT_TYPE } from '@kbn/dashboard-agent-common';
 
 jest.mock('@kbn/dashboard-plugin/public', () => ({
   DashboardRenderer: jest.fn(() => <div data-test-subj="dashboardRenderer" />),
 }));
 
+jest.mock('@kbn/dashboard-agent-common', () => {
+  const actual = jest.requireActual('@kbn/dashboard-agent-common');
+
+  return {
+    ...actual,
+    attachmentDataToDashboardState: jest.fn(actual.attachmentDataToDashboardState),
+  };
+});
+
 const MockSearchBar = jest.fn(() => <div data-test-subj="searchBar" />);
+const analytics = analyticsServiceMock.createAnalyticsServiceStart();
 
 describe('DashboardCanvasContent', () => {
   const createMockDashboardApi = (
@@ -114,6 +127,9 @@ describe('DashboardCanvasContent', () => {
   const getLatestSearchBarProps = (): Record<string, any> | undefined =>
     (MockSearchBar as jest.Mock).mock.calls.at(-1)?.[0] as Record<string, any> | undefined;
 
+  const renderWithErrorBoundaryProvider = (ui: React.ReactElement) =>
+    render(<KibanaErrorBoundaryProvider analytics={analytics}>{ui}</KibanaErrorBoundaryProvider>);
+
   type DashboardCanvasContentProps = React.ComponentProps<typeof DashboardCanvasContent>;
 
   const renderDashboardCanvasContent = async (
@@ -152,7 +168,7 @@ describe('DashboardCanvasContent', () => {
       ...propsOverride,
     };
 
-    const renderResult = render(<DashboardCanvasContent {...props} />);
+    const renderResult = renderWithErrorBoundaryProvider(<DashboardCanvasContent {...props} />);
 
     // Wait for savedObjectStatus to resolve before DashboardRenderer is rendered
     await waitFor(() => {
@@ -770,6 +786,74 @@ describe('DashboardCanvasContent', () => {
         }),
         {}
       );
+    });
+
+    it('renders a fallback callout when the dashboard renderer throws', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      (DashboardRenderer as jest.Mock).mockImplementation(() => {
+        throw new Error('invalid dashboard state');
+      });
+
+      const registerActionButtons = jest.fn();
+      const updateOrigin = jest.fn().mockResolvedValue(undefined);
+      const closeCanvas = jest.fn();
+      const checkSavedDashboardExist = jest.fn().mockResolvedValue(false);
+      const filterManager = createMockFilterManager();
+
+      const { container } = renderWithErrorBoundaryProvider(
+        <DashboardCanvasContent
+          {...defaultProps}
+          filterManager={filterManager as any}
+          registerActionButtons={registerActionButtons}
+          updateOrigin={updateOrigin}
+          closeCanvas={closeCanvas}
+          checkSavedDashboardExist={checkSavedDashboardExist}
+          openSidebarConversation={jest.fn()}
+          canWriteDashboards
+        />
+      );
+
+      await waitFor(() => {
+        expect(
+          container.querySelector('[data-test-subj="errorBoundaryFatalPromptBody"]')
+        ).not.toBeNull();
+      });
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('renders a fallback callout when dashboard state conversion fails', async () => {
+      const attachmentDataToDashboardStateMock = jest.mocked(
+        dashboardAgentCommon.attachmentDataToDashboardState
+      );
+      attachmentDataToDashboardStateMock.mockImplementationOnce(() => {
+        throw new Error('unsupported chart type');
+      });
+
+      const registerActionButtons = jest.fn();
+      const updateOrigin = jest.fn().mockResolvedValue(undefined);
+      const closeCanvas = jest.fn();
+      const checkSavedDashboardExist = jest.fn().mockResolvedValue(false);
+      const filterManager = createMockFilterManager();
+
+      const { container } = renderWithErrorBoundaryProvider(
+        <DashboardCanvasContent
+          {...defaultProps}
+          filterManager={filterManager as any}
+          registerActionButtons={registerActionButtons}
+          updateOrigin={updateOrigin}
+          closeCanvas={closeCanvas}
+          checkSavedDashboardExist={checkSavedDashboardExist}
+          openSidebarConversation={jest.fn()}
+          canWriteDashboards
+        />
+      );
+
+      await waitFor(() => {
+        expect(container.querySelector('[data-test-subj="dashboardRendererError"]')).not.toBeNull();
+      });
+
+      expect(DashboardRenderer).not.toHaveBeenCalled();
     });
   });
 });
