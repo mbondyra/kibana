@@ -22,6 +22,7 @@ import {
   createNewAttachmentIdRegenerationSubscription,
 } from './new_attachment_id_regeneration_subscription';
 import { createOriginSyncSubscription } from './origin_sync_subscription';
+import { diff } from 'jest-diff';
 
 export interface DashboardAppIntegrationParams {
   agentBuilder: AgentBuilderPluginStart;
@@ -37,6 +38,24 @@ interface State {
 // for draft attachments, we want to keep stable ids across dashboards even if dashboardApi changes (we move to another dashboard)
 const draftAttachmentId = createIdGenerator();
 
+const stableStringify = (value: unknown): string => {
+  const seen = new WeakSet<object>();
+  const normalize = (v: unknown): unknown => {
+    if (v === null || typeof v !== 'object') return v;
+    if (seen.has(v as object)) return undefined;
+    seen.add(v as object);
+    if (Array.isArray(v)) return v.map(normalize);
+    return Object.keys(v as object)
+      .sort()
+      .reduce<Record<string, unknown>>((acc, key) => {
+        const normalized = normalize((v as Record<string, unknown>)[key]);
+        if (normalized !== undefined) acc[key] = normalized;
+        return acc;
+      }, {});
+  };
+  return JSON.stringify(normalize(value));
+};
+
 export const registerDashboardAppIntegration = ({
   agentBuilder,
   api,
@@ -51,12 +70,24 @@ export const registerDashboardAppIntegration = ({
     const dashboardId = api.savedObjectId$.getValue();
     const syncAttachment = state.attachments?.find(({ origin }) => origin === dashboardId);
     // update an existing linked attachment, or add a draft attachment only when the conversation is new
+    const dashboardData = dashboardStateToAttachmentData(api.getSerializedState().attributes);
+    const isDashboardEqual =
+      stableStringify(syncAttachment?.data) === stableStringify(dashboardData);
+    console.log(
+      diff(
+        JSON.parse(stableStringify(syncAttachment?.data)),
+        JSON.parse(stableStringify(dashboardData))
+      )
+    );
+    if (isDashboardEqual) {
+      return;
+    }
     if (syncAttachment || !state.conversationId) {
       agentBuilder.addAttachment({
         id: syncAttachment?.id ?? draftAttachmentId.current,
         origin: dashboardId,
         type: DASHBOARD_ATTACHMENT_TYPE,
-        data: dashboardStateToAttachmentData(api.getSerializedState().attributes),
+        data: dashboardData,
       });
     }
   };
