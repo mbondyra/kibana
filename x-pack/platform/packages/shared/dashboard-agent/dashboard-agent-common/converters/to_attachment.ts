@@ -14,6 +14,7 @@ import { LensConfigBuilder, type LensAttributes } from '@kbn/lens-embeddable-uti
 import { LENS_EMBEDDABLE_TYPE } from '@kbn/lens-common';
 import type { AttachmentPanel, DashboardSection as DashboardAttachmentSection } from '../types';
 import type { DashboardAttachmentData } from '../types';
+import { EMPTY_DASHBOARD_STATE } from '../dashboard_state_helpers';
 
 /**
  * Type guard to check if attributes are in LensAttributes format (internal).
@@ -96,6 +97,7 @@ export const toAttachmentWidget = (
  */
 export const dashboardStateToAttachmentData = (state: DashboardState): DashboardAttachmentData => {
   return {
+    ...EMPTY_DASHBOARD_STATE,
     ...state,
     panels: state.panels
       .map(toAttachmentWidget)
