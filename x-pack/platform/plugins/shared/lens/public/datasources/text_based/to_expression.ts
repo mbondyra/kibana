@@ -84,6 +84,17 @@ function getExpressionForLayer(
     });
 
   if (!layer.table) {
+    // eslint-disable-next-line no-console
+    console.log('[Lens text_based.to_expression] building expression', {
+      layerId,
+      query: layer.query,
+      timeFieldName,
+      columns: layer.columns.map((column) => ({
+        columnId: column.columnId,
+        fieldName: column.fieldName,
+      })),
+    });
+
     const textBasedQueryToAst = textBasedQueryStateToExpressionAst({
       query: layer.query,
       timeFieldName,
@@ -94,6 +105,15 @@ function getExpressionForLayer(
         defaultMessage:
           'This request queries Elasticsearch to fetch the data for the visualization.',
       }),
+    });
+
+    // eslint-disable-next-line no-console
+    console.log('[Lens text_based.to_expression] built AST', {
+      layerId,
+      expressionChain: textBasedQueryToAst.chain.map((fn) => ({
+        function: fn.function,
+        arguments: fn.arguments,
+      })),
     });
 
     textBasedQueryToAst.chain.push({

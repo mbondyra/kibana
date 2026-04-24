@@ -105,6 +105,27 @@ export function LensRenderer({
 
   const searchApi = useSearchApi({ query, filters, timeRange });
 
+  useEffect(() => {
+    // eslint-disable-next-line no-console
+    console.log('[LensRenderer] received search props', {
+      id,
+      timeRange,
+      query,
+      filtersCount: filters?.length ?? 0,
+      hasAttributes: Boolean(props.attributes),
+    });
+  }, [filters, id, props.attributes, query, timeRange]);
+
+  useEffect(() => {
+    // eslint-disable-next-line no-console
+    console.log('[LensRenderer] built search API', {
+      id,
+      timeRange$: searchApi.timeRange$?.getValue(),
+      query$: searchApi.query$?.getValue(),
+      filtersCount: searchApi.filters$?.getValue()?.length ?? 0,
+    });
+  }, [id, searchApi]);
+
   const showPanelChrome = Boolean(withDefaultActions) || (extraActions?.length || 0) > 0;
 
   const reload$ = useMemo(() => new BehaviorSubject<void>(undefined), []);
@@ -160,8 +181,16 @@ export function LensRenderer({
     <EmbeddableRenderer<LensSerializedAPIConfig, LensApi>
       type={LENS_EMBEDDABLE_TYPE}
       maybeId={id}
-      getParentApi={() =>
-        ({
+      getParentApi={() => {
+        // eslint-disable-next-line no-console
+        console.log('[LensRenderer] building parent API', {
+          id,
+          timeRange$: searchApi.timeRange$?.getValue(),
+          query$: searchApi.query$?.getValue(),
+          filtersCount: searchApi.filters$?.getValue()?.length ?? 0,
+        });
+
+        return {
           // forward the Lens components to the embeddable
           ...props,
           // forward the unified search context
@@ -178,8 +207,8 @@ export function LensRenderer({
           esqlVariables$,
           hideTitle$,
           reload$, // trigger a reload (replacement for deprecated searchSessionId)
-        } satisfies LensParentApi)
-      }
+        } satisfies LensParentApi;
+      }}
       onApiAvailable={setLensApi}
       hidePanelChrome={!showPanelChrome}
       panelProps={panelProps}

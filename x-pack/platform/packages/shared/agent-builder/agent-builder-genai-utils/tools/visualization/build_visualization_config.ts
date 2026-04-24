@@ -19,6 +19,7 @@ interface BuildVisualizationConfigParams {
   index?: string;
   chartType?: SupportedChartType;
   esql?: string;
+  timeRange?: { from: string; to: string };
   existingConfig?: string;
   parsedExistingConfig?: VisualizationConfig | null;
   includeTimeRange?: boolean;
@@ -41,6 +42,7 @@ export const buildVisualizationConfig = async ({
   index,
   chartType,
   esql,
+  timeRange,
   existingConfig,
   parsedExistingConfig = null,
   includeTimeRange = true,
@@ -76,6 +78,7 @@ export const buildVisualizationConfig = async ({
     index,
     chartType: selectedChartType,
     schema,
+    preferredTimeRange: timeRange ?? null,
     existingConfig,
     parsedExistingConfig,
     esqlQuery: esql || '',
@@ -85,7 +88,13 @@ export const buildVisualizationConfig = async ({
     error: null,
   });
 
-  const { validatedConfig, error, currentAttempt, esqlQuery, timeRange } = finalState;
+  const {
+    validatedConfig,
+    error,
+    currentAttempt,
+    esqlQuery,
+    timeRange: finalTimeRange,
+  } = finalState;
 
   if (!validatedConfig) {
     throw new Error(
@@ -99,6 +108,6 @@ export const buildVisualizationConfig = async ({
     selectedChartType,
     validatedConfig,
     esqlQuery,
-    ...(timeRange && { timeRange }),
+    ...(finalTimeRange && { timeRange: finalTimeRange }),
   };
 };

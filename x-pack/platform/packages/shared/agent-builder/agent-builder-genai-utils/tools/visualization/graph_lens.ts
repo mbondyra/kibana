@@ -78,6 +78,7 @@ const VisualizationStateAnnotation = Annotation.Root({
   index: Annotation<string | undefined>(),
   chartType: Annotation<SupportedChartType>(),
   schema: Annotation<object>(),
+  preferredTimeRange: Annotation<{ from: string; to: string } | null>(),
   existingConfig: Annotation<string | undefined>(),
   parsedExistingConfig: Annotation<VisualizationConfig | null>(),
   // internal
@@ -121,9 +122,16 @@ export const createVisualizationGraph = (
         }
       }
 
+      if (state.preferredTimeRange) {
+        nlQueryWithContext = `${nlQueryWithContext}
+
+This visualization is rendered with a time range picker. If the data source has a time field, the ES|QL query MUST use ?_tstart and ?_tend so the visualization updates when the picker changes. Do not hardcode absolute times or now()-based ranges into the query.`;
+      }
+
       const generateEsqlResponse = await generateEsql({
         nlQuery: nlQueryWithContext,
         index: state.index,
+        timeRange: state.preferredTimeRange ?? undefined,
         model,
         events,
         logger,
@@ -321,6 +329,21 @@ export const createVisualizationGraph = (
   // Node: Generate time range - ask the LLM to determine the appropriate time range
   const generateTimeRangeNode = async (state: VisualizationState) => {
     logger.debug('Generating time range for visualization');
+
+    if (state.preferredTimeRange) {
+      logger.debug(
+        `Using preferred time range for visualization: ${state.preferredTimeRange.from} to ${state.preferredTimeRange.to}`
+      );
+      return {
+        actions: [
+          {
+            type: 'generate_time_range' as const,
+            success: true,
+            timeRange: state.preferredTimeRange,
+          },
+        ],
+      };
+    }
 
     const lastGenerateEsqlAction = [...state.actions]
       .reverse()

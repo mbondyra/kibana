@@ -67,6 +67,18 @@ export function getMergedSearchContext(
 
   const timeRangeToRender = customTimeRange ?? timesliceTimeRange ?? timeRange;
 
+  // eslint-disable-next-line no-console
+  console.log('[Lens merged_search_context] resolving time range', {
+    incomingTimeRange: timeRange,
+    customTimeRange,
+    timesliceTimeRange,
+    resolvedTimeRange: timeRangeToRender,
+    query,
+    filtersCount: filters?.length ?? 0,
+    attributeQuery: attributes.state.query,
+    attributeFiltersCount: attributes.state.filters?.length ?? 0,
+  });
+
   const context = {
     esqlVariables,
     now: data.nowProvider.get().getTime(),
@@ -85,6 +97,15 @@ export function getMergedSearchContext(
   if (filters) {
     context.filters.unshift(...filters.filter(({ meta }) => !meta.disabled));
   }
+
+  // eslint-disable-next-line no-console
+  console.log('[Lens merged_search_context] final context', {
+    timeRange: context.timeRange,
+    query: context.query,
+    filtersCount: context.filters.length,
+    projectRouting: context.projectRouting,
+  });
+
   return context;
 }
 

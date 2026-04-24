@@ -76,6 +76,7 @@ describe('createVisualizationGraph', () => {
       index: 'logs-*',
       chartType: SupportedChartType.Metric,
       schema: {},
+      preferredTimeRange: null,
       existingConfig: undefined,
       parsedExistingConfig: null,
       esqlQuery,
@@ -114,6 +115,7 @@ describe('createVisualizationGraph', () => {
       index: 'logs-*',
       chartType: SupportedChartType.Metric,
       schema: {},
+      preferredTimeRange: null,
       existingConfig: JSON.stringify(parsedExistingConfig),
       parsedExistingConfig,
       esqlQuery: '',
@@ -133,5 +135,43 @@ describe('createVisualizationGraph', () => {
     expect(finalState.esqlQuery).toBe(
       'FROM logs-* | WHERE response.code != 503 | STATS count = COUNT(*)'
     );
+  });
+
+  it('passes the preferred time range into esql generation and reuses it for the result', async () => {
+    mockedGenerateEsql.mockResolvedValue({
+      query:
+        'FROM logs-* | WHERE @timestamp >= ?_tstart AND @timestamp <= ?_tend | STATS count = COUNT(*)',
+    } as Awaited<ReturnType<typeof generateEsql>>);
+
+    const graph = createVisualizationGraph(
+      createMockModel() as never,
+      logger,
+      events,
+      esClient,
+      true
+    );
+
+    const finalState = await graph.invoke({
+      nlQuery: 'Show recent request volume',
+      index: 'logs-*',
+      chartType: SupportedChartType.Metric,
+      schema: {},
+      preferredTimeRange: { from: 'now-1h', to: 'now' },
+      existingConfig: undefined,
+      parsedExistingConfig: null,
+      esqlQuery: '',
+      currentAttempt: 0,
+      actions: [],
+      validatedConfig: null,
+      error: null,
+    });
+
+    expect(mockedGenerateEsql).toHaveBeenCalledWith(
+      expect.objectContaining({
+        nlQuery: expect.stringContaining('MUST use ?_tstart and ?_tend'),
+        timeRange: { from: 'now-1h', to: 'now' },
+      })
+    );
+    expect(finalState.timeRange).toEqual({ from: 'now-1h', to: 'now' });
   });
 });

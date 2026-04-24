@@ -188,6 +188,16 @@ export const getEsqlFn = ({ getStartDependencies }: EsqlFnArguments) => {
             locale,
             include_execution_metadata: true,
           };
+          // eslint-disable-next-line no-console
+          console.log('[data esql expression] initial input', {
+            query,
+            fixedQuery,
+            inputTimeRange: input?.timeRange,
+            timeField,
+            inputQuery: input?.query,
+            inputFiltersCount: input?.filters?.length ?? 0,
+            esqlVariables: input?.esqlVariables,
+          });
           if (input) {
             const namedParams = getNamedParams(fixedQuery, input.timeRange, input.esqlVariables);
 
@@ -226,6 +236,17 @@ export const getEsqlFn = ({ getStartDependencies }: EsqlFnArguments) => {
             ];
 
             params.filter = buildEsQuery(undefined, input.query || [], filters, esQueryConfigs);
+
+            // eslint-disable-next-line no-console
+            console.log('[data esql expression] derived request inputs', {
+              fixedQuery,
+              inputTimeRange: input.timeRange,
+              timeField,
+              namedParams,
+              timeFilter,
+              filtersCount: filters.length,
+              requestFilter: params.filter,
+            });
           }
 
           let startTime = Date.now();
@@ -266,6 +287,15 @@ export const getEsqlFn = ({ getStartDependencies }: EsqlFnArguments) => {
               executionContext: getExecutionContext(),
             }
           ).pipe(
+            tap(() => {
+              // eslint-disable-next-line no-console
+              console.log('[data esql expression] calling esql_async', {
+                params: { ...params, dropNullColumns: true },
+                strategy: ESQL_ASYNC_SEARCH_STRATEGY,
+                sessionId: getSearchSessionId(),
+                projectRouting: input?.projectRouting,
+              });
+            }),
             catchError((error) => {
               if (!error.attributes) {
                 error.message = `Unexpected error from Elasticsearch: ${error.message}`;

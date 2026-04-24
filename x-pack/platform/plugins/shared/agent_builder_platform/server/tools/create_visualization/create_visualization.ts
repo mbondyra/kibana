@@ -15,6 +15,7 @@ import {
 } from '@kbn/agent-builder-common/attachments';
 import { ToolResultType, SupportedChartType } from '@kbn/agent-builder-common/tools/tool_result';
 import { buildVisualizationConfig, type VisualizationConfig } from '@kbn/agent-builder-genai-utils';
+import { getTimeRangeFromScreenContext } from '../screen_context_utils';
 
 /** Attachment type for visualization configurations */
 const VISUALIZATION_ATTACHMENT_TYPE = 'visualization';
@@ -58,6 +59,17 @@ const createVisualizationSchema = z.object({
     .describe(
       '(optional) An ES|QL query. If not provided, tool with automatically generate the query. Only pass ES|QL queries from reliable sources (other tool calls or the user) and NEVER invent queries directly.'
     ),
+  time_range: z
+    .object({
+      from: z
+        .string()
+        .describe('Start of the time range, e.g. "now-24h" or "2026-01-01T00:00:00Z"'),
+      to: z.string().describe('End of the time range, e.g. "now" or "2026-01-31T23:59:59Z"'),
+    })
+    .optional()
+    .describe(
+      '(optional) Time range to initialize the visualization with. If not provided, falls back to screen context before using the generated time range.'
+    ),
 });
 
 export const createVisualizationTool = (): BuiltinToolDefinition<
@@ -79,10 +91,29 @@ This tool will:
     schema: createVisualizationSchema,
     tags: [],
     handler: async (
-      { query: nlQuery, index, chartType, esql, attachment_id: attachmentId },
+      {
+        query: nlQuery,
+        index,
+        chartType,
+        esql,
+        time_range: explicitTimeRange,
+        attachment_id: attachmentId,
+      },
       { esClient, modelProvider, logger, events, attachments }
     ) => {
       try {
+        const screenContextTimeRange = getTimeRangeFromScreenContext(attachments);
+        const preferredTimeRange = explicitTimeRange ?? screenContextTimeRange;
+        logger.info(
+          `create_visualization called with query="${nlQuery}", index="${
+            index ?? 'undefined'
+          }", chartType="${chartType ?? 'undefined'}", attachmentId="${
+            attachmentId ?? 'undefined'
+          }", hasEsql=${Boolean(esql)}, explicitTimeRange=${JSON.stringify(
+            explicitTimeRange
+          )}, screenContextTimeRange=${JSON.stringify(screenContextTimeRange)}`
+        );
+
         // Step 1: Read existing configuration from attachment if provided
         let existingConfig: string | undefined;
         let parsedExistingConfig: VisualizationConfig | null = null;
@@ -110,6 +141,7 @@ This tool will:
             index,
             chartType,
             esql,
+            timeRange: preferredTimeRange,
             existingConfig,
             parsedExistingConfig,
             modelProvider,
@@ -118,12 +150,20 @@ This tool will:
             esClient,
           });
 
+        logger.info(
+          `create_visualization generated config with chartType="${selectedChartType}", esql="${esqlQuery}", generatedTimeRange=${JSON.stringify(
+            timeRange
+          )}, screenContextTimeRange=${JSON.stringify(screenContextTimeRange)}`
+        );
+
+        const resolvedTimeRange = preferredTimeRange ?? timeRange;
+
         const visualizationData = {
           query: nlQuery,
           visualization: validatedConfig,
           chart_type: selectedChartType,
           esql: esqlQuery,
-          ...(timeRange && { time_range: timeRange }),
+          ...(resolvedTimeRange && { time_range: resolvedTimeRange }),
         };
 
         // Step 4: Try to store as attachment (optional - may fail if visualization type not registered)
@@ -155,6 +195,12 @@ This tool will:
             version = newAttachment.current_version;
             logger.debug(`Created new visualization attachment ${resultAttachmentId}`);
           }
+
+          logger.info(
+            `create_visualization stored attachment=${resultAttachmentId ?? 'none'} version=${
+              version ?? 'undefined'
+            } with time_range=${JSON.stringify(visualizationData.time_range)}`
+          );
         } catch (attachmentError) {
           // Attachment creation is optional - continue without it
           logger.warn(
@@ -174,6 +220,7 @@ This tool will:
                 visualization: validatedConfig,
                 chart_type: selectedChartType,
                 esql: esqlQuery,
+                ...(resolvedTimeRange && { time_range: resolvedTimeRange }),
                 ...(resultAttachmentId && { attachment_id: resultAttachmentId }),
                 ...(version !== undefined && { version }),
                 ...(isUpdate && { is_update: isUpdate }),

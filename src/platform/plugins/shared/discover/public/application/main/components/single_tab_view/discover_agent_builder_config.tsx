@@ -212,16 +212,35 @@ export const DiscoverAgentBuilderConfig = () => {
 
     if (hasEsqlResults && documentState.esqlQueryColumns && documentState.result) {
       const esqlQuery = isOfAggregateQueryType(query) ? query.esql : '';
-      attachments.push(
-        buildEsqlResultsAttachment(
-          esqlQuery,
-          documentState.esqlQueryColumns,
-          documentState.result,
-          totalHits ?? documentState.result.length,
-          normalizedTimeRange
-        )
+      const esqlResultsAttachment = buildEsqlResultsAttachment(
+        esqlQuery,
+        documentState.esqlQueryColumns,
+        documentState.result,
+        totalHits ?? documentState.result.length,
+        normalizedTimeRange
       );
+
+      // eslint-disable-next-line no-console
+      console.log('[DiscoverAgentBuilder] built ES|QL results attachment', {
+        timeRange: normalizedTimeRange,
+        query: esqlQuery,
+        totalHits: totalHits ?? documentState.result.length,
+        columns: esqlResultsAttachment.data.columns.map((column) => column.name),
+        sampleRowCount: esqlResultsAttachment.data.sampleRows.length,
+      });
+
+      attachments.push(esqlResultsAttachment);
     }
+
+    // eslint-disable-next-line no-console
+    console.log('[DiscoverAgentBuilder] setting chat config', {
+      timeRange: normalizedTimeRange,
+      attachmentTypes: attachments.map((attachment) => attachment.type),
+      hasEsqlResultsAttachment: attachments.some(
+        (attachment) => attachment.type === ESQL_QUERY_RESULTS_ATTACHMENT_TYPE
+      ),
+      browserApiToolIds: browserApiTools.map((tool) => tool.id),
+    });
 
     agentBuilder.setChatConfig({
       sessionTag: SESSION_TAG,
