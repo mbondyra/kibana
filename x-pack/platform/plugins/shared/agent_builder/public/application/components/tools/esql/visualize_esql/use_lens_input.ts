@@ -93,7 +93,11 @@ export function useLensInput({
           suggestion,
           dataView: dataViewAsync.value,
         }) as TypedLensByValueInput['attributes'];
-        setLensInput({ attributes, id: uuidv4(), timeRange });
+        setLensInput({
+          attributes,
+          id: uuidv4(),
+          timeRange,
+        });
       }
     }
   }, [
