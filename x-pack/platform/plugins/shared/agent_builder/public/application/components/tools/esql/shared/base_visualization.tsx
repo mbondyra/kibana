@@ -5,18 +5,18 @@
  * 2.0.
  */
 
-import { EuiLoadingSpinner, useEuiTheme } from '@elastic/eui';
+import { EuiLoadingSpinner } from '@elastic/eui';
 import type { InlineEditLensEmbeddableContext, LensPublicStart } from '@kbn/lens-plugin/public';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import type { UiActionsStart } from '@kbn/ui-actions-plugin/public';
 import type { TypedLensByValueInput } from '@kbn/lens-plugin/public';
-import { visualizationWrapper } from './styles';
+import { visualizationWrapperStyles } from './styles';
 import { VisualizationActions } from './visualization_actions';
 import { VisualizationTimeRangePicker } from './visualization_time_range_picker';
 import { useTimeRange, type VisualizationTimeRangeControl } from './use_time_range';
 import { TimeRange } from '@kbn/agent-builder-common';
 
-const VISUALIZATION_HEIGHT = 240;
+const VISUALIZATION_HEIGHT = 240 + 32;
 
 interface BaseVisualizationProps {
   lens: LensPublicStart;
@@ -41,7 +41,6 @@ export function BaseVisualization({
     InlineEditLensEmbeddableContext['lensEvent'] | null
   >(null);
 
-  const { euiTheme } = useEuiTheme();
   console.log('timeRange', timeRange);
   const timeRangeControl = useTimeRange({ timeRange });
   const selectedTimeRange = timeRangeControl?.selectedTimeRange;
@@ -69,17 +68,12 @@ export function BaseVisualization({
 
   return (
     <>
-      {timeRangeControl && (
-        <VisualizationTimeRangePicker
-          selectedTimeRange={timeRangeControl.selectedTimeRange}
-          onTimeChange={timeRangeControl.onTimeChange}
-        />
-      )}
+      
       <div
         data-test-subj="lensVisualization"
         css={visualizationWrapperStyles(VISUALIZATION_HEIGHT)}
       >
-        {!isLoading && lensInput && (
+           {!isLoading && lensInput && (
           <VisualizationActions
             onSave={onOpenSave}
             uiActions={uiActions}
@@ -88,6 +82,13 @@ export function BaseVisualization({
             setLensInput={setLensInput}
           />
         )}
+        {timeRangeControl && (
+        <VisualizationTimeRangePicker
+          selectedTimeRange={timeRangeControl.selectedTimeRange}
+          onTimeChange={timeRangeControl.onTimeChange}
+        />
+      )}
+     
         {isLoading ? (
           <EuiLoadingSpinner />
         ) : (

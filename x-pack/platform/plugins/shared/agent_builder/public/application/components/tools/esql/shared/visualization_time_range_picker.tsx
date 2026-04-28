@@ -23,7 +23,7 @@ export function VisualizationTimeRangePicker({
       css={({ euiTheme }: UseEuiTheme) =>
         css({
           display: 'flex',
-          justifyContent: 'flex-end',
+          justifyContent: 'flex-start',
           width: '100%',
           marginBlockStart: euiTheme.size.base,
           marginBlockEnd: euiTheme.size.s,

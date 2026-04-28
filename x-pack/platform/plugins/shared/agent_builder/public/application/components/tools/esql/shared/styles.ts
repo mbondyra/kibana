@@ -31,7 +31,7 @@ export const visualizationWrapperStyles =
 export const actionsContainerStyles = ({ euiTheme }: UseEuiTheme) =>
   css({
     position: 'absolute',
-    top: `-${euiTheme.size.xs}`,
+    top: `-${euiTheme.size.l}`,
     right: 0,
     zIndex: 2,
     opacity: 0,
