@@ -99,7 +99,7 @@ export interface SmlTypeDefinition {
 
   /**
    * Optional: custom crawl interval for the crawler.
-   * Defaults to '10m' if not provided.
+   * Omit this for event-only types that are indexed via `indexAttachment`.
    */
   fetchFrequency?: () => string;
 }

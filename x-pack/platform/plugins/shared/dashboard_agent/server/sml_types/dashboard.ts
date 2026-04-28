@@ -18,7 +18,7 @@ import type {
 } from '@kbn/dashboard-plugin/server';
 import { createRequestHandlerContext } from '../create_request_handler_context';
 
-const DASHBOARD_SML_TYPE = 'dashboard';
+export const DASHBOARD_SML_TYPE = 'dashboard';
 
 interface CreateDashboardSmlTypeOptions {
   getDashboardClient: () => Promise<DashboardPluginStart['client']>;
@@ -67,27 +67,10 @@ export const createDashboardSmlType = ({
   getDashboardClient,
 }: CreateDashboardSmlTypeOptions): SmlTypeDefinition => ({
   id: DASHBOARD_SML_TYPE,
-  fetchFrequency: () => '30m',
 
-  async *list(context) {
-    const finder = context.savedObjectsClient.createPointInTimeFinder({
-      type: 'dashboard',
-      perPage: 1000,
-      namespaces: ['*'],
-      fields: ['title'],
-    });
-
-    try {
-      for await (const response of finder.find()) {
-        yield response.saved_objects.map((savedObject) => ({
-          id: savedObject.id,
-          updatedAt: savedObject.updated_at ?? new Date().toISOString(),
-          spaces: savedObject.namespaces ?? [],
-        }));
-      }
-    } finally {
-      await finder.close();
-    }
+  // Dashboards are indexed from dashboard lifecycle events rather than crawler polling.
+  async *list() {
+    return;
   },
 
   getSmlData: async (originId, context) => {

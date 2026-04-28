@@ -178,10 +178,11 @@ describe('sml_task_definitions', () => {
   });
 
   describe('scheduleSmlCrawlerTasks', () => {
-    it('schedules a task per registered type', async () => {
-      const def1 = createMockDefinition({ id: 'visualization' });
-      const def2 = createMockDefinition({ id: 'dashboard' });
-      mockSmlService.listTypeDefinitions.mockReturnValue([def1, def2]);
+    it('schedules a task per registered type with fetchFrequency', async () => {
+      const def1 = createMockDefinition({ id: 'visualization', fetchFrequency: () => '1h' });
+      const def2 = createMockDefinition({ id: 'dashboard', fetchFrequency: () => '30m' });
+      const eventOnlyDef = createMockDefinition({ id: 'connector' });
+      mockSmlService.listTypeDefinitions.mockReturnValue([def1, def2, eventOnlyDef]);
 
       await scheduleSmlCrawlerTasks({
         taskManager: mockTaskManager as unknown as TaskManagerStartContract,
@@ -194,7 +195,7 @@ describe('sml_task_definitions', () => {
         id: 'agent_builder:sml_crawler:visualization',
         taskType: SML_CRAWLER_TASK_TYPE,
         params: { attachmentType: 'visualization' },
-        schedule: { interval: '10m' },
+        schedule: { interval: '1h' },
         scope: ['agentBuilder'],
         state: {},
       });
@@ -202,7 +203,7 @@ describe('sml_task_definitions', () => {
         id: 'agent_builder:sml_crawler:dashboard',
         taskType: SML_CRAWLER_TASK_TYPE,
         params: { attachmentType: 'dashboard' },
-        schedule: { interval: '10m' },
+        schedule: { interval: '30m' },
         scope: ['agentBuilder'],
         state: {},
       });
@@ -228,8 +229,8 @@ describe('sml_task_definitions', () => {
       );
     });
 
-    it('defaults to 10m interval', async () => {
-      const def = createMockDefinition({ id: 'visualization' });
+    it('skips event-only types without fetchFrequency', async () => {
+      const def = createMockDefinition({ id: 'connector' });
       mockSmlService.listTypeDefinitions.mockReturnValue([def]);
 
       await scheduleSmlCrawlerTasks({
@@ -238,15 +239,14 @@ describe('sml_task_definitions', () => {
         logger: mockLogger as unknown as Logger,
       });
 
-      expect(mockTaskManager.ensureScheduled).toHaveBeenCalledWith(
-        expect.objectContaining({
-          schedule: { interval: '10m' },
-        })
+      expect(mockTaskManager.ensureScheduled).not.toHaveBeenCalled();
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        "SML crawler task not scheduled for event-only type 'connector' without fetchFrequency"
       );
     });
 
     it('logs error when ensureScheduled fails', async () => {
-      const def = createMockDefinition({ id: 'visualization' });
+      const def = createMockDefinition({ id: 'visualization', fetchFrequency: () => '10m' });
       mockSmlService.listTypeDefinitions.mockReturnValue([def]);
       mockTaskManager.ensureScheduled.mockRejectedValue(new Error('schedule failed'));
 

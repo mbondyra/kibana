@@ -18,11 +18,13 @@ import { getUpdateRequestBodySchema, getUpdateResponseBodySchema } from './schem
 import { update } from './update';
 import { getDashboardStateSchema } from '../dashboard_state_schemas';
 import { writeErrorHandler } from '../write_error_handler';
+import type { DashboardLifecycleEvent } from '../../types';
 
 export function registerUpdateRoute(
   router: VersionedRouter<RequestHandlerContext>,
   usageCounter: UsageCounter | undefined,
-  isDashboardAppRequest: boolean
+  isDashboardAppRequest: boolean,
+  onDashboardLifecycleEvent?: (event: DashboardLifecycleEvent) => void
 ) {
   const { basePath, routeConfig, routeVersion } = getRouteConfig(isDashboardAppRequest);
   const updateRoute = router.put({
@@ -78,9 +80,13 @@ export function registerUpdateRoute(
             req.body,
             isDashboardAppRequest
           );
-          return result.meta.updated_at === result.meta.created_at
-            ? res.created({ body: result })
-            : res.ok({ body: result });
+          const action = result.meta.updated_at === result.meta.created_at ? 'create' : 'update';
+          onDashboardLifecycleEvent?.({
+            action,
+            dashboardId: result.id,
+            request: req,
+          });
+          return action === 'create' ? res.created({ body: result }) : res.ok({ body: result });
         } catch (e) {
           return writeErrorHandler(e, res);
         }

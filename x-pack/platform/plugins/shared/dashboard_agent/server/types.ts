@@ -5,14 +5,19 @@
  * 2.0.
  */
 
-import type { AgentBuilderPluginSetup } from '@kbn/agent-builder-plugin/server';
-import type { DashboardPluginStart } from '@kbn/dashboard-plugin/server';
+import type {
+  AgentBuilderPluginSetup,
+  AgentBuilderPluginStart,
+} from '@kbn/agent-builder-plugin/server';
+import type { DashboardPluginSetup, DashboardPluginStart } from '@kbn/dashboard-plugin/server';
 
 export interface DashboardAgentSetupDependencies {
   agentBuilder: AgentBuilderPluginSetup;
+  dashboard: DashboardPluginSetup;
 }
 
 export interface DashboardAgentStartDependencies {
+  agentBuilder: AgentBuilderPluginStart;
   dashboard: DashboardPluginStart;
 }
 

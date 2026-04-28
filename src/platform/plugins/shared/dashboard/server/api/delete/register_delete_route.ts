@@ -14,10 +14,12 @@ import type { UsageCounter } from '@kbn/usage-collection-plugin/server';
 import { telemetryHandler } from '@kbn/as-code-shared-telemetry';
 import { getRouteConfig } from '../get_route_config';
 import { deleteDashboard } from './delete';
+import type { DashboardLifecycleEvent } from '../../types';
 
 export function registerDeleteRoute(
   router: VersionedRouter<RequestHandlerContext>,
-  usageCounter: UsageCounter | undefined
+  usageCounter: UsageCounter | undefined,
+  onDashboardLifecycleEvent?: (event: DashboardLifecycleEvent) => void
 ) {
   const { basePath, routeConfig, routeVersion } = getRouteConfig(false);
   const deleteRoute = router.delete({
@@ -57,6 +59,11 @@ export function registerDeleteRoute(
       telemetryHandler(req, usageCounter, async () => {
         try {
           await deleteDashboard(ctx, req.params.id);
+          onDashboardLifecycleEvent?.({
+            action: 'delete',
+            dashboardId: req.params.id,
+            request: req,
+          });
         } catch (e) {
           if (e.isBoom && e.output.statusCode === 404) {
             return res.notFound({

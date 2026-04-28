@@ -20,7 +20,7 @@ import type {
 } from './types';
 import { registerSkills } from './skills';
 import { createDashboardAttachmentType } from './attachment_types';
-import { createDashboardSmlType } from './sml_types';
+import { createDashboardSmlType, DASHBOARD_SML_TYPE } from './sml_types';
 
 export class DashboardAgentPlugin
   implements
@@ -53,6 +53,25 @@ export class DashboardAgentPlugin
       }) as Parameters<typeof setupDeps.agentBuilder.attachments.registerType>[0]
     );
     setupDeps.agentBuilder.sml.registerType(createDashboardSmlType({ getDashboardClient }));
+    setupDeps.dashboard.registerDashboardLifecycleListener(({ action, dashboardId, request }) => {
+      coreSetup
+        .getStartServices()
+        .then(([, startDeps]) =>
+          startDeps.agentBuilder.sml.indexAttachment({
+            request,
+            originId: dashboardId,
+            attachmentType: DASHBOARD_SML_TYPE,
+            action,
+          })
+        )
+        .catch((error) => {
+          this.logger.warn(
+            `SML dashboard: failed to ${action} index for '${dashboardId}': ${
+              (error as Error).message
+            }`
+          );
+        });
+    });
     registerSkills(setupDeps.agentBuilder);
     return {};
   }

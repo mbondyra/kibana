@@ -9,6 +9,7 @@
 
 import type { HttpServiceSetup, RequestHandlerContext } from '@kbn/core/server';
 import type { UsageCounter } from '@kbn/usage-collection-plugin/server';
+import type { DashboardLifecycleEvent } from '../types';
 
 import { registerCreateRoute } from './create';
 import { registerUpdateRoute } from './update';
@@ -17,7 +18,11 @@ import { registerSearchRoute } from './search';
 import { registerReadRoute } from './read';
 import { registerSanitizeRoute } from './sanitize';
 
-export function registerRoutes(http: HttpServiceSetup, usageCounter?: UsageCounter) {
+export function registerRoutes(
+  http: HttpServiceSetup,
+  usageCounter?: UsageCounter,
+  onDashboardLifecycleEvent?: (event: DashboardLifecycleEvent) => void
+) {
   const { versioned: versionedRouter } = http.createRouter<RequestHandlerContext>();
 
   //
@@ -25,10 +30,10 @@ export function registerRoutes(http: HttpServiceSetup, usageCounter?: UsageCount
   // Only allows panel.type value with registered embeddable schema
   // Validate panel.config at route level
   //
-  registerCreateRoute(versionedRouter, usageCounter, false);
+  registerCreateRoute(versionedRouter, usageCounter, false, onDashboardLifecycleEvent);
   registerReadRoute(versionedRouter, usageCounter, false);
-  registerUpdateRoute(versionedRouter, usageCounter, false);
-  registerDeleteRoute(versionedRouter, usageCounter);
+  registerUpdateRoute(versionedRouter, usageCounter, false, onDashboardLifecycleEvent);
+  registerDeleteRoute(versionedRouter, usageCounter, onDashboardLifecycleEvent);
   registerSearchRoute(versionedRouter, usageCounter);
   registerSanitizeRoute(versionedRouter);
 
@@ -40,7 +45,7 @@ export function registerRoutes(http: HttpServiceSetup, usageCounter?: UsageCount
   //
   // TODO remove these routes when all embeddable schemas are registered
   //
-  registerCreateRoute(versionedRouter, undefined, true);
+  registerCreateRoute(versionedRouter, undefined, true, onDashboardLifecycleEvent);
   registerReadRoute(versionedRouter, undefined, true);
-  registerUpdateRoute(versionedRouter, undefined, true);
+  registerUpdateRoute(versionedRouter, undefined, true, onDashboardLifecycleEvent);
 }

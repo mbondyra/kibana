@@ -7,9 +7,19 @@
  * License v3.0 only", or the "Server Side Public License, v 1".
  */
 
-import type { RequestHandlerContext } from '@kbn/core/server';
+import type { KibanaRequest, RequestHandlerContext } from '@kbn/core/server';
 import type { ScanDashboardsResult } from './scan_dashboards';
 import type { DashboardReadResponseBody } from './api';
+
+export type DashboardLifecycleAction = 'create' | 'update' | 'delete';
+
+export interface DashboardLifecycleEvent {
+  action: DashboardLifecycleAction;
+  dashboardId: string;
+  request: KibanaRequest;
+}
+
+export type DashboardLifecycleListener = (event: DashboardLifecycleEvent) => void | Promise<void>;
 
 /**
  * Client interface for dashboard CRUD operations
@@ -19,8 +29,9 @@ export interface DashboardServerClient {
 }
 
 /** The setup contract for the Dashboard plugin on the server. */
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-export interface DashboardPluginSetup {}
+export interface DashboardPluginSetup {
+  registerDashboardLifecycleListener: (listener: DashboardLifecycleListener) => void;
+}
 
 /**
  * The start contract for the Dashboard plugin on the server.

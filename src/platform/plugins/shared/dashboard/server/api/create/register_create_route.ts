@@ -17,11 +17,13 @@ import { getCreateRequestBodySchema, getCreateResponseBodySchema } from './schem
 import { create } from './create';
 import { getDashboardStateSchema } from '../dashboard_state_schemas';
 import { writeErrorHandler } from '../write_error_handler';
+import type { DashboardLifecycleEvent } from '../../types';
 
 export function registerCreateRoute(
   router: VersionedRouter<RequestHandlerContext>,
   usageCounter: UsageCounter | undefined,
-  isDashboardAppRequest: boolean
+  isDashboardAppRequest: boolean,
+  onDashboardLifecycleEvent?: (event: DashboardLifecycleEvent) => void
 ) {
   const { basePath, routeConfig, routeVersion } = getRouteConfig(isDashboardAppRequest);
   const createRoute = router.post({
@@ -68,6 +70,11 @@ export function registerCreateRoute(
             req.body,
             isDashboardAppRequest
           );
+          onDashboardLifecycleEvent?.({
+            action: 'create',
+            dashboardId: result.id,
+            request: req,
+          });
           return res.created({ body: result });
         } catch (e) {
           return writeErrorHandler(e, res);

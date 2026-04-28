@@ -134,7 +134,8 @@ export const registerSmlCrawlerTaskDefinition = ({
 };
 
 /**
- * Schedule SML crawler tasks for all registered types that provide a `list` hook.
+ * Schedule SML crawler tasks for registered types that provide a crawl interval.
+ * Types without `fetchFrequency` are event-only and are indexed via `indexAttachment`.
  * Should be called during plugin start.
  */
 export const scheduleSmlCrawlerTasks = async ({
@@ -149,8 +150,15 @@ export const scheduleSmlCrawlerTasks = async ({
   const types = smlService.listTypeDefinitions();
 
   for (const definition of types) {
+    if (!definition.fetchFrequency) {
+      logger.debug(
+        `SML crawler task not scheduled for event-only type '${definition.id}' without fetchFrequency`
+      );
+      continue;
+    }
+
     const taskId = `${SML_CRAWLER_TASK_TYPE}:${definition.id}`;
-    const interval = definition.fetchFrequency?.() ?? '10m';
+    const interval = definition.fetchFrequency();
 
     try {
       await taskManager.ensureScheduled({

@@ -103,25 +103,9 @@ const createLogger = (): Logger =>
 const createSavedObjectsClient = () => ({} as never);
 
 describe('dashboardSmlType', () => {
-  it('lists dashboards across all spaces', async () => {
-    const finder = {
-      find: jest.fn().mockReturnValue(
-        (async function* () {
-          yield {
-            saved_objects: [
-              {
-                id: 'dashboard-1',
-                updated_at: '2025-01-01T00:00:00.000Z',
-                namespaces: ['default'],
-              },
-            ],
-          };
-        })()
-      ),
-      close: jest.fn().mockResolvedValue(undefined),
-    };
+  it('does not crawl dashboards on an interval', async () => {
     const savedObjectsClient = {
-      createPointInTimeFinder: jest.fn().mockReturnValue(finder),
+      createPointInTimeFinder: jest.fn(),
     };
     const dashboardSmlType = createDashboardSmlType({
       getDashboardClient: async () => createDashboardClient(),
@@ -136,22 +120,9 @@ describe('dashboardSmlType', () => {
       pages.push(page);
     }
 
-    expect(savedObjectsClient.createPointInTimeFinder).toHaveBeenCalledWith({
-      type: 'dashboard',
-      perPage: 1000,
-      namespaces: ['*'],
-      fields: ['title'],
-    });
-    expect(pages).toEqual([
-      [
-        {
-          id: 'dashboard-1',
-          updatedAt: '2025-01-01T00:00:00.000Z',
-          spaces: ['default'],
-        },
-      ],
-    ]);
-    expect(finder.close).toHaveBeenCalledTimes(1);
+    expect(dashboardSmlType.fetchFrequency).toBeUndefined();
+    expect(savedObjectsClient.createPointInTimeFinder).not.toHaveBeenCalled();
+    expect(pages).toEqual([]);
   });
 
   it('indexes one chunk per dashboard with deep metadata', async () => {

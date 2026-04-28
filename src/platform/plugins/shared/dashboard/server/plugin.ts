@@ -40,7 +40,12 @@ import {
 } from './usage/dashboard_telemetry_collection_task';
 import { getUISettings } from './ui_settings';
 import { capabilitiesProvider } from './capabilities_provider';
-import type { DashboardPluginSetup, DashboardPluginStart } from './types';
+import type {
+  DashboardLifecycleEvent,
+  DashboardLifecycleListener,
+  DashboardPluginSetup,
+  DashboardPluginStart,
+} from './types';
 import { createDashboardSavedObjectType } from './dashboard_saved_object';
 import { registerDashboardUsageCollector } from './usage/register_collector';
 import { dashboardPersistableStateServiceFactory } from './dashboard_container/dashboard_container_embeddable_factory';
@@ -72,6 +77,7 @@ export class DashboardPlugin
 {
   private readonly logger: Logger;
   private apiUsageCounter?: UsageCounter;
+  private readonly dashboardLifecycleListeners: DashboardLifecycleListener[] = [];
 
   constructor(initializerContext: PluginInitializerContext) {
     this.logger = initializerContext.logger.get();
@@ -129,7 +135,7 @@ export class DashboardPlugin
 
     core.uiSettings.register(getUISettings());
 
-    registerRoutes(core.http, this.apiUsageCounter);
+    registerRoutes(core.http, this.apiUsageCounter, this.notifyDashboardLifecycleListeners);
 
     void registerAccessControl({
       http: core.http,
@@ -142,8 +148,24 @@ export class DashboardPlugin
 
     registerDashboardDrilldown(plugins.embeddable);
 
-    return {};
+    return {
+      registerDashboardLifecycleListener: (listener) => {
+        this.dashboardLifecycleListeners.push(listener);
+      },
+    };
   }
+
+  private readonly notifyDashboardLifecycleListeners = (event: DashboardLifecycleEvent): void => {
+    this.dashboardLifecycleListeners.forEach((listener) => {
+      Promise.resolve(listener(event)).catch((error) => {
+        this.logger.warn(
+          `Dashboard lifecycle listener failed for ${event.action} '${event.dashboardId}': ${
+            (error as Error).message
+          }`
+        );
+      });
+    });
+  };
 
   public start(core: CoreStart, plugins: StartDeps) {
     this.logger.debug('dashboard: Started');
