@@ -34,7 +34,7 @@ export const actionsContainerStyles = ({ euiTheme }: UseEuiTheme) =>
     top: `-${euiTheme.size.xs}`,
     right: 0,
     zIndex: 2,
-    opacity: 0,
+    opacity: 1,
     pointerEvents: 'none',
     transition: `opacity ${euiTheme.animation.fast} ease-in-out`,
     display: 'inline-flex',

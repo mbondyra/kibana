@@ -14,7 +14,6 @@ import { i18n } from '@kbn/i18n';
 import type { UiActionsStart } from '@kbn/ui-actions-plugin/public';
 import { useLensInput } from './use_lens_input';
 import { BaseVisualization } from '../shared/base_visualization';
-import { useTimeRange } from '../shared/use_time_range';
 
 export function VisualizeLens({
   lens,
@@ -59,7 +58,6 @@ export function VisualizeLens({
       lensInput={lensInput}
       setLensInput={setLensInput}
       isLoading={isLoading}
-      timeRangeControl={timeRangeControl}
       timeRange={timeRange}
     />
   );
