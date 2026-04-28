@@ -13,8 +13,7 @@ import { EuiCallOut } from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
 import type { UiActionsStart } from '@kbn/ui-actions-plugin/public';
 import { useLensInput } from './use_lens_input';
-import { BaseVisualization } from '../shared/base_visualization';
-import { useTimeRange } from '../shared/use_time_range';
+import { BaseVisualization, type VisualizationActionHandlers } from '../shared/base_visualization';
 
 export function VisualizeLens({
   lens,
@@ -22,12 +21,14 @@ export function VisualizeLens({
   uiActions,
   lensConfig,
   timeRange,
+  onActionHandlersChange,
 }: {
   lens: LensPublicStart;
   dataViews: DataViewsServicePublic;
   uiActions: UiActionsStart;
   lensConfig: any;
   timeRange?: TimeRange;
+  onActionHandlersChange?: (handlers: VisualizationActionHandlers | undefined) => void;
 }) {
   const { lensInput, setLensInput, isLoading, error } = useLensInput({
     lens,
@@ -59,7 +60,7 @@ export function VisualizeLens({
       lensInput={lensInput}
       setLensInput={setLensInput}
       isLoading={isLoading}
-      timeRangeControl={timeRangeControl}
+      onActionHandlersChange={onActionHandlersChange}
       timeRange={timeRange}
     />
   );
