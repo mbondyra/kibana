@@ -15,6 +15,8 @@ export const visualizationWrapperStyles =
       position: 'relative',
       height,
       overflow: 'visible',
+      display: 'flex',
+      flexDirection: 'column',
       '&:hover > .visualization-button-actions, &:focus-within > .visualization-button-actions': {
         opacity: 1,
         pointerEvents: 'auto',
@@ -28,10 +30,15 @@ export const visualizationWrapperStyles =
       },
     });
 
+export const visualizationEmbeddableStyles = css({
+  flex: '1 1 auto',
+  minHeight: 0,
+});
+
 export const actionsContainerStyles = ({ euiTheme }: UseEuiTheme) =>
   css({
     position: 'absolute',
-    top: `-${euiTheme.size.l}`,
+    top: `-${euiTheme.size.xs}`,
     right: 0,
     zIndex: 2,
     opacity: 0,

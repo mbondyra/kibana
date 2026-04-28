@@ -54,6 +54,7 @@ export function VisualizeESQL({
         css({
           backgroundColor: euiTheme.colors.backgroundBasePlain,
           overflow: 'visible',
+          marginBlockEnd: euiTheme.size.m,
         })
       }
     >
@@ -63,7 +64,6 @@ export function VisualizeESQL({
         lensInput={lensInput}
         setLensInput={setLensInput}
         isLoading={isLoading}
-        shouldShowActions
         timeRange={timeRange}
       />
     </EuiSplitPanel.Outer>

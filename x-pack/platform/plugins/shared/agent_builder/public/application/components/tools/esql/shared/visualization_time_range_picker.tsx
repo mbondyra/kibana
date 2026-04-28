@@ -25,6 +25,7 @@ export function VisualizationTimeRangePicker({
           display: 'flex',
           justifyContent: 'flex-start',
           width: '100%',
+          boxSizing: 'border-box',
           marginBlockStart: euiTheme.size.base,
           marginBlockEnd: euiTheme.size.s,
           paddingInline: euiTheme.size.base,

@@ -10,11 +10,11 @@ import type { InlineEditLensEmbeddableContext, LensPublicStart } from '@kbn/lens
 import React, { useCallback, useMemo, useState } from 'react';
 import type { UiActionsStart } from '@kbn/ui-actions-plugin/public';
 import type { TypedLensByValueInput } from '@kbn/lens-plugin/public';
-import { visualizationWrapperStyles } from './styles';
+import { visualizationEmbeddableStyles, visualizationWrapperStyles } from './styles';
 import { VisualizationActions } from './visualization_actions';
 import { VisualizationTimeRangePicker } from './visualization_time_range_picker';
 import { useTimeRange, type VisualizationTimeRangeControl } from './use_time_range';
-import { TimeRange } from '@kbn/agent-builder-common';
+import type { TimeRange } from '@kbn/agent-builder-common';
 
 const VISUALIZATION_HEIGHT = 240 + 32;
 
@@ -41,7 +41,6 @@ export function BaseVisualization({
     InlineEditLensEmbeddableContext['lensEvent'] | null
   >(null);
 
-  console.log('timeRange', timeRange);
   const timeRangeControl = useTimeRange({ timeRange });
   const selectedTimeRange = timeRangeControl?.selectedTimeRange;
   const lensInputWithTimeRange = useMemo(
@@ -68,12 +67,11 @@ export function BaseVisualization({
 
   return (
     <>
-      
       <div
         data-test-subj="lensVisualization"
         css={visualizationWrapperStyles(VISUALIZATION_HEIGHT)}
       >
-           {!isLoading && lensInput && (
+        {!isLoading && lensInput && (
           <VisualizationActions
             onSave={onOpenSave}
             uiActions={uiActions}
@@ -83,24 +81,26 @@ export function BaseVisualization({
           />
         )}
         {timeRangeControl && (
-        <VisualizationTimeRangePicker
-          selectedTimeRange={timeRangeControl.selectedTimeRange}
-          onTimeChange={timeRangeControl.onTimeChange}
-        />
-      )}
-     
-        {isLoading ? (
-          <EuiLoadingSpinner />
-        ) : (
-          lensInputWithTimeRange && (
-            <lens.EmbeddableComponent
-              {...lensInputWithTimeRange}
-              style={{ height: '100%' }}
-              onBrushEnd={timeRangeControl?.onBrushEnd}
-              onLoad={onLoad}
-            />
-          )
+          <VisualizationTimeRangePicker
+            selectedTimeRange={timeRangeControl.selectedTimeRange}
+            onTimeChange={timeRangeControl.onTimeChange}
+          />
         )}
+
+        <div css={visualizationEmbeddableStyles}>
+          {isLoading ? (
+            <EuiLoadingSpinner />
+          ) : (
+            lensInputWithTimeRange && (
+              <lens.EmbeddableComponent
+                {...lensInputWithTimeRange}
+                style={{ height: '100%' }}
+                onBrushEnd={timeRangeControl?.onBrushEnd}
+                onLoad={onLoad}
+              />
+            )
+          )}
+        </div>
       </div>
       {isSaveModalOpen && lensInputWithTimeRange && (
         <lens.SaveModalComponent
