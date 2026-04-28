@@ -17,6 +17,7 @@ import type { TimeRange } from '@kbn/agent-builder-common';
 import type { DatatableColumn } from '@kbn/expressions-plugin/common';
 import { esFieldTypeToKibanaFieldType } from '@kbn/field-types';
 import useAsync from 'react-use/lib/useAsync';
+import { getInitialTimeRange } from '../shared/use_time_range';
 
 interface Params {
   esqlQuery: string;
@@ -43,6 +44,7 @@ export function useLensInput({
   timeRange,
 }: Params): ReturnValue {
   const [lensInput, setLensInput] = useState<TypedLensByValueInput>();
+  const initialTimeRange = useMemo(() => getInitialTimeRange(timeRange), [timeRange]);
 
   const columns = useMemo(
     () =>
@@ -93,7 +95,11 @@ export function useLensInput({
           suggestion,
           dataView: dataViewAsync.value,
         }) as TypedLensByValueInput['attributes'];
-        setLensInput({ attributes, id: uuidv4(), timeRange });
+        setLensInput({
+          attributes,
+          id: uuidv4(),
+          timeRange: initialTimeRange,
+        });
       }
     }
   }, [
@@ -103,7 +109,7 @@ export function useLensInput({
     columns,
     esqlQuery,
     preferredChartType,
-    timeRange,
+    initialTimeRange,
     error,
   ]);
 

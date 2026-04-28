@@ -14,19 +14,9 @@ import type {
 import type { UiActionsStart } from '@kbn/ui-actions-plugin/public';
 import { i18n } from '@kbn/i18n';
 
-export const editButtonLabel = i18n.translate(
-  'xpack.agentBuilder.conversation.visualization.edit',
-  {
-    defaultMessage: 'Edit visualization',
-  }
-);
-
-export const saveButtonLabel = i18n.translate(
-  'xpack.agentBuilder.conversation.visualization.saveToDashboard',
-  {
-    defaultMessage: 'Save to dashboard',
-  }
-);
+const editButtonLabel = i18n.translate('xpack.agentBuilder.conversation.visualization.edit', {
+  defaultMessage: 'Edit visualization',
+});
 
 export const dashboardWriteControlsDisabledReason = i18n.translate(
   'xpack.agentBuilder.conversation.visualization.dashboardWriteControlsDisabledReason',
@@ -45,6 +35,50 @@ interface Props {
   canWriteDashboards: boolean;
 }
 
+interface EditVisualizationActionParams {
+  uiActions: UiActionsStart;
+  lensInput: TypedLensByValueInput | undefined;
+  lensLoadEvent: InlineEditLensEmbeddableContext['lensEvent'] | null;
+  onAttributesChange: (a: TypedLensByValueInput['attributes']) => void;
+  onApply: () => void;
+  canWriteDashboards: boolean;
+}
+
+export const getEditVisualizationModalOptions = ({
+  lensInput,
+  lensLoadEvent,
+  onAttributesChange,
+  onApply,
+}: Omit<EditVisualizationActionParams, 'uiActions' | 'canWriteDashboards'>):
+  | InlineEditLensEmbeddableContext
+  | undefined => {
+  if (!lensInput?.attributes) {
+    return;
+  }
+
+  return {
+    applyButtonLabel: saveButtonLabel,
+    attributes: lensInput.attributes,
+    lensEvent: lensLoadEvent ?? { adapters: {} },
+    onUpdate: onAttributesChange,
+    onApply,
+    onCancel: () => {},
+    container: null,
+  };
+};
+
+export const openEditVisualization = ({
+  uiActions,
+  canWriteDashboards,
+  ...params
+}: EditVisualizationActionParams): void => {
+  const editModalOptions = getEditVisualizationModalOptions(params);
+
+  if (canWriteDashboards && editModalOptions) {
+    uiActions.executeTriggerActions('IN_APP_EMBEDDABLE_EDIT_TRIGGER', editModalOptions);
+  }
+};
+
 export function EditVisualizationButton({
   uiActions,
   lensInput,
@@ -53,21 +87,16 @@ export function EditVisualizationButton({
   onApply,
   canWriteDashboards,
 }: Props) {
-  const editModalOptions: InlineEditLensEmbeddableContext | undefined = useMemo(() => {
-    if (!lensInput?.attributes) {
-      return;
-    }
-
-    return {
-      applyButtonLabel: saveButtonLabel,
-      attributes: lensInput.attributes,
-      lensEvent: lensLoadEvent ?? { adapters: {} },
-      onUpdate: onAttributesChange,
-      onApply,
-      onCancel: () => {},
-      container: null,
-    };
-  }, [lensInput, lensLoadEvent, onAttributesChange, onApply]);
+  const editModalOptions = useMemo(
+    () =>
+      getEditVisualizationModalOptions({
+        lensInput,
+        lensLoadEvent,
+        onAttributesChange,
+        onApply,
+      }),
+    [lensInput, lensLoadEvent, onAttributesChange, onApply]
+  );
 
   const button = (
     <EuiButtonIcon

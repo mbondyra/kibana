@@ -5,15 +5,25 @@
  * 2.0.
  */
 
-import { EuiLoadingSpinner, useEuiTheme } from '@elastic/eui';
+import { EuiLoadingSpinner } from '@elastic/eui';
 import type { InlineEditLensEmbeddableContext, LensPublicStart } from '@kbn/lens-plugin/public';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type { UiActionsStart } from '@kbn/ui-actions-plugin/public';
 import type { TypedLensByValueInput } from '@kbn/lens-plugin/public';
-import { visualizationWrapper } from './styles';
+import { useKibana } from '@kbn/kibana-react-plugin/public';
+import { visualizationWrapperStyles } from './styles';
 import { VisualizationActions } from './visualization_actions';
+import { openEditVisualization } from './edit_visualization_button';
+import { VisualizationTimeRangePicker } from './visualization_time_range_picker';
+import type { VisualizationTimeRangeControl } from './use_time_range';
 
 const VISUALIZATION_HEIGHT = 240;
+
+export interface VisualizationActionHandlers {
+  canWriteDashboards: boolean;
+  saveToDashboard: () => void;
+  viewConfiguration: () => void;
+}
 
 interface BaseVisualizationProps {
   lens: LensPublicStart;
@@ -21,6 +31,9 @@ interface BaseVisualizationProps {
   lensInput: TypedLensByValueInput | undefined;
   setLensInput: (input: TypedLensByValueInput) => void;
   isLoading: boolean;
+  shouldShowActions?: boolean;
+  onActionHandlersChange?: (handlers: VisualizationActionHandlers | undefined) => void;
+  timeRangeControl?: VisualizationTimeRangeControl;
 }
 
 export function BaseVisualization({
@@ -29,13 +42,25 @@ export function BaseVisualization({
   lensInput,
   setLensInput,
   isLoading,
+  shouldShowActions = false,
+  onActionHandlersChange,
+  timeRangeControl,
 }: BaseVisualizationProps) {
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [lensLoadEvent, setLensLoadEvent] = useState<
     InlineEditLensEmbeddableContext['lensEvent'] | null
   >(null);
 
-  const { euiTheme } = useEuiTheme();
+  const {
+    services: { application },
+  } = useKibana();
+  const canWriteDashboards = application?.capabilities.dashboard_v2?.showWriteControls === true;
+  const selectedTimeRange = timeRangeControl?.selectedTimeRange;
+  const lensInputWithTimeRange = useMemo(
+    () =>
+      lensInput && selectedTimeRange ? { ...lensInput, timeRange: selectedTimeRange } : lensInput,
+    [lensInput, selectedTimeRange]
+  );
 
   const onLoad = useCallback(
     (
@@ -52,14 +77,65 @@ export function BaseVisualization({
 
   const onOpenSave = useCallback(() => setIsSaveModalOpen(true), []);
   const onCloseSave = useCallback(() => setIsSaveModalOpen(false), []);
+  const saveToDashboard = useCallback(() => {
+    if (canWriteDashboards) {
+      onOpenSave();
+    }
+  }, [canWriteDashboards, onOpenSave]);
+  const viewConfiguration = useCallback(() => {
+    if (!lensInput) {
+      return;
+    }
+
+    openEditVisualization({
+      uiActions,
+      lensInput,
+      lensLoadEvent,
+      onAttributesChange: (attrs) => setLensInput({ ...lensInput, attributes: attrs }),
+      onApply: onOpenSave,
+      canWriteDashboards,
+    });
+  }, [canWriteDashboards, lensInput, lensLoadEvent, onOpenSave, setLensInput, uiActions]);
+
+  useEffect(() => {
+    if (!onActionHandlersChange) {
+      return;
+    }
+
+    if (isLoading || !lensInput) {
+      onActionHandlersChange(undefined);
+      return;
+    }
+
+    onActionHandlersChange({
+      canWriteDashboards,
+      saveToDashboard,
+      viewConfiguration,
+    });
+
+    return () => onActionHandlersChange(undefined);
+  }, [
+    canWriteDashboards,
+    isLoading,
+    lensInput,
+    onActionHandlersChange,
+    saveToDashboard,
+    viewConfiguration,
+  ]);
 
   return (
     <>
+      {timeRangeControl && (
+        <VisualizationTimeRangePicker
+          selectedTimeRange={timeRangeControl.selectedTimeRange}
+          onTimeChange={timeRangeControl.onTimeChange}
+        />
+      )}
       <div
         data-test-subj="lensVisualization"
-        css={visualizationWrapper(euiTheme, VISUALIZATION_HEIGHT)}
+        css={visualizationWrapperStyles(VISUALIZATION_HEIGHT)}
       >
-        {!isLoading && lensInput && (
+        {!isLoading && lensInput && shouldShowActions && (
           <VisualizationActions
             onSave={onOpenSave}
             uiActions={uiActions}
@@ -71,14 +147,19 @@ export function BaseVisualization({
         {isLoading ? (
           <EuiLoadingSpinner />
         ) : (
-          lensInput && (
-            <lens.EmbeddableComponent {...lensInput} style={{ height: '100%' }} onLoad={onLoad} />
+          lensInputWithTimeRange && (
+            <lens.EmbeddableComponent
+              {...lensInputWithTimeRange}
+              style={{ height: '100%' }}
+              onBrushEnd={timeRangeControl?.onBrushEnd}
+              onLoad={onLoad}
+            />
           )
         )}
       </div>
-      {isSaveModalOpen && lensInput && (
+      {isSaveModalOpen && lensInputWithTimeRange && (
         <lens.SaveModalComponent
-          initialInput={lensInput}
+          initialInput={lensInputWithTimeRange}
           onClose={onCloseSave}
           isSaveable={false}
         />

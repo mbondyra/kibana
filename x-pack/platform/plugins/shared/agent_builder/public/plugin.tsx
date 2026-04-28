@@ -145,7 +145,7 @@ export class AgentBuilderPlugin
 
     attachmentsService.addAttachmentType(
       'visualization',
-      createVisualizationAttachmentDefinition({ startDependencies })
+      createVisualizationAttachmentDefinition({ startDependencies, application: core.application })
     );
 
     const eventsService = new EventsService();

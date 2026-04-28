@@ -9,11 +9,15 @@ import type { DataViewsServicePublic } from '@kbn/data-views-plugin/public/types
 import type { LensPublicStart } from '@kbn/lens-plugin/public';
 import type { ChartType } from '@kbn/visualization-utils';
 import React from 'react';
+import { EuiSplitPanel } from '@elastic/eui';
+import type { UseEuiTheme } from '@elastic/eui';
+import { css } from '@emotion/react';
 import type { EsqlResults } from '@kbn/agent-builder-common/tools/tool_result';
 import type { TimeRange } from '@kbn/agent-builder-common';
 import type { UiActionsStart } from '@kbn/ui-actions-plugin/public';
 import { useLensInput } from './use_lens_input';
 import { BaseVisualization } from '../shared/base_visualization';
+import { useTimeRange } from '../shared/use_time_range';
 
 export function VisualizeESQL({
   lens,
@@ -41,14 +45,29 @@ export function VisualizeESQL({
     preferredChartType,
     timeRange,
   });
+  const timeRangeControl = useTimeRange({ timeRange });
 
   return (
-    <BaseVisualization
-      lens={lens}
-      uiActions={uiActions}
-      lensInput={lensInput}
-      setLensInput={setLensInput}
-      isLoading={isLoading}
-    />
+    <EuiSplitPanel.Outer
+      grow
+      hasShadow={false}
+      hasBorder={true}
+      css={({ euiTheme }: UseEuiTheme) =>
+        css({
+          backgroundColor: euiTheme.colors.backgroundBasePlain,
+          overflow: 'visible',
+        })
+      }
+    >
+      <BaseVisualization
+        lens={lens}
+        uiActions={uiActions}
+        lensInput={lensInput}
+        setLensInput={setLensInput}
+        isLoading={isLoading}
+        shouldShowActions
+        timeRangeControl={timeRangeControl}
+      />
+    </EuiSplitPanel.Outer>
   );
 }
