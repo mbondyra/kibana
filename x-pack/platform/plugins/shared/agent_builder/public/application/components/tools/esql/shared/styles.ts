@@ -8,25 +8,27 @@
 import { css } from '@emotion/react';
 import type { UseEuiTheme } from '@elastic/eui';
 
-export const visualizationWrapper = (euiTheme: UseEuiTheme['euiTheme'], height: number) =>
-  css({
-    position: 'relative',
-    height,
-    overflow: 'visible',
-    '&:hover > .visualization-button-actions, &:focus-within > .visualization-button-actions': {
-      opacity: 1,
-      pointerEvents: 'auto',
-    },
-    '.echChart ul': {
-      marginInlineStart: 0,
-    },
+export const visualizationWrapperStyles =
+  (height: number) =>
+  ({ euiTheme }: UseEuiTheme) =>
+    css({
+      position: 'relative',
+      height,
+      overflow: 'visible',
+      '&:hover > .visualization-button-actions, &:focus-within > .visualization-button-actions': {
+        opacity: 1,
+        pointerEvents: 'auto',
+      },
+      '.echChart ul': {
+        marginInlineStart: 0,
+      },
 
-    '.expExpressionRenderer__expression': {
-      padding: `${euiTheme.size.s} 0`,
-    },
-  });
+      '.expExpressionRenderer__expression': {
+        padding: `${euiTheme.size.s} 0`,
+      },
+    });
 
-export const actionsContainer = (euiTheme: UseEuiTheme['euiTheme']) =>
+export const actionsContainerStyles = ({ euiTheme }: UseEuiTheme) =>
   css({
     position: 'absolute',
     top: `-${euiTheme.size.xs}`,
