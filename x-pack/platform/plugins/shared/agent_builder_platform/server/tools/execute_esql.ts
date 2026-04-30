@@ -7,7 +7,8 @@
 
 import type { FieldValue } from '@elastic/elasticsearch/lib/api/types';
 import { z } from '@kbn/zod/v4';
-import { platformCoreTools, ToolType } from '@kbn/agent-builder-common';
+import { attachmentTools, platformCoreTools, ToolType } from '@kbn/agent-builder-common';
+import { AttachmentType } from '@kbn/agent-builder-common/attachments';
 import {
   executeEsql,
   buildTimeRangeParams,
@@ -64,7 +65,18 @@ If you need a query, use the \`${platformCoreTools.generateEsql}\` tool first.
 
 The \`limit\` parameter can be used to limit the number of results to return. It defaults to 100.
 You should avoid using a higher limit value unless explicitly asked by the user or if you know for sure the length of the data will not be a problem.
-Note that this option can't be used to increase the number of results if the query already defines a \`LIMIT\` clause - the lowest limit will always prevail.`,
+Note that this option can't be used to increase the number of results if the query already defines a \`LIMIT\` clause - the lowest limit will always prevail.
+
+### Rendering ES|QL visualizations
+
+If the user should see a visualization for the ES|QL result, do not emit a legacy \`<visualization />\` tag and do not call \`${platformCoreTools.createVisualization}\`.
+Instead, call \`${attachmentTools.add}\` with type \`${AttachmentType.esqlVisualizationInput}\` and data copied from the \`${ToolResultType.esqlResults}\` result:
+- \`query\`: the returned ES|QL query
+- \`columns\`: the returned columns
+- \`time_range\`: the returned time range, when present
+- \`chart_type\`: optional, only when the user requested a specific chart type
+
+Do not include result \`values\` in the attachment data; the frontend only needs the query and column metadata to render the visualization.`,
     schema: executeEsqlToolSchema,
     handler: async (
       { query: esqlQuery, params: esqlParams = {}, time_range: explicitTimeRange, limit = 100 },
