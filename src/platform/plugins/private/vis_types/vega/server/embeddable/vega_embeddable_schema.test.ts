@@ -13,10 +13,10 @@ import { getVegaEmbeddableSchema } from './vega_embeddable_schema';
 describe('vega embeddable schema', () => {
   const vegaSchema = getVegaEmbeddableSchema(mockGetDrilldownsSchema);
 
-  it('validates a by-value panel with a spec', () => {
+  it('validates a by-value panel with a spec object', () => {
     expect(() =>
       vegaSchema.validate({
-        spec: '{ "$schema": "https://vega.github.io/schema/vega-lite/v5.json" }',
+        spec: { $schema: 'https://vega.github.io/schema/vega-lite/v5.json', mark: 'bar' },
         title: 'My Vega chart',
       })
     ).not.toThrow();
@@ -31,6 +31,47 @@ describe('vega embeddable schema', () => {
   });
 
   it('rejects unknown keys', () => {
-    expect(() => vegaSchema.validate({ spec: '{}', savedVis: {} })).toThrow();
+    expect(() => vegaSchema.validate({ spec: {}, savedVis: {} })).toThrow();
+  });
+
+  // The dashboard read path (`transformPanel`) and the `sanitize` endpoint validate panel
+  // configs with `stripUnknownKeys: true` rather than rejecting unknown keys. A Vega panel
+  // must survive that validation with its `spec` and mapped properties intact, otherwise the
+  // panel is dropped from the sanitized dashboard. See `stripUnmappedKeys` / `transformPanelsOut`.
+  describe('dashboard read / sanitize validation (stripUnknownKeys)', () => {
+    const validateLikeDashboard = (config: object) =>
+      vegaSchema.validate(config, undefined, undefined, { stripUnknownKeys: true });
+
+    it('keeps a by-value Vega panel and preserves its mapped properties and nested spec', () => {
+      const config = {
+        spec: {
+          $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
+          mark: 'bar',
+          encoding: { x: { field: 'a' } },
+        },
+        title: 'My Vega chart',
+        description: 'A description',
+        time_range: { from: 'now-15m', to: 'now' },
+      };
+
+      expect(validateLikeDashboard(config)).toEqual(config);
+    });
+
+    it('strips unknown keys instead of dropping the panel', () => {
+      const validated = validateLikeDashboard({
+        spec: { mark: 'line' },
+        title: 'My Vega chart',
+        savedVis: { type: 'vega' },
+      });
+
+      expect(validated).toEqual({ spec: { mark: 'line' }, title: 'My Vega chart' });
+      expect(validated).not.toHaveProperty('savedVis');
+    });
+
+    it('keeps a by-reference Vega panel', () => {
+      const config = { ref_id: 'abc-123', title: 'Saved Vega chart' };
+
+      expect(validateLikeDashboard(config)).toEqual(config);
+    });
   });
 });

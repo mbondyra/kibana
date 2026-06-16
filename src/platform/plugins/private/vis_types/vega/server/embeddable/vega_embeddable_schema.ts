@@ -16,25 +16,24 @@ import {
   serializedTitlesSchema,
 } from '@kbn/presentation-publishing-schemas';
 import type { GetDrilldownsSchemaFnType } from '@kbn/embeddable-plugin/server';
-import { ON_APPLY_FILTER } from '@kbn/ui-actions-plugin/common/trigger_ids';
+import { VEGA_EMBEDDABLE_SUPPORTED_TRIGGERS } from '../../common/constants';
 
-/**
- * Vega's data queries live inside the spec itself, so the dedicated Vega embeddable
- * only supports the `applyFilter` trigger for drilldowns.
- */
-const VEGA_SUPPORTED_DRILLDOWN_TRIGGERS = [ON_APPLY_FILTER];
+// Vega/Vega-Lite specs are large, arbitrary JSON objects, so model the spec as an open record
+// rather than a string. `recordOf` keeps the nested keys intact through `stripUnknownKeys`
+// validation and preserves by-value vs by-reference discrimination in the `oneOf` below.
+const specSchema = schema.recordOf(schema.string(), schema.any(), {
+  meta: {
+    description: 'The Vega or Vega-Lite specification, as a JSON object.',
+  },
+});
 
 const getByValueSchema = (getDrilldownsSchema: GetDrilldownsSchemaFnType) =>
   schema.object(
     {
-      spec: schema.string({
-        meta: {
-          description: 'The Vega or Vega-Lite specification, as an HJSON or JSON string.',
-        },
-      }),
+      spec: specSchema,
       ...serializedTitlesSchema.getPropSchemas(),
       ...serializedTimeRangeSchema.getPropSchemas(),
-      ...getDrilldownsSchema(VEGA_SUPPORTED_DRILLDOWN_TRIGGERS).getPropSchemas(),
+      ...getDrilldownsSchema(VEGA_EMBEDDABLE_SUPPORTED_TRIGGERS).getPropSchemas(),
     },
     { meta: BY_VALUE_SCHEMA_META }
   );
@@ -47,7 +46,7 @@ const getByReferenceSchema = (getDrilldownsSchema: GetDrilldownsSchemaFnType) =>
       }),
       ...serializedTitlesSchema.getPropSchemas(),
       ...serializedTimeRangeSchema.getPropSchemas(),
-      ...getDrilldownsSchema(VEGA_SUPPORTED_DRILLDOWN_TRIGGERS).getPropSchemas(),
+      ...getDrilldownsSchema(VEGA_EMBEDDABLE_SUPPORTED_TRIGGERS).getPropSchemas(),
     },
     { meta: BY_REF_SCHEMA_META }
   );

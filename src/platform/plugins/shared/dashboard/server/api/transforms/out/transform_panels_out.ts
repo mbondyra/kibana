@@ -19,6 +19,18 @@ import type { DashboardPanel, DashboardSection, DashboardState, Warnings } from 
 import { getPanelReferences } from './get_panel_references';
 import { panelBwc } from './panel_bwc';
 
+// Temporary escape hatch for vega as code.
+// Legacy by-value Vega charts are stored as generic `visualization` embeddables (surfaced as the
+// `legacy_vis` API type, which has no schema). Surface them as the dedicated `vega` panel type for
+// as-code / REST API requests so they are not dropped. The dashboard application path is unaffected.
+// TODO remove once Vega panels are stored natively as the dedicated `vega` type.
+const LEGACY_VIS_PANEL_TYPE = 'legacy_vis'; // @kbn/visualizations-common VISUALIZE_EMBEDDABLE_TYPE
+const VEGA_PANEL_TYPE = 'vega'; // @kbn/vis-type-vega-plugin VEGA_EMBEDDABLE_TYPE / VEGA_VIS_TYPE
+
+const isLegacyVegaByValuePanel = (type: string, embeddableConfig: unknown): boolean =>
+  type === LEGACY_VIS_PANEL_TYPE &&
+  (embeddableConfig as { savedVis?: { type?: string } })?.savedVis?.type === VEGA_PANEL_TYPE;
+
 export function transformPanelsOut(
   panelsJSON: string = '[]',
   sections: SavedDashboardSection[] = [],
@@ -110,10 +122,22 @@ function transformPanel(
 
   const { sectionId, i, ...restOfGrid } = gridData;
 
+  // Temporary escape hatch for vega as code (see note above). Only remap for as-code / REST API
+  // requests so the dashboard application continues to render legacy Vega via the `visualization`
+  // embeddable.
+  const remapLegacyVega =
+    !isDashboardAppRequest && isLegacyVegaByValuePanel(type, embeddableConfig);
+
   // Temporary escape hatch for lens as code
   // TODO remove when lens as code transforms are ready for production
   const transformType =
-    type === LENS_EMBEDDABLE_TYPE && isDashboardAppRequest ? 'lens-dashboard-app' : type;
+    type === LENS_EMBEDDABLE_TYPE && isDashboardAppRequest
+      ? 'lens-dashboard-app'
+      : remapLegacyVega
+      ? VEGA_PANEL_TYPE
+      : type;
+
+  const outputType = remapLegacyVega ? VEGA_PANEL_TYPE : type;
 
   const transforms = embeddableService?.getTransforms(transformType);
   let transformedPanelConfig =
@@ -135,6 +159,6 @@ function transformPanel(
     grid: restOfGrid,
     config: transformedPanelConfig,
     id: panelIndex,
-    type,
+    type: outputType,
   };
 }

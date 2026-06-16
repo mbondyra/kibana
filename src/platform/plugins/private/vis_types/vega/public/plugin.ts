@@ -16,7 +16,7 @@ import type { Setup as InspectorSetup } from '@kbn/inspector-plugin/public';
 
 import type { MapsEmsPluginPublicStart } from '@kbn/maps-ems-plugin/public';
 import type { UsageCollectionStart } from '@kbn/usage-collection-plugin/public';
-import type { EmbeddableStart } from '@kbn/embeddable-plugin/public';
+import type { EmbeddableSetup, EmbeddableStart } from '@kbn/embeddable-plugin/public';
 import type { UiActionsStart } from '@kbn/ui-actions-plugin/public';
 import {
   ADD_CANVAS_ELEMENT_TRIGGER,
@@ -31,7 +31,11 @@ import {
   setDocLinks,
   setMapsEms,
   setUsageCollectionStart,
+  setExpressions,
+  setExpressionsSetup,
+  setVegaVisualizationDependencies,
 } from './services';
+import { VEGA_EMBEDDABLE_TYPE } from '../common/constants';
 
 import type { IServiceSettings } from './vega_view/vega_map_view/service_settings/service_settings_types';
 
@@ -55,6 +59,7 @@ export interface VegaPluginSetupDependencies {
   visualizations: VisualizationsSetup;
   inspector: InspectorSetup;
   data: DataPublicPluginSetup;
+  embeddable: EmbeddableSetup;
 }
 
 /** @internal */
@@ -78,7 +83,7 @@ export class VegaPlugin implements Plugin<void, void> {
 
   public setup(
     core: CoreSetup<VegaPluginStartDependencies>,
-    { inspector, data, expressions, visualizations }: VegaPluginSetupDependencies
+    { inspector, data, expressions, visualizations, embeddable }: VegaPluginSetupDependencies
   ) {
     setInjectedVars({
       enableExternalUrls: this.initializerContext.config.get().enableExternalUrls,
@@ -91,6 +96,14 @@ export class VegaPlugin implements Plugin<void, void> {
       },
       getServiceSettings: getServiceSettingsLazy,
     };
+
+    setExpressionsSetup(expressions);
+    setVegaVisualizationDependencies(visualizationDependencies);
+
+    embeddable.registerEmbeddablePublicDefinition(VEGA_EMBEDDABLE_TYPE, async () => {
+      const { getVegaEmbeddableFactory } = await import('./embeddable/get_vega_embeddable_factory');
+      return getVegaEmbeddableFactory();
+    });
 
     inspector.registerView(getVegaInspectorView({ uiSettings: core.uiSettings }));
 
@@ -113,6 +126,7 @@ export class VegaPlugin implements Plugin<void, void> {
     setMapsEms(deps.mapsEms);
     setThemeService(core.theme);
     setUsageCollectionStart(deps.usageCollection);
+    setExpressions(deps.expressions);
 
     deps.uiActions.registerActionAsync('addVegaPanelAction', async () => {
       const { getAddVegaPanelAction } = await import('./add_vega_panel_action');

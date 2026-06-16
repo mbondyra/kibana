@@ -14,8 +14,19 @@ import type { DataViewsPublicPluginStart } from '@kbn/data-views-plugin/public';
 import { createGetterSetter } from '@kbn/kibana-utils-plugin/public';
 import type { MapsEmsPluginPublicStart } from '@kbn/maps-ems-plugin/public';
 import type { UsageCollectionStart } from '@kbn/usage-collection-plugin/public';
+import type { ExpressionsSetup, ExpressionsStart } from '@kbn/expressions-plugin/public';
+import type { VegaVisualizationDependencies } from './plugin';
 
 export const [getData, setData] = createGetterSetter<DataPublicPluginStart>('Data');
+
+export const [getExpressionsSetup, setExpressionsSetup] =
+  createGetterSetter<ExpressionsSetup>('ExpressionsSetup');
+
+export const [getExpressions, setExpressions] =
+  createGetterSetter<ExpressionsStart>('ExpressionsStart');
+
+export const [getVegaVisualizationDependencies, setVegaVisualizationDependencies] =
+  createGetterSetter<VegaVisualizationDependencies>('VegaVisualizationDependencies');
 
 export const [getDataViews, setDataViews] =
   createGetterSetter<DataViewsPublicPluginStart>('DataViews');

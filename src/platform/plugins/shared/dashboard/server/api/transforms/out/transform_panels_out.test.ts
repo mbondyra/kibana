@@ -181,6 +181,58 @@ describe('transformPanelsOut', () => {
     `);
   });
 
+  describe('legacy Vega back-compat remap', () => {
+    const vegaTransformOut = jest.fn().mockImplementation(() => ({
+      spec: { mark: 'bar' },
+    }));
+
+    beforeEach(() => {
+      vegaTransformOut.mockClear();
+      mockGetTransforms.mockImplementation((type: string) => {
+        if (type === 'vega') {
+          return {
+            title: 'Vega',
+            transformOut: vegaTransformOut,
+            schema: { validate: jest.fn().mockImplementation((val) => val) },
+          };
+        }
+      });
+    });
+
+    const legacyVegaPanelsJSON = JSON.stringify([
+      {
+        type: 'visualization',
+        embeddableConfig: {
+          savedVis: { type: 'vega', params: { spec: '{ mark: "bar" }' } },
+          title: 'My Vega panel',
+        },
+        panelIndex: 'panel-1',
+        gridData: { h: 15, i: 'panel-1', w: 24, x: 0, y: 0 },
+      },
+    ]);
+
+    it('remaps a legacy by-value Vega panel to the `vega` type for as-code requests', () => {
+      const { panels, warnings } = transformPanelsOut(legacyVegaPanelsJSON, [], [], false);
+
+      expect(warnings).toEqual([]);
+      expect(panels).toHaveLength(1);
+      expect(panels[0]).toEqual({
+        id: 'panel-1',
+        type: 'vega',
+        grid: { h: 15, w: 24, x: 0, y: 0 },
+        config: { spec: { mark: 'bar' } },
+      });
+      expect(vegaTransformOut).toHaveBeenCalled();
+    });
+
+    it('does not remap for dashboard application requests', () => {
+      const { panels } = transformPanelsOut(legacyVegaPanelsJSON, [], [], true);
+
+      expect((panels[0] as { type?: string }).type).toBe('legacy_vis');
+      expect(vegaTransformOut).not.toHaveBeenCalled();
+    });
+  });
+
   it('should combine panelsJSON and sections', () => {
     const panelsJSON =
       '[{"type":"DASHBOARD_MARKDOWN","embeddableConfig":{"content":"Markdown panel outside sections"},"panelIndex":"2e814ac0-33c2-4676-9d29-e1f868cddebd","gridData":{"h":15,"i":"2e814ac0-33c2-4676-9d29-e1f868cddebd","w":24,"x":0,"y":0}},{"type":"DASHBOARD_MARKDOWN","embeddableConfig":{"content":"Markdown panel inside section 1"},"panelIndex":"d724d87b-2256-4c8b-8aa3-55bc0b8881c6","gridData":{"h":15,"i":"d724d87b-2256-4c8b-8aa3-55bc0b8881c6","w":24,"x":0,"y":0,"sectionId":"bcebc09a-270f-42ef-8d45-daf5f5f4f511"}}]';

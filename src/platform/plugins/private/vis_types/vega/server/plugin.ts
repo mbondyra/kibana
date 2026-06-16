@@ -15,6 +15,7 @@ import type {
   VisTypeVegaPluginStart,
 } from './types';
 import { getVegaEmbeddableSchema } from './embeddable/vega_embeddable_schema';
+import { getVegaEmbeddableTransforms } from './embeddable/vega_embeddable_transforms';
 
 export class VisTypeVegaPlugin implements Plugin<VisTypeVegaPluginSetup, VisTypeVegaPluginStart> {
   constructor(initializerContext: PluginInitializerContext) {}
@@ -23,6 +24,7 @@ export class VisTypeVegaPlugin implements Plugin<VisTypeVegaPluginSetup, VisType
     embeddable.registerEmbeddableServerDefinition(VEGA_EMBEDDABLE_TYPE, {
       title: 'Vega',
       getSchema: getVegaEmbeddableSchema,
+      getTransforms: getVegaEmbeddableTransforms,
     });
 
     return {};
