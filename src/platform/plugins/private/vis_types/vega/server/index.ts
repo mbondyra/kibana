@@ -25,3 +25,9 @@ export async function plugin(initializerContext: PluginInitializerContext) {
 }
 
 export type { VisTypeVegaPluginStart, VisTypeVegaPluginSetup } from './types';
+
+export type {
+  VegaByValueState,
+  VegaByReferenceState,
+  VegaEmbeddableState,
+} from './embeddable/vega_embeddable_schema';

@@ -5,6 +5,7 @@
     "strictNullChecks": false
   },
   "include": [
+    "common/**/*",
     "server/**/*",
     "public/**/*",
     "*.ts",
@@ -42,6 +43,7 @@
     "@kbn/react-kibana-context-render",
     "@kbn/search-types",
     "@kbn/presentation-publishing",
+    "@kbn/presentation-publishing-schemas",
     "@kbn/embeddable-plugin",
     "@kbn/ui-actions-plugin",
     "@kbn/css-utils",
