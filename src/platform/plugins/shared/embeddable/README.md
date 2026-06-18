@@ -11,6 +11,7 @@
   - [Server](#server)
     - [REST APIs](#rest-apis-considerations)
     - [Transforms](#transforms)
+  - [Adding an embeddable to the dashboard as-code API](./adding_an_embeddable_to_the_dashboard_api.md)
 
 
 ## Embeddable overview
@@ -194,6 +195,8 @@ Containers, such as Dashboard, incorporate embeddable state in REST APIs and sto
 
 ### REST APIs considerations
 Embeddable serialized state requires additional restrictions and planning since it is incorporated into public REST APIs.
+
+> For the end-to-end design decisions, gotchas, and a PR-review checklist when exposing an embeddable in the dashboard "as code" API, see [Adding an embeddable to the dashboard as-code API](./adding_an_embeddable_to_the_dashboard_api.md).
 
 #### No breaking changes
 Embeddable serialized state can not be modified with breaking changes. Fields can not be deleted or change type. Optional fields can not be changed to required. Optional additive changes are allowed.
