@@ -12,6 +12,11 @@ import { ToolResultType } from '@kbn/agent-builder-common/tools/tool_result';
 import { getToolResultId } from '@kbn/agent-builder-server';
 import type { BuiltinSkillBoundedTool } from '@kbn/agent-builder-server/skills';
 import {
+  OPTIONS_LIST_CONTROL,
+  RANGE_SLIDER_CONTROL,
+  TIME_SLIDER_CONTROL,
+} from '@kbn/controls-constants';
+import {
   DASHBOARD_ATTACHMENT_TYPE,
   isSection,
   type DashboardAttachmentData,
@@ -48,6 +53,49 @@ const generateDashboardSchema = z.object({
  * id); the LLM only ever sees this slim summary, so it never has to re-emit the
  * heavy payload into a follow-up tool call.
  */
+const CONTROL_PANEL_TYPES = new Set<string>([
+  OPTIONS_LIST_CONTROL,
+  RANGE_SLIDER_CONTROL,
+  TIME_SLIDER_CONTROL,
+]);
+
+interface ControlSummary {
+  id?: string;
+  type?: string;
+  title?: string;
+  section_id?: string;
+}
+
+/**
+ * Collects both pinned controls (global) and section-scoped controls (placed as
+ * grid panels inside a section) so the agent can reference either for removal.
+ */
+const summarizeControls = (dashboardData: DashboardAttachmentData): ControlSummary[] => {
+  const pinnedControls: ControlSummary[] = (dashboardData.pinned_panels ?? []).map((control) => {
+    const c = control as { id?: string; type?: string; config?: { title?: string } };
+    return { id: c.id, type: c.type, title: c.config?.title };
+  });
+
+  const sectionControls: ControlSummary[] = [];
+  for (const widget of dashboardData.panels) {
+    if (!isSection(widget)) {
+      continue;
+    }
+    for (const panel of widget.panels) {
+      if (CONTROL_PANEL_TYPES.has(panel.type)) {
+        sectionControls.push({
+          id: panel.id,
+          type: panel.type,
+          title: (panel.config as { title?: string } | undefined)?.title,
+          section_id: widget.id,
+        });
+      }
+    }
+  }
+
+  return [...pinnedControls, ...sectionControls];
+};
+
 const summarizeDashboard = (dashboardData: DashboardAttachmentData) => ({
   title: dashboardData.title,
   description: dashboardData.description,
@@ -71,10 +119,7 @@ const summarizeDashboard = (dashboardData: DashboardAttachmentData) => ({
       grid: widget.grid,
     };
   }),
-  controls: (dashboardData.pinned_panels ?? []).map((control) => {
-    const c = control as { id?: string; type?: string; config?: { title?: string } };
-    return { id: c.id, type: c.type, title: c.config?.title };
-  }),
+  controls: summarizeControls(dashboardData),
 });
 
 /**
@@ -106,7 +151,7 @@ Use operations[] to:
 4. update panel layouts without changing content
 5. add / remove sections, including inline section panels during add_section
 6. remove panels
-7. add / remove controls (interactive filters pinned above the dashboard: dropdown, range slider, or time slider)`,
+7. add / remove controls (interactive filters: dropdown, range slider, or time slider). Controls are pinned above the dashboard (global) by default, or scoped to a section via add_controls section_id so they only filter that section's panels`,
     schema: generateDashboardSchema,
     handler: async (
       { dashboardAttachmentId: previousAttachmentId, operations },

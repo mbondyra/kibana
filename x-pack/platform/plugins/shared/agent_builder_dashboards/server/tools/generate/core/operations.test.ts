@@ -2044,4 +2044,163 @@ describe('add_controls / remove_controls operations', () => {
 
     expect(afterRemove.pinned_panels).toHaveLength(1);
   });
+
+  const dashboardWithSection: DashboardAttachmentData = {
+    title: 'Test',
+    panels: [
+      {
+        id: 'section-1',
+        title: 'Overview',
+        collapsed: false,
+        grid: { y: 0 },
+        panels: [
+          {
+            type: 'lens',
+            id: 'panel-1',
+            config: { type: 'metric' },
+            grid: { x: 0, y: 0, w: 24, h: 9 },
+          },
+        ],
+      },
+    ],
+  };
+
+  it('add_controls with section_id places controls as grid panels inside the section', async () => {
+    const { dashboardData, failures } = await executeDashboardOperations({
+      dashboardData: dashboardWithSection,
+      operations: [
+        {
+          operation: 'add_controls',
+          section_id: 'section-1',
+          controls: [{ type: 'options_list_control', field_name: 'service.name', index: 'logs-*' }],
+        },
+      ],
+      logger,
+    });
+
+    expect(failures).toEqual([]);
+    // Pinned controls untouched
+    expect(dashboardData.pinned_panels ?? []).toHaveLength(0);
+
+    const section = getSections(dashboardData.panels)[0];
+    // New control panel prepended, original panel pushed down
+    expect(section.panels).toHaveLength(2);
+    const control = section.panels[0];
+    expect(control.type).toBe('options_list_control');
+    expect(typeof control.id).toBe('string');
+    // Control anchored at the top of the section
+    expect(control.grid).toEqual({ x: 0, y: 0, w: 12, h: 2 });
+    // Existing panel shifted down by the control row height (started at y=0)
+    const existingPanel = section.panels[1];
+    expect(existingPanel.type).toBe('lens');
+    expect(existingPanel.grid.y).toBe(2);
+    const config = control.config as Record<string, unknown>;
+    expect(config.values_source).toBe('esql');
+    expect(config.esql_query).toBe('FROM logs-* | STATS BY service.name');
+  });
+
+  it('add_controls with section_id lays multiple controls out in a row', async () => {
+    const { dashboardData } = await executeDashboardOperations({
+      dashboardData: dashboardWithSection,
+      operations: [
+        {
+          operation: 'add_controls',
+          section_id: 'section-1',
+          controls: [
+            { type: 'options_list_control', field_name: 'service.name', index: 'logs-*' },
+            { type: 'options_list_control', field_name: 'host.name', index: 'logs-*' },
+          ],
+        },
+      ],
+      logger,
+    });
+
+    const section = getSections(dashboardData.panels)[0];
+    const controls = section.panels.filter((p) => p.type === 'options_list_control');
+    expect(controls).toHaveLength(2);
+    expect(controls[0].grid).toEqual({ x: 0, y: 0, w: 12, h: 2 });
+    expect(controls[1].grid).toEqual({ x: 12, y: 0, w: 12, h: 2 });
+  });
+
+  it('add_controls with unknown section_id records a failure and leaves the dashboard unchanged', async () => {
+    const { dashboardData, failures } = await executeDashboardOperations({
+      dashboardData: dashboardWithSection,
+      operations: [
+        {
+          operation: 'add_controls',
+          section_id: 'does-not-exist',
+          controls: [{ type: 'options_list_control', field_name: 'service.name', index: 'logs-*' }],
+        },
+      ],
+      logger,
+    });
+
+    expect(getSections(dashboardData.panels)[0].panels).toHaveLength(1);
+    expect(dashboardData.pinned_panels ?? []).toHaveLength(0);
+    expect(failures).toEqual([
+      {
+        type: 'add_controls',
+        identifier: 'section:does-not-exist',
+        error:
+          'Section "does-not-exist" not found. Add controls to an existing section or pin them.',
+      },
+    ]);
+  });
+
+  it('add_controls with section_id rejects time_slider_control but keeps other controls', async () => {
+    const { dashboardData, failures } = await executeDashboardOperations({
+      dashboardData: dashboardWithSection,
+      operations: [
+        {
+          operation: 'add_controls',
+          section_id: 'section-1',
+          controls: [
+            { type: 'time_slider_control' },
+            { type: 'options_list_control', field_name: 'service.name', index: 'logs-*' },
+          ],
+        },
+      ],
+      logger,
+    });
+
+    const section = getSections(dashboardData.panels)[0];
+    const controls = section.panels.filter((p) => p.type !== 'lens');
+    expect(controls).toHaveLength(1);
+    expect(controls[0].type).toBe('options_list_control');
+    expect(failures).toEqual([
+      {
+        type: 'add_controls',
+        identifier: 'controls[0]',
+        error:
+          'time_slider_control cannot be scoped to a section; add it as a pinned control instead.',
+      },
+    ]);
+  });
+
+  it('remove_controls removes a section-scoped control by id and leaves section panels intact', async () => {
+    const { dashboardData: withControl } = await executeDashboardOperations({
+      dashboardData: dashboardWithSection,
+      operations: [
+        {
+          operation: 'add_controls',
+          section_id: 'section-1',
+          controls: [{ type: 'options_list_control', field_name: 'service.name', index: 'logs-*' }],
+        },
+      ],
+      logger,
+    });
+
+    const section = getSections(withControl.panels)[0];
+    const controlId = section.panels.find((p) => p.type === 'options_list_control')!.id;
+
+    const { dashboardData: afterRemove } = await executeDashboardOperations({
+      dashboardData: withControl,
+      operations: [{ operation: 'remove_controls', control_ids: [controlId] }],
+      logger,
+    });
+
+    const afterSection = getSections(afterRemove.panels)[0];
+    expect(afterSection.panels).toHaveLength(1);
+    expect(afterSection.panels[0].type).toBe('lens');
+  });
 });

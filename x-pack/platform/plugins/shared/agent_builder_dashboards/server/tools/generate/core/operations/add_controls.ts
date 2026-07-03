@@ -16,10 +16,22 @@ import {
   TIME_SLIDER_CONTROL,
 } from '@kbn/controls-constants';
 import type { DashboardPinnedPanel } from '@kbn/dashboard-plugin/server';
+import type {
+  AttachmentPanel,
+  DashboardAttachmentData,
+} from '@kbn/agent-builder-dashboards-common';
+import { isSection } from '@kbn/agent-builder-dashboards-common';
 import { z } from '@kbn/zod/v4';
 import { DASHBOARD_OPERATION_FAILURE_TYPES } from '../failure_types';
 import type { PanelFailure } from '../utils';
+import { findSectionIndex } from '../dashboard_state';
 import { defineOperation } from './types';
+
+// Grid dimensions used for in-grid controls, matching the dashboard's own
+// unpin-to-grid behavior (see dashboard layout_manager `unpinPanel`).
+const CONTROL_GRID_WIDTH = 12;
+const CONTROL_GRID_HEIGHT = 2;
+const DASHBOARD_GRID_COLUMNS = 48;
 
 const controlWidthSchema = z
   .enum(['small', 'medium', 'large'])
@@ -157,6 +169,112 @@ const buildStoredControl = (control: ControlInput): DashboardPinnedPanel => {
   };
 };
 
+const buildGridControl = (
+  control: ControlInput,
+  grid: AttachmentPanel['grid']
+): AttachmentPanel => {
+  const { type, config } = buildStoredControl(control);
+  return { type, id: uuidv4(), config: config as AttachmentPanel['config'], grid };
+};
+
+/**
+ * Lays out controls as a row (or rows) of grid panels anchored at the top of a
+ * section (section-relative coordinates), wrapping to a new row when the
+ * dashboard grid width is exceeded. Returns the built panels and the total
+ * vertical space they occupy so existing section content can be shifted down.
+ */
+const layoutSectionControls = (
+  controls: ControlInput[]
+): { controlPanels: AttachmentPanel[]; occupiedHeight: number } => {
+  let x = 0;
+  let y = 0;
+  const controlPanels = controls.map((control) => {
+    if (x + CONTROL_GRID_WIDTH > DASHBOARD_GRID_COLUMNS) {
+      x = 0;
+      y += CONTROL_GRID_HEIGHT;
+    }
+    const grid = { x, y, w: CONTROL_GRID_WIDTH, h: CONTROL_GRID_HEIGHT };
+    x += CONTROL_GRID_WIDTH;
+    return buildGridControl(control, grid);
+  });
+
+  return { controlPanels, occupiedHeight: y + CONTROL_GRID_HEIGHT };
+};
+
+/**
+ * Time sliders act on the global time range, so they only make sense as pinned
+ * controls. Section-scoping them is rejected with a per-control failure.
+ */
+const rejectSectionTimeSliders = ({
+  controls,
+  failures,
+}: {
+  controls: ControlInput[];
+  failures: PanelFailure[];
+}): ControlInput[] => {
+  return controls.filter((control, controlInputIndex) => {
+    if (control.type !== TIME_SLIDER_CONTROL) {
+      return true;
+    }
+
+    failures.push({
+      type: DASHBOARD_OPERATION_FAILURE_TYPES.addControls,
+      identifier: `controls[${controlInputIndex}]`,
+      error:
+        'time_slider_control cannot be scoped to a section; add it as a pinned control instead.',
+    });
+    return false;
+  });
+};
+
+const addSectionScopedControls = ({
+  dashboardData,
+  controls,
+  sectionId,
+  failures,
+}: {
+  dashboardData: DashboardAttachmentData;
+  controls: ControlInput[];
+  sectionId: string;
+  failures: PanelFailure[];
+}): DashboardAttachmentData => {
+  if (findSectionIndex(dashboardData.panels, sectionId) === -1) {
+    failures.push({
+      type: DASHBOARD_OPERATION_FAILURE_TYPES.addControls,
+      identifier: `section:${sectionId}`,
+      error: `Section "${sectionId}" not found. Add controls to an existing section or pin them.`,
+    });
+    return dashboardData;
+  }
+
+  const controlsToAdd = rejectSectionTimeSliders({ controls, failures });
+  if (controlsToAdd.length === 0) {
+    return dashboardData;
+  }
+
+  const { controlPanels, occupiedHeight } = layoutSectionControls(controlsToAdd);
+
+  return {
+    ...dashboardData,
+    panels: dashboardData.panels.map((widget) => {
+      if (!isSection(widget) || widget.id !== sectionId) {
+        return widget;
+      }
+
+      // Controls go to the top of the section; push existing content down to make room.
+      const shiftedPanels = widget.panels.map((panel) => ({
+        ...panel,
+        grid: { ...panel.grid, y: panel.grid.y + occupiedHeight },
+      }));
+
+      return {
+        ...widget,
+        panels: [...controlPanels, ...shiftedPanels],
+      };
+    }),
+  };
+};
+
 export const addControlsOperation = defineOperation({
   schema: z.object({
     operation: z.literal('add_controls'),
@@ -166,8 +284,24 @@ export const addControlsOperation = defineOperation({
       .describe(
         'Controls to append. Use options_list_control for categorical/keyword fields, range_slider_control for numeric fields, time_slider_control for time sub-range filtering (at most one per dashboard).'
       ),
+    section_id: z
+      .string()
+      .min(1)
+      .optional()
+      .describe(
+        "Optional section id. When set, controls are placed inside that section and only filter that section's panels. Omit to pin controls above the dashboard (global). time_slider_control cannot be section-scoped."
+      ),
   }),
   handler: ({ dashboardData, operation, context }) => {
+    if (operation.section_id) {
+      return addSectionScopedControls({
+        dashboardData,
+        controls: operation.controls,
+        sectionId: operation.section_id,
+        failures: context.failures,
+      });
+    }
+
     const existingControls = dashboardData.pinned_panels ?? [];
     const controlsToAdd = filterDuplicateTimeSliders({
       existingControls,

@@ -44,7 +44,9 @@ Omit the \`esql\` field on visualization panels unless you received a validated 
 
 ## Controls
 
-Controls are interactive filters pinned above the dashboard that let users explore data without editing queries. Add them with \`add_controls\` and remove them by id with \`remove_controls\`.
+Controls are interactive filters that let users explore data without editing queries. Add them with \`add_controls\` and remove them by id with \`remove_controls\`.
+
+**Placement:** by default controls are pinned above the dashboard and filter every panel (global). Pass \`section_id\` on \`add_controls\` to place controls inside a section instead — those controls only filter panels in that section. Prefer pinned controls for filters that apply to the whole dashboard; use section-scoped controls when a section needs its own independent filters (e.g. a "Compare service A vs B" section). \`time_slider_control\` is global-only and cannot be section-scoped.
 
 **When building a new dashboard from scratch**, proactively add 3–5 \`options_list_control\` dropdowns for the most useful categorical fields. Pick fields that appear in panel \`BY\` / \`WHERE\` clauses, prefer low-cardinality keyword fields (e.g. \`service.name\`, \`host.name\`, \`env\`, \`region\`, \`kubernetes.namespace\`, \`http.response.status_code\`). Avoid high-cardinality identifiers (trace IDs, request IDs, UUIDs).
 
@@ -63,7 +65,7 @@ Do not add controls to dashboards already scoped to a single entity (one host, o
 
 **Defaults applied by the server:** \`width: "medium"\`, \`grow: true\` (fills available horizontal space). Override only if the user asks.
 
-**Removing controls:** use \`remove_controls\` with the \`id\` values from the \`controls[]\` list in the tool result.
+**Removing controls:** use \`remove_controls\` with the \`id\` values from the \`controls[]\` list in the tool result (works for both pinned and section-scoped controls). Section-scoped controls also carry a \`section_id\` in that list.
 
 ## Generation Edge Cases
 
