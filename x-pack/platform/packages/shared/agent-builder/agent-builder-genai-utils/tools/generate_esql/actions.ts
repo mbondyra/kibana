@@ -6,7 +6,7 @@
  */
 
 import type { BaseMessageLike } from '@langchain/core/messages';
-import type { EsqlResponse } from '../utils/esql';
+import { hasUnescapedDigitLeadingFieldSegment, type EsqlResponse } from '../utils/esql';
 import {
   createUserMessage,
   createAIMessage,
@@ -77,6 +77,32 @@ export function isValidateQueryAction(action: Action): action is ValidateQueryAc
   return action.type === 'validate_query';
 }
 
+export const esqlErrorHint = (error: string | undefined, query?: string): string | undefined => {
+  if (!error) {
+    return undefined;
+  }
+
+  if (hasUnescapedDigitLeadingFieldSegment(query)) {
+    return (
+      'Hint: a field name has a path segment that starts with a digit ' +
+      '(e.g. the "1m" in system.cpu.load_average.1m). ES|QL cannot parse a ' +
+      'digit-leading segment unquoted; backtick-escape that segment — ' +
+      'system.cpu.load_average.`1m` — or backtick-quote the whole path — ' +
+      '`system.cpu.load_average.1m`.'
+    );
+  }
+
+  if (/Invalid input types for \w*_OVER_TIME[\s\S]*counter/i.test(error)) {
+    return (
+      'Hint: this looks like a counter metric (ts_metric=counter). Counter ' +
+      'fields do not work with *_OVER_TIME gauge functions — use a counter ' +
+      'function instead: RATE, IRATE or INCREASE (typically SUM(RATE(field))).'
+    );
+  }
+
+  return undefined;
+};
+
 /**
  * Format an action into a couple of [ai, user] messages to be used in prompts.
  */
@@ -128,10 +154,11 @@ export const formatAction = (action: Action, withoutToolCalls = true): BaseMessa
               wrapToolResult: false,
             }),
           ];
-    case 'execute_query':
+    case 'execute_query': {
       if (action.success) {
         return [];
       }
+      const executeHint = esqlErrorHint(action.error, action.query);
       return withoutToolCalls
         ? [
             createAIMessage('Now you can execute the query'),
@@ -141,7 +168,7 @@ export const formatAction = (action: Action, withoutToolCalls = true): BaseMessa
 \`\`\`
 ${action.error}
 \`\`\`
-
+${executeHint ? `\n${executeHint}\n` : ''}
 Can you fix the query?`
             ),
           ]
@@ -160,10 +187,12 @@ Can you fix the query?`
               wrapToolResult: false,
             }),
           ];
-    case 'validate_query':
+    }
+    case 'validate_query': {
       if (action.success) {
         return [];
       }
+      const validateHint = esqlErrorHint(action.error, action.query);
       return withoutToolCalls
         ? [
             createAIMessage('Now you can validate the query'),
@@ -173,7 +202,7 @@ Can you fix the query?`
 \`\`\`
 ${action.error}
 \`\`\`
-
+${validateHint ? `\n${validateHint}\n` : ''}
 Can you fix the query?`
             ),
           ]
@@ -192,6 +221,7 @@ Can you fix the query?`
               wrapToolResult: false,
             }),
           ];
+    }
     case 'request_documentation':
       // always use tool call format for this action, to stay closer to the original flow
       // also Claude doesn't seem to care about requesting more doc.

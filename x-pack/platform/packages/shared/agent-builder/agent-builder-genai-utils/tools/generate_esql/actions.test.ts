@@ -8,6 +8,7 @@
 import { HumanMessage, AIMessage, ToolMessage } from '@langchain/core/messages';
 import {
   formatAction,
+  esqlErrorHint,
   isValidateQueryAction,
   type ValidateQueryAction,
   type ExecuteQueryAction,
@@ -44,6 +45,51 @@ describe('generate_esql actions', () => {
     });
   });
 
+  describe('esqlErrorHint', () => {
+    it('returns undefined when there is no error', () => {
+      expect(esqlErrorHint(undefined)).toBeUndefined();
+    });
+
+    it('returns undefined for an unrecognized error', () => {
+      expect(esqlErrorHint('Unknown column [foo]')).toBeUndefined();
+    });
+
+    it('hints at backtick escaping for a digit-leading identifier segment parse error', () => {
+      const hint = esqlErrorHint(
+        "line 3, column 175: SyntaxError: no viable alternative at input 'AVG(AVG_OVER_TIME(system.cpu.load_average.1'",
+        'TS metrics | STATS AVG(AVG_OVER_TIME(system.cpu.load_average.1m))'
+      );
+      expect(hint).toContain('backtick');
+      expect(hint).toContain('starts with a digit');
+    });
+
+    it('does not hint at identifier escaping when the failed query has no digit-leading segment', () => {
+      expect(
+        esqlErrorHint(
+          "line 1, column 12: SyntaxError: no viable alternative at input 'ROW value.1'",
+          'ROW value = 1.5'
+        )
+      ).toBeUndefined();
+    });
+
+    it('ignores digit-leading paths inside quoted values', () => {
+      expect(
+        esqlErrorHint(
+          "line 1, column 12: SyntaxError: no viable alternative at input 'ROW value.1'",
+          'ROW value = "system.cpu.load_average.1m"'
+        )
+      ).toBeUndefined();
+    });
+
+    it('hints at counter functions when a *_OVER_TIME fn is used on a counter field', () => {
+      const hint = esqlErrorHint(
+        'position 82-126: Invalid input types for SUM_OVER_TIME. Received (counter_long). Expected one of ...'
+      );
+      expect(hint).toContain('RATE');
+      expect(hint).toContain('counter');
+    });
+  });
+
   describe('formatAction', () => {
     describe('validate_query', () => {
       it('returns empty array when validation succeeded', () => {
@@ -70,6 +116,19 @@ describe('generate_esql actions', () => {
         const userContent = (messages[1] as HumanMessage).content as string;
         expect(userContent).toContain('I tried validating the query and got the following error');
         expect(userContent).toContain('Unknown column [WHER]');
+        expect(userContent).toContain('Can you fix the query?');
+      });
+
+      it('appends the digit-segment hint to the failure message when applicable', () => {
+        const action: ValidateQueryAction = {
+          type: 'validate_query',
+          query: 'TS m | STATS AVG(AVG_OVER_TIME(system.cpu.load_average.1m))',
+          success: false,
+          error: "no viable alternative at input '...load_average.1'",
+        };
+        const messages = formatAction(action, true);
+        const userContent = (messages[1] as HumanMessage).content as string;
+        expect(userContent).toContain('backtick');
         expect(userContent).toContain('Can you fix the query?');
       });
 
