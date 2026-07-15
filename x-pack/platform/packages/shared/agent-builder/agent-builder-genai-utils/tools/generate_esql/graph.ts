@@ -21,6 +21,7 @@ import {
   executeEsql,
   validateEsqlQuery,
   buildTimeRangeParams,
+  fixEsqlFieldEscaping,
 } from '../utils/esql';
 import { createRequestDocumentationPrompt, createGenerateEsqlPrompt } from './prompts';
 import type { ResolvedResourceWithSampling } from '../utils/resources';
@@ -188,12 +189,13 @@ export const createNlToEsqlGraph = ({
     }
 
     const correction = correctCommonEsqlMistakes(lastAction.query);
+    const fixedOutput = fixEsqlFieldEscaping(correction.output, state.resource?.fields ?? []);
 
     const action: AutocorrectQueryAction = {
       type: 'autocorrect_query',
-      wasCorrected: correction.isCorrection,
+      wasCorrected: correction.isCorrection || fixedOutput !== correction.output,
       input: correction.input,
-      output: correction.output,
+      output: fixedOutput,
     };
 
     return {

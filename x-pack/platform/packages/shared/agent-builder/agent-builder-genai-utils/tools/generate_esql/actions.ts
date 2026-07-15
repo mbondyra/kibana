@@ -6,7 +6,7 @@
  */
 
 import type { BaseMessageLike } from '@langchain/core/messages';
-import { hasUnescapedDigitLeadingFieldSegment, type EsqlResponse } from '../utils/esql';
+import type { EsqlResponse } from '../utils/esql';
 import {
   createUserMessage,
   createAIMessage,
@@ -80,16 +80,6 @@ export function isValidateQueryAction(action: Action): action is ValidateQueryAc
 export const esqlErrorHint = (error: string | undefined, query?: string): string | undefined => {
   if (!error) {
     return undefined;
-  }
-
-  if (hasUnescapedDigitLeadingFieldSegment(query)) {
-    return (
-      'Hint: a field name has a path segment that starts with a digit ' +
-      '(e.g. the "1m" in system.cpu.load_average.1m). ES|QL cannot parse a ' +
-      'digit-leading segment unquoted; backtick-escape that segment — ' +
-      'system.cpu.load_average.`1m` — or backtick-quote the whole path — ' +
-      '`system.cpu.load_average.1m`.'
-    );
   }
 
   if (/Invalid input types for \w*_OVER_TIME[\s\S]*counter/i.test(error)) {
