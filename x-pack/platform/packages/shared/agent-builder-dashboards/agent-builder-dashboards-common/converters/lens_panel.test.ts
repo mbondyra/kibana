@@ -18,6 +18,8 @@ const metricApiConfig = {
   type: 'metric' as const,
   title: 'Attributes title',
   description: 'Attributes description',
+  sampling: 1,
+  ignore_global_filters: false,
   data_source: { type: 'esql' as const, query: 'FROM logs | STATS count = COUNT(*)' },
   metrics: [{ type: 'primary' as const, column: 'count' }],
 };
