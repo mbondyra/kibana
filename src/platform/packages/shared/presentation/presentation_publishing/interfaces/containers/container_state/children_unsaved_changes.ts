@@ -15,9 +15,7 @@ import {
 } from '../../publishes_unsaved_changes';
 import type { PublishingSubject } from '../../../publishing_subject';
 
-// TEMP DEBUG (Sophie #kibana-presentation title race): widen window so Save can land mid-flush.
-// Revert to 100 before merging.
-export const DEBOUNCE_TIME = 2000;
+export const DEBOUNCE_TIME = 100;
 
 /**
  *  Create an observable stream of unsaved changes from all react embeddable children

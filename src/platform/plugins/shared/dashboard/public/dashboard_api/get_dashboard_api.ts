@@ -173,6 +173,9 @@ export function getDashboardApi({
   });
 
   function getState() {
+    // Flush live panel state before save/export so we don't persist a stale
+    // currentChildState while unsaved-changes debounces are still pending.
+    layoutManager.internalApi.flushMountedChildState();
     const { panels, pinned_panels } = layoutManager.internalApi.serializeLayout();
     const unifiedSearchState = unifiedSearchManager.internalApi.getState();
     const projectRoutingState = projectRoutingManager?.internalApi.getState();

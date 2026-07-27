@@ -78,6 +78,7 @@ function getLocatorParams({
 }): DashboardLocatorParams {
   const savedObjectId = dashboardApi.savedObjectId$.value;
 
+  dashboardInternalApi.flushMountedChildState();
   const { panels, pinned_panels } = dashboardInternalApi.serializeLayout() as Pick<
     DashboardLocatorParams,
     'panels' | 'pinned_panels'

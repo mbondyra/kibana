@@ -257,6 +257,7 @@ export type DashboardInternalApi = ReturnType<
   typeof initializeUnsavedChangesManager
 >['internalApi'] & {
   gridLayout$: BehaviorSubject<GridLayoutData>;
+  flushMountedChildState: () => void;
   serializeLayout: () => Pick<DashboardState, 'panels' | 'pinned_panels'>;
   isSectionCollapsed: (sectionId?: string) => boolean;
   dashboardContainerRef$: BehaviorSubject<HTMLElement | null>;
