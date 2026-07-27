@@ -8,7 +8,7 @@
  */
 
 import { pick } from 'lodash';
-import { BehaviorSubject, of, Subject } from 'rxjs';
+import { BehaviorSubject, of } from 'rxjs';
 
 import {
   ControlValuesSource,
@@ -650,142 +650,59 @@ describe('layout manager', () => {
     });
   });
 
-  describe('child state cache (panel title race)', () => {
-    const TREEMAP_ID = 'treemapPanel';
-    const chartTitle = 'Treemap: widget count';
-
-    const createTreemapPanel = () => ({
-      grid: { w: 12, h: 12, x: 0, y: 0 },
-      type: 'lens',
-      config: {
-        attributes: { title: chartTitle, visualizationType: 'lnsPie' },
-      },
-      id: TREEMAP_ID,
-    });
-
-    test('flushMountedChildState refreshes cache before hasUnsavedChanges flips true', () => {
+  describe('flushMountedChildState', () => {
+    test('refreshes panel cache from live serializeState before save', () => {
+      const TREEMAP_ID = 'treemapPanel';
       const liveTitle = 'Live panel title';
+
       const layoutManager = initializeLayoutManager(
         viewModeManagerMock,
         undefined,
-        [createTreemapPanel()],
+        [
+          {
+            grid: { w: 12, h: 12, x: 0, y: 0 },
+            type: 'lens',
+            config: {
+              attributes: { title: 'Load-time title', visualizationType: 'lnsPie' },
+            },
+            id: TREEMAP_ID,
+          },
+        ],
         [],
         trackPanelMock
       );
 
-      const hasUnsavedChanges$ = new BehaviorSubject(false);
-      const anyStateChange$ = new Subject<void>();
       const serializeState = jest.fn(() => ({
         title: liveTitle,
         type: 'treemap',
-        index: 'logs-*',
       }));
 
       layoutManager.api.registerChildApi({
         type: 'lens',
         uuid: TREEMAP_ID,
         phase$: {} as unknown as PublishingSubject<PhaseEvent | undefined>,
-        anyStateChange$,
+        anyStateChange$: of(),
         serializeState,
         applySerializedState: jest.fn(),
-        hasUnsavedChanges$,
+        hasUnsavedChanges$: new BehaviorSubject(false),
       } as DefaultEmbeddableApi);
 
-      // State changed on screen, but dirty flag has not flipped yet — cache stays at load state
-      anyStateChange$.next();
-      const beforeFlush = layoutManager.internalApi.serializeLayout();
-      expect(
-        (beforeFlush.panels.find((p) => p.id === TREEMAP_ID)?.config as { title?: string })?.title
-      ).toBeUndefined();
-
-      // Save path flushes live serializeState regardless of dirty debounce
-      layoutManager.internalApi.flushMountedChildState();
-      const afterFlush = layoutManager.internalApi.serializeLayout();
-      expect(
-        (afterFlush.panels.find((p) => p.id === TREEMAP_ID)?.config as { title?: string })?.title
-      ).toBe(liveTitle);
-    });
-
-    test('once dirty, cache updates immediately on anyStateChange$ (not gated on children debounce)', () => {
-      const layoutManager = initializeLayoutManager(
-        viewModeManagerMock,
-        undefined,
-        [createTreemapPanel()],
-        [],
-        trackPanelMock
-      );
-
-      const hasUnsavedChanges$ = new BehaviorSubject(false);
-      const anyStateChange$ = new Subject<void>();
-      let liveTitle = 'Title v1';
-      const serializeState = jest.fn(() => ({
-        title: liveTitle,
-        type: 'treemap',
-        index: 'logs-*',
-      }));
-
-      layoutManager.api.registerChildApi({
-        type: 'lens',
-        uuid: TREEMAP_ID,
-        phase$: {} as unknown as PublishingSubject<PhaseEvent | undefined>,
-        anyStateChange$,
-        serializeState,
-        applySerializedState: jest.fn(),
-        hasUnsavedChanges$,
-      } as DefaultEmbeddableApi);
-
-      hasUnsavedChanges$.next(true);
-      expect(
-        (
-          layoutManager.internalApi.serializeLayout().panels.find((p) => p.id === TREEMAP_ID)
-            ?.config as { title?: string }
-        )?.title
-      ).toBe('Title v1');
-
-      liveTitle = 'Title v2';
-      anyStateChange$.next();
-      expect(
-        (
-          layoutManager.internalApi.serializeLayout().panels.find((p) => p.id === TREEMAP_ID)
-            ?.config as { title?: string }
-        )?.title
-      ).toBe('Title v2');
-    });
-
-    test('does not overwrite cache from anyStateChange$ while panel is not dirty', () => {
-      const layoutManager = initializeLayoutManager(
-        viewModeManagerMock,
-        undefined,
-        [createTreemapPanel()],
-        [],
-        trackPanelMock
-      );
-
-      const hasUnsavedChanges$ = new BehaviorSubject(false);
-      const anyStateChange$ = new Subject<void>();
-      const serializeState = jest.fn(() => ({
-        title: 'Should not land in cache',
-        type: 'treemap',
-      }));
-
-      layoutManager.api.registerChildApi({
-        type: 'lens',
-        uuid: TREEMAP_ID,
-        phase$: {} as unknown as PublishingSubject<PhaseEvent | undefined>,
-        anyStateChange$,
-        serializeState,
-        applySerializedState: jest.fn(),
-        hasUnsavedChanges$,
-      } as DefaultEmbeddableApi);
-
-      anyStateChange$.next();
-      expect(serializeState).not.toHaveBeenCalled();
+      // Cache still has load-time state (dirty debounce has not flushed)
       expect(
         (
           layoutManager.internalApi.serializeLayout().panels.find((p) => p.id === TREEMAP_ID)
             ?.config as { attributes?: { title?: string } }
         )?.attributes?.title
-      ).toBe(chartTitle);
+      ).toBe('Load-time title');
+
+      // Save path flushes live state regardless of debounce
+      layoutManager.internalApi.flushMountedChildState();
+      expect(
+        (
+          layoutManager.internalApi.serializeLayout().panels.find((p) => p.id === TREEMAP_ID)
+            ?.config as { title?: string }
+        )?.title
+      ).toBe(liveTitle);
     });
   });
 });

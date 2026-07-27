@@ -16,14 +16,11 @@ import {
   combineLatestWith,
   debounceTime,
   distinctUntilChanged,
-  EMPTY,
   map,
   merge,
   mergeMap,
-  of,
   skip,
   startWith,
-  switchMap,
   tap,
   type Observable,
 } from 'rxjs';
@@ -45,9 +42,7 @@ import {
   childrenUnsavedChanges$,
   apiHasLibraryTransforms,
   apiHasSerializableState,
-  apiHasUniqueId,
   apiPublishesTitle,
-  apiPublishesUnsavedChanges,
   getTitle,
   logStateDiff,
   shouldLogStateDiff,
@@ -125,49 +120,15 @@ export function initializeLayoutManager(
     }
   );
 
-  let currentChildState = initialChildState; // childState is the source of truth for the state of each panel.
-  let lastSavedLayout = initialLayout;
-  let lastSavedChildState = initialChildState;
-
-  // Used for dirty-state aggregation (unsaved-changes indicator). Cache writes are handled
-  // separately below so the indicator debounce does not delay persisting panel state.
   const childrenChanges$ = childrenUnsavedChanges$(children$);
-
-  /**
-   * Keep `currentChildState` warm while a panel is dirty: serialize as soon as
-   * `hasUnsavedChanges` becomes true, then again on every `anyStateChange$`.
-   * Skips panels that are not dirty (e.g. Lens inline edit freezes unsaved detection)
-   * so we don't overwrite the cache with a frozen `serializeState()` snapshot.
-   * Save still calls `flushMountedChildState()` for the window before dirty flips true.
-   */
-  const childStateCacheSubscription = children$
-    .pipe(
-      switchMap((children) => {
-        const trackable = Object.values(children).filter(
-          (child) =>
-            apiPublishesUnsavedChanges(child) &&
-            apiHasUniqueId(child) &&
-            apiHasSerializableState(child)
-        );
-        if (trackable.length === 0) {
-          return EMPTY;
-        }
-        return merge(
-          ...trackable.map((child) =>
-            child.hasUnsavedChanges$.pipe(
-              switchMap((hasUnsavedChanges) =>
-                hasUnsavedChanges
-                  ? merge(of(undefined), child.anyStateChange$).pipe(map(() => child))
-                  : EMPTY
-              )
-            )
-          )
-        );
-      })
-    )
-    .subscribe((child) => {
-      currentChildState[child.uuid] = child.serializeState();
-    });
+  const childrenChangesSubscription = childrenChanges$.subscribe((childrenChanges) => {
+    for (const { uuid, hasUnsavedChanges } of childrenChanges) {
+      const childApi = children$.value[uuid];
+      if (hasUnsavedChanges && childApi && apiHasSerializableState(childApi)) {
+        currentChildState[uuid] = childApi.serializeState();
+      }
+    }
+  });
 
   /** Observable that publishes `true` when all children APIs are available */
   const childrenLoading$ = combineLatest([children$, layout$, viewModeManager.api.viewMode$]).pipe(
@@ -188,6 +149,11 @@ export function initializeLayoutManager(
     }),
     distinctUntilChanged()
   );
+
+  let currentChildState = initialChildState; // childState is the source of truth for the state of each panel.
+  let lastSavedLayout = initialLayout;
+
+  let lastSavedChildState = initialChildState;
   const resetLayout = (state: DashboardState) => {
     const { layout: layoutToApply, childState: childStateToApply } = deserializeLayout(
       state.panels,
@@ -739,7 +705,7 @@ export function initializeLayoutManager(
       },
     },
     cleanup: () => {
-      childStateCacheSubscription.unsubscribe();
+      childrenChangesSubscription.unsubscribe();
       gridLayoutSubscription.unsubscribe();
     },
   };

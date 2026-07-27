@@ -79,36 +79,5 @@ describe('Dashboard services API', () => {
       expect('attributes' in serializedState).toBe(false);
       expect(serializedState).toMatchObject({ type: 'xy', index: 'my-index' });
     });
-
-    /**
-     * Repro for Sophie Chang report (Kibana 9.4.2 / #kibana-presentation):
-     * by-value panels that only have a chart-level title (no panel override)
-     * lose that title when lens.apiFormat flatten runs during serializeState.
-     * Dashboard then caches / saves the title-less config.
-     */
-    it('drops chart-level title when flattening by-value state without a panel title', () => {
-      const chartTitle = 'Treemap: widget count';
-      (getLensBuilder as jest.Mock).mockReturnValue({
-        isEnabled: true,
-        getType: () => 'treemap',
-        isSupported: () => true,
-        toAPIFormat: () => ({
-          type: 'treemap',
-          title: chartTitle,
-          index: 'my-index',
-        }),
-      });
-
-      const attributes = getLensAttributesMock();
-      attributes.title = chartTitle;
-      // No panel-level title — UI shows chart title via defaultTitle$
-      const api = setupIntegrationsApi({ attributes, title: undefined });
-
-      const serializedState = api.serializeState();
-
-      expect('attributes' in serializedState).toBe(false);
-      // This is the bug: chart title is stripped and nothing remains at panel level
-      expect((serializedState as { title?: string }).title).toBeUndefined();
-    });
   });
 });
