@@ -524,7 +524,8 @@ export function initializeLayoutManager(
         pinned_panels?: DashboardState['pinned_panels'];
       }> => {
         return combineLatest([layout$, childrenChanges$]).pipe(
-          debounceTime(100),
+          // TEMP DEBUG (Sophie #kibana-presentation title race): widen window. Revert to 100.
+          debounceTime(2000),
           combineLatestWith(
             lastSavedState$.pipe(
               map((lastSaved) => deserializeLayout(lastSaved.panels, lastSaved.pinned_panels)),

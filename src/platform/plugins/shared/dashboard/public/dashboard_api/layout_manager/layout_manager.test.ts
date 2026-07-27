@@ -649,4 +649,77 @@ describe('layout manager', () => {
       expect(loadingStates.at(-3)).toEqual(false);
     });
   });
+
+  describe('panel title race (Sophie repro)', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    test('after unsaved-changes debounce, serializeLayout can persist title-less Lens config', async () => {
+      const TREEMAP_ID = 'treemapPanel';
+      const chartTitle = 'Treemap: widget count';
+
+      // Initial dashboard load still has title only inside nested attributes (legacy / pre-flatten)
+      const treemapPanel = {
+        grid: { w: 12, h: 12, x: 0, y: 0 },
+        type: 'lens',
+        config: {
+          attributes: { title: chartTitle, visualizationType: 'lnsPie' },
+        },
+        id: TREEMAP_ID,
+      };
+
+      const layoutManager = initializeLayoutManager(
+        viewModeManagerMock,
+        undefined,
+        [treemapPanel],
+        [],
+        trackPanelMock
+      );
+
+      const hasUnsavedChanges$ = new BehaviorSubject(false);
+      // Simulate Lens serializeState under lens.apiFormat: chart title stripped, no panel title
+      const serializeState = jest.fn(() => ({
+        type: 'treemap',
+        index: 'logs-*',
+        // title intentionally absent — flattenAPIConfig strips attributes.title
+      }));
+
+      layoutManager.api.registerChildApi({
+        type: 'lens',
+        uuid: TREEMAP_ID,
+        phase$: {} as unknown as PublishingSubject<PhaseEvent | undefined>,
+        anyStateChange$: of(),
+        serializeState,
+        applySerializedState: jest.fn(),
+        hasUnsavedChanges$,
+      } as DefaultEmbeddableApi);
+
+      // Before dirty flush: saved layout still has nested attributes.title
+      const before = layoutManager.internalApi.serializeLayout();
+      const beforePanel = before.panels.find((p) => p.id === TREEMAP_ID);
+      expect(
+        (beforePanel?.config as { attributes?: { title?: string } })?.attributes?.title
+      ).toBe(chartTitle);
+
+      // Panel reports dirty (e.g. after lastSaved re-compare post-Save of another panel)
+      hasUnsavedChanges$.next(true);
+      // TEMP DEBUG debounces are 2000ms — advance past childrenUnsavedChanges$ debounce
+      jest.advanceTimersByTime(2100);
+      await Promise.resolve();
+
+      const after = layoutManager.internalApi.serializeLayout();
+      const afterPanel = after.panels.find((p) => p.id === TREEMAP_ID);
+      expect(serializeState).toHaveBeenCalled();
+      // Bug: title is gone from the config that would be saved
+      expect((afterPanel?.config as { title?: string })?.title).toBeUndefined();
+      expect(
+        (afterPanel?.config as { attributes?: { title?: string } })?.attributes?.title
+      ).toBeUndefined();
+    });
+  });
 });

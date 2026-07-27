@@ -28,7 +28,9 @@ import type { initializeSettingsManager } from './settings_manager';
 import type { initializeUnifiedSearchManager } from './unified_search_manager';
 import type { PublishesOnSave } from './types';
 
-const DEBOUNCE_TIME = 100;
+// TEMP DEBUG (Sophie #kibana-presentation title race): widen window so Save can land mid-flush.
+// Revert to 100 before merging.
+const DEBOUNCE_TIME = 2000;
 
 export function initializeUnsavedChangesManager({
   layoutManager,
