@@ -43,5 +43,10 @@ export type {
   ProjectRoutingStrategy,
 } from './components/project_picker_update/utils/project_routing_codec';
 export { projectRoutingCodec } from './components/project_picker_update/utils/project_routing_codec';
+export {
+  isNamedProjectRouting,
+  getNamedProjectRoutingName,
+  getNamedProjectRoutingReference,
+} from './components/project_picker_update/utils/named_project_routing';
 export { PROJECT_ROUTING } from '@kbn/cps-common';
 export { ProjectRoutingAccess } from './types';

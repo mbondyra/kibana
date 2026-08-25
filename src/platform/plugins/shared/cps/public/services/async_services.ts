@@ -29,3 +29,21 @@ export const fetchDefaultProjectRouting = async (http: HttpSetup): Promise<strin
     throw error;
   }
 };
+
+/**
+ * Resolves a named project routing expression to its evaluated Lucene value.
+ * Returns `undefined` when the expression doesn't exist (404).
+ */
+export const fetchNamedProjectRouting = async (
+  http: HttpSetup,
+  expressionName: string
+): Promise<string | undefined> => {
+  try {
+    return await http.get<string>(`/internal/cps/project_routing/${expressionName}`);
+  } catch (error) {
+    if (error?.response?.status === 404) {
+      return undefined;
+    }
+    throw error;
+  }
+};

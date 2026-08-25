@@ -242,4 +242,21 @@ describe('ProjectPickerFrameBody', () => {
       expect(screen.getByTestId('projectPickerFilterDisplayAddFilterBtn')).toBeDisabled();
     });
   });
+
+  describe('named project routing', () => {
+    it('shows the named expression badge and disables add-filter', () => {
+      mockUseProjectPickerActions.mockReturnValue({
+        removeNamedProjectRouting: jest.fn(),
+      });
+
+      renderBodyHeader({
+        namedProjectRouting: { reference: '@origin_only' },
+      });
+
+      expect(screen.getByTestId('projectPickerNamedExpressionBadge')).toHaveTextContent(
+        '@origin_only'
+      );
+      expect(screen.getByTestId('projectPickerFilterDisplayAddFilterBtn')).toBeDisabled();
+    });
+  });
 });

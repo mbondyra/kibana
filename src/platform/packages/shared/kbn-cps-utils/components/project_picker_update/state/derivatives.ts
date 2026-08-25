@@ -93,12 +93,17 @@ export const computeIsUsingSpaceDefaults = (
     | 'originProjectId'
     | 'filterExpressions'
     | 'excludedOverrides'
+    | 'namedProjectRouting'
   >
 ): boolean => {
   // A blank default means the space has no default routing configured, so there is nothing
   // to be "using" (and nothing the revert action could restore).
   if (!state.defaultProjectRouting?.trim()) {
     return false;
+  }
+
+  if (state.namedProjectRouting) {
+    return state.namedProjectRouting.reference === state.defaultProjectRouting.trim();
   }
 
   const parsed = parseDefaultProjectRouting(
@@ -123,6 +128,10 @@ export const computeIsUsingSpaceDefaults = (
 };
 
 export const computeCurrentProjectRouting = (state: ProjectPickerState) => {
+  if (state.namedProjectRouting) {
+    return state.namedProjectRouting.reference;
+  }
+
   const enabledFilters = getEnabledFilterExpressions(state.filterExpressions);
   const isOriginOnlySelection =
     Boolean(state.originProjectId) &&

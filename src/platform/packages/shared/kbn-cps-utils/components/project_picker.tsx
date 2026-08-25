@@ -44,6 +44,7 @@ export interface ProjectPickerProps
       | 'currentProjectRoutingGetter'
       | 'fetchProjectsByRouting'
       | 'projectRoutingStrategy'
+      | 'resolveNamedProjectRouting'
     >,
     Pick<ComponentProps<typeof ProjectPickerFrame>, 'customHeaderContextMenuItems'> {
   isReadonly?: boolean;
@@ -81,6 +82,7 @@ export const ProjectPicker = ({
   totalProjectCount,
   customHeaderContextMenuItems,
   projectRoutingStrategy,
+  resolveNamedProjectRouting,
 }: ProjectPickerProps) => {
   const [showPopover, setShowPopover] = useState(false);
   const styles = useMemoCss(projectPickerStyles);
@@ -180,6 +182,7 @@ export const ProjectPicker = ({
       fetchProjectsByRouting={fetchProjectsByRouting}
       controlsState={isReadonly ? 'disabled' : 'enabled'}
       projectRoutingStrategy={projectRoutingStrategy}
+      resolveNamedProjectRouting={resolveNamedProjectRouting}
     >
       <EuiTourStep
         isStepOpen={isTourOpen}

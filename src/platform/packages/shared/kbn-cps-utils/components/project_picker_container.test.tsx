@@ -9,7 +9,7 @@
 
 import '@testing-library/jest-dom';
 import React from 'react';
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, act, waitFor } from '@testing-library/react';
 import { EuiThemeProvider } from '@elastic/eui';
 import { I18nProvider } from '@kbn/i18n-react';
 import { BehaviorSubject } from 'rxjs';
@@ -67,6 +67,7 @@ describe('ProjectPickerContainer', () => {
           href: 'https://example.com',
         },
       })),
+      resolveNamedProjectRouting: jest.fn().mockResolvedValue(undefined),
       ...props.cpsManager,
     };
     return await act(async () => {
@@ -127,6 +128,35 @@ describe('ProjectPickerContainer', () => {
         },
       });
       expect(screen.queryByTestId('cps-project-picker-button')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('named project routing', () => {
+    it('shows a named expression when CPS routing updates after mount', async () => {
+      const mockProjectRouting$ = new BehaviorSubject<ProjectRouting | undefined>(
+        PROJECT_ROUTING.ALL
+      );
+      await renderProjectPicker({
+        cpsManager: {
+          getProjectRouting: jest.fn(() => mockProjectRouting$.value),
+          getProjectRouting$: jest.fn(() => mockProjectRouting$),
+          getDefaultProjectRouting: jest.fn(() => PROJECT_ROUTING.ALL),
+        },
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('cps-project-picker-button-label')).toHaveTextContent('All');
+      });
+
+      await act(async () => {
+        mockProjectRouting$.next('@origin_only');
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('cps-project-picker-button-label')).toHaveTextContent(
+          '@origin_only'
+        );
+      });
     });
   });
 

@@ -116,10 +116,17 @@ export function ProjectPickerList({ scrollContainerRef }: ProjectPickerListProps
   );
 
   const toggleDisabledMessage = useMemo(() => {
+    if (state.namedProjectRouting) {
+      return i18n.translate('cpsUtils.projectPicker.listItem.namedExpressionLocked', {
+        defaultMessage:
+          'Project selection is locked while a named routing expression is applied. Remove the expression to change project scope.',
+      });
+    }
+
     return i18n.translate('cpsUtils.projectPicker.listItem.lastIncludedProject', {
       defaultMessage: 'You must be searching a minimum of one project.',
     });
-  }, []);
+  }, [state.namedProjectRouting]);
 
   useEffect(() => {
     const scrollContainer = scrollContainerRef?.current;
@@ -183,8 +190,13 @@ export function ProjectPickerList({ scrollContainerRef }: ProjectPickerListProps
               <EuiFlexItem key={project._id} grow={false} css={styles.listItemContainer}>
                 <ProjectPickerListItem
                   isSelected={isSelected}
-                  isToggleDisabled={isSelected && includedVisibleProjectIds.length === 1}
-                  isInteractionsDisabled={state.isFilterProposalPending}
+                  isToggleDisabled={
+                    Boolean(state.namedProjectRouting) ||
+                    (isSelected && includedVisibleProjectIds.length === 1)
+                  }
+                  isInteractionsDisabled={
+                    state.isFilterProposalPending || Boolean(state.namedProjectRouting)
+                  }
                   controlsState={state.controlsState}
                   isOriginProject={state.originProjectId === project._id}
                   toggleDisabledMessage={toggleDisabledMessage}

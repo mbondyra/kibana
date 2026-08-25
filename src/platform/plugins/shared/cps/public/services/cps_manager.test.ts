@@ -503,4 +503,49 @@ describe('CPSManager', () => {
       });
     });
   });
+
+  describe('resolveNamedProjectRouting', () => {
+    it('fetches the evaluated Lucene value for an @reference', async () => {
+      mockHttp.get = jest.fn().mockImplementation(async (path: string) => {
+        if (String(path).includes('origin_only')) {
+          return '_alias:_origin';
+        }
+        return DEFAULT_NPRE_VALUE;
+      });
+
+      cpsManager = new CPSManager({
+        http: mockHttp,
+        logger: mockLogger,
+        application: mockApplication,
+      });
+
+      await expect(cpsManager.resolveNamedProjectRouting('@origin_only')).resolves.toBe(
+        '_alias:_origin'
+      );
+      expect(mockHttp.get).toHaveBeenCalledWith('/internal/cps/project_routing/origin_only');
+    });
+
+    it('returns undefined when the expression is missing', async () => {
+      mockHttp.get = jest.fn().mockRejectedValue({ response: { status: 404 } });
+
+      cpsManager = new CPSManager({
+        http: mockHttp,
+        logger: mockLogger,
+        application: mockApplication,
+      });
+
+      await expect(cpsManager.resolveNamedProjectRouting('@missing')).resolves.toBeUndefined();
+    });
+
+    it('returns undefined for a blank reference without calling the API', async () => {
+      cpsManager = new CPSManager({
+        http: mockHttp,
+        logger: mockLogger,
+        application: mockApplication,
+      });
+
+      await expect(cpsManager.resolveNamedProjectRouting('@')).resolves.toBeUndefined();
+      expect(mockHttp.get).not.toHaveBeenCalledWith('/internal/cps/project_routing/');
+    });
+  });
 });

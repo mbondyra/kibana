@@ -16,8 +16,9 @@ import { KbnDangerCallout, KbnInfoCallout, KbnWarningCallout } from '@kbn/ui-cal
 import { strings } from '../../../../../strings';
 import { ProjectPickerFilterForm } from './filter_form';
 import { ProjectPickerFilterDisplay, type EditingFilter } from './filter_display/filter_display';
+import { NamedExpressionBadge } from '../../../named_expression_badge';
 import { bodyStyles } from './body.styles';
-import { useProjectPickerState } from '../../../../state';
+import { useProjectPickerActions, useProjectPickerState } from '../../../../state';
 import { getIncludedVisibleProjectIds } from '../../../../state/derivatives';
 
 export interface ProjectPickerFrameBodyProps {
@@ -38,6 +39,7 @@ export function ProjectPickerFrameBodyHeader() {
   const [editingFilter, setEditingFilter] = useState<Pick<EditingFilter, 'id'> | null>(null);
 
   const state = useProjectPickerState();
+  const actions = useProjectPickerActions();
 
   const isReadOnly = useMemo(() => {
     return state.controlsState === 'disabled';
@@ -125,6 +127,15 @@ export function ProjectPickerFrameBodyHeader() {
           />
         </EuiFlexItem>
       )}
+      {state.namedProjectRouting ? (
+        <EuiFlexItem grow={false}>
+          <NamedExpressionBadge
+            namedProjectRouting={state.namedProjectRouting}
+            isRemoveDisabled={isReadOnly}
+            onRemove={isReadOnly ? undefined : () => actions.removeNamedProjectRouting()}
+          />
+        </EuiFlexItem>
+      ) : null}
       {Boolean(state.displayedFilterExpressions.size) ? (
         <EuiFlexItem grow={false}>
           <ProjectPickerFilterDisplay
@@ -140,7 +151,9 @@ export function ProjectPickerFrameBodyHeader() {
             css={styles.filterCreateButton}
             data-test-subj="projectPickerFilterDisplayAddFilterBtn"
             flush="both"
-            disabled={isReadOnly || state.isFilterProposalPending}
+            disabled={
+              isReadOnly || state.isFilterProposalPending || Boolean(state.namedProjectRouting)
+            }
             onClick={handleFilterCreateClick}
           >
             <EuiText size="xs">

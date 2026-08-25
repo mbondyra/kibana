@@ -33,6 +33,13 @@ export {
   ROUTING_WILDCARD,
   PROJECT_SELECTION_DIMENSION,
 } from './project_routing_codec';
+export {
+  getNamedProjectRoutingName,
+  getNamedProjectRoutingReference,
+  isNamedProjectRouting,
+  truncateNamedProjectRoutingValue,
+  type NamedProjectRouting,
+} from './named_project_routing';
 
 /** EXISTS `_alias` — the filter half of `PROJECT_ROUTING.ORIGIN` (`_alias:_origin`). */
 export const ALIAS_EXISTS_FILTER: FilterExpressionValue = {

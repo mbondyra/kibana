@@ -13,6 +13,7 @@ import type { ProjectRouting } from '@kbn/es-query';
 import type { ICPSManager } from '../types';
 import { ProjectRoutingAccess } from '../types';
 import { ProjectPicker } from './project_picker';
+
 interface ProjectPickerContainerProps {
   cpsManager: ICPSManager;
 }
@@ -54,9 +55,12 @@ const ActiveProjectPicker: React.FC<ActiveProjectPickerProps> = ({
     return cpsManager.getDefaultProjectRouting();
   }, [cpsManager]);
 
-  const currentProjectRoutingGetter = useCallback(() => {
-    return cpsManager.getProjectRouting();
-  }, [cpsManager]);
+  const projectRouting$ = useMemo(() => cpsManager.getProjectRouting$(), [cpsManager]);
+  const currentProjectRouting = useObservable(projectRouting$, cpsManager.getProjectRouting());
+  const currentProjectRoutingGetter = useCallback(
+    () => currentProjectRouting,
+    [currentProjectRouting]
+  );
 
   const updateProjectRouting = useCallback(
     (newRouting: ProjectRouting) => {
@@ -70,6 +74,11 @@ const ActiveProjectPicker: React.FC<ActiveProjectPickerProps> = ({
     [cpsManager]
   );
 
+  const resolveNamedProjectRouting = useCallback(
+    (reference: string) => cpsManager.resolveNamedProjectRouting(reference),
+    [cpsManager]
+  );
+
   return (
     <ProjectPicker
       totalProjectCount={cpsManager.getTotalProjectCount()}
@@ -80,6 +89,7 @@ const ActiveProjectPicker: React.FC<ActiveProjectPickerProps> = ({
       isReadonly={isReadonly}
       isDisabled={isDisabled}
       customHeaderContextMenuItems={customHeaderContextMenuItems}
+      resolveNamedProjectRouting={resolveNamedProjectRouting}
     />
   );
 };

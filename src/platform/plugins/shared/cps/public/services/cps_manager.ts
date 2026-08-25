@@ -20,6 +20,7 @@ import {
   type HeaderContextMenuItemProps,
   ProjectRoutingAccess,
   PROJECT_ROUTING,
+  getNamedProjectRoutingName,
 } from '@kbn/cps-utils';
 import { i18n } from '@kbn/i18n';
 import type { ProjectFetcher } from './project_fetcher';
@@ -295,5 +296,23 @@ export class CPSManager implements ICPSManager {
     }
 
     return configurationLinks;
+  }
+
+  /**
+   * Resolves a named project routing reference (`@my-expr`) to its evaluated Lucene value.
+   */
+  public async resolveNamedProjectRouting(reference: string): Promise<string | undefined> {
+    const expressionName = getNamedProjectRoutingName(reference);
+    if (!expressionName) {
+      return undefined;
+    }
+
+    try {
+      const { fetchNamedProjectRouting } = await import('./async_services');
+      return await fetchNamedProjectRouting(this.http, expressionName);
+    } catch (error) {
+      this.logger.warn('Failed to resolve named project routing expression', error);
+      return undefined;
+    }
   }
 }

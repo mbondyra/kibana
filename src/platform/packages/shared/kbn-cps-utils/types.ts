@@ -71,4 +71,8 @@ export interface ICPSManager {
   getProjectPickerAccess$(): Observable<ProjectRoutingAccess>;
   registerAppAccess(appId: string, resolver: CPSAppAccessResolver): void;
   getConfigurationLinks(): CPSConfigurationLinks;
+  /**
+   * Resolves a named project routing reference (`@my-expr`) to its evaluated Lucene value.
+   */
+  resolveNamedProjectRouting(reference: string): Promise<string | undefined>;
 }

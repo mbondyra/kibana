@@ -24,8 +24,12 @@ jest.mock('../../state', () => ({
 
 const createState = (
   filteredProjectsCount: number,
-  totalProjectsCount: number
-): Pick<ProjectPickerState, 'selectedProjectIds' | 'availableProjects'> => ({
+  totalProjectsCount: number,
+  namedProjectRouting?: ProjectPickerState['namedProjectRouting']
+): Pick<
+  ProjectPickerState,
+  'selectedProjectIds' | 'availableProjects' | 'namedProjectRouting'
+> => ({
   selectedProjectIds: Array.from({ length: filteredProjectsCount }, (_, index) => `p${index}`),
   availableProjects: new Map(
     Array.from({ length: totalProjectsCount }, (_, index) => [
@@ -38,6 +42,7 @@ const createState = (
       },
     ])
   ),
+  namedProjectRouting,
 });
 
 const defaultProps = {
@@ -82,6 +87,49 @@ describe('ProjectPickerButton', () => {
       }
     );
     expect(screen.getByTestId('cps-project-picker-button-label')).toHaveTextContent('All');
+  });
+
+    it('should render the named routing reference instead of All', () => {
+    render(
+      <EuiThemeProvider>
+        <MockProjectPickerContext.Provider
+          value={{ state: createState(2, 2, { reference: '@origin_only' }) }}
+        >
+          <ProjectPickerButton {...defaultProps} />
+        </MockProjectPickerContext.Provider>
+      </EuiThemeProvider>
+    );
+
+    expect(screen.getByTestId('cps-project-picker-button-label')).toHaveTextContent('@origin_only');
+  });
+
+  it('should include the evaluated value in the named routing tooltip', async () => {
+    render(
+      <EuiThemeProvider>
+        <MockProjectPickerContext.Provider
+          value={{
+            state: createState(2, 2, {
+              reference: '@origin_only',
+              evaluatedValue: '_alias:_origin',
+            }),
+          }}
+        >
+          <ProjectPickerButton {...defaultProps} />
+        </MockProjectPickerContext.Provider>
+      </EuiThemeProvider>
+    );
+
+    expect(screen.getByTestId('cps-project-picker-button-label')).toHaveTextContent('@origin_only');
+    expect(screen.getByTestId('cps-project-picker-button-label')).not.toHaveTextContent(
+      '_alias:_origin'
+    );
+
+    const button = screen.getByTestId('cps-project-picker-button');
+    const tooltipAnchor = button.closest('.euiToolTipAnchor') ?? button;
+    await userEvent.hover(tooltipAnchor);
+
+    const tooltip = await screen.findByRole('tooltip');
+    expect(tooltip).toHaveTextContent('@origin_only evaluates to _alias:_origin');
   });
 
   it('should render the enabled button with the default test subject', () => {

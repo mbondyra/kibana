@@ -144,10 +144,10 @@ const renderFullProjectPicker = (
 ) => {
   const onProjectRoutingChange = props.onProjectRoutingChange ?? jest.fn();
 
-  render(
+  const buildTree = (currentProps: Partial<Omit<ProjectPickerStateProviderProps, 'children'>>) => (
     <ProjectPickerStateProvider
       {...defaultProviderProps}
-      {...props}
+      {...currentProps}
       onProjectRoutingChange={onProjectRoutingChange}
     >
       <ProjectPickerFrameHeader />
@@ -156,7 +156,13 @@ const renderFullProjectPicker = (
     </ProjectPickerStateProvider>
   );
 
-  return { onProjectRoutingChange };
+  const { rerender } = render(buildTree(props));
+
+  return {
+    onProjectRoutingChange,
+    rerender: (nextProps: Partial<Omit<ProjectPickerStateProviderProps, 'children'>>) =>
+      rerender(buildTree({ ...props, ...nextProps })),
+  };
 };
 
 const createDeferred = <T,>() => {
@@ -714,7 +720,6 @@ describe('ProjectPickerStateProvider', () => {
 
   describe('propose-then-commit filter state (no-flash behavior)', () => {
     it('keeps the current list and warning-free while a proposal is in flight, then applies the result atomically once it resolves', async () => {
-      const user = userEvent.setup();
       const deferred = createDeferred<ProjectsData>();
       const fetchProjectsByRouting = jest.fn(() => deferred.promise);
 
@@ -724,15 +729,14 @@ describe('ProjectPickerStateProvider', () => {
         fetchProjectsByRouting,
       });
 
-      // before any change, all three catalog projects are shown and nothing warns
+      // Empty current falls back to the space default, so hydrate itself proposes `_type:security`.
+      // All three catalog projects stay on screen until that search resolves.
       expect(getProjectListItemSwitch(originProject._id)).toBeInTheDocument();
       expect(getProjectListItemSwitch(linkedProjectOne._id)).toBeInTheDocument();
       expect(getProjectListItemSwitch(linkedProjectTwo._id)).toBeInTheDocument();
       expect(
         screen.queryByTestId('projectPickerFilterDisplayNoMatchCallout')
       ).not.toBeInTheDocument();
-
-      await clickRevertToSpaceDefaults(user);
 
       await waitFor(() => {
         expect(fetchProjectsByRouting).toHaveBeenCalledWith('_type:security');
@@ -765,7 +769,6 @@ describe('ProjectPickerStateProvider', () => {
     });
 
     it('leaves the proposal and current list intact and shows an error callout when the search fails', async () => {
-      const user = userEvent.setup();
       const deferred = createDeferred<ProjectsData>();
       const fetchProjectsByRouting = jest.fn(() => deferred.promise);
 
@@ -774,8 +777,6 @@ describe('ProjectPickerStateProvider', () => {
         currentProjectRoutingGetter: () => '',
         fetchProjectsByRouting,
       });
-
-      await clickRevertToSpaceDefaults(user);
 
       await waitFor(() => {
         expect(fetchProjectsByRouting).toHaveBeenCalledWith('_type:security');
@@ -798,6 +799,94 @@ describe('ProjectPickerStateProvider', () => {
       expect(
         screen.queryByTestId('projectPickerFilterDisplayNoMatchCallout')
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe('named project routing', () => {
+    it('keeps the @expression routing and does not rewrite it on mount', async () => {
+      const { onProjectRoutingChange } = renderFullProjectPicker({
+        currentProjectRoutingGetter: () => '@origin_only',
+        defaultProjectRoutingGetter: () => PROJECT_ROUTING.ALL,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('projectPickerNamedExpressionBadge')).toHaveTextContent(
+          '@origin_only'
+        );
+      });
+
+      expect(onProjectRoutingChange).not.toHaveBeenCalled();
+      expect(screen.getByTestId('projectPickerFilterDisplayAddFilterBtn')).toBeDisabled();
+      expect(getProjectListItemSwitch(originProject._id)).toBeDisabled();
+      expect(getProjectListItemSwitch(linkedProjectOne._id)).toBeDisabled();
+    });
+
+    it('applies a named expression that arrives after the picker has already hydrated ALL', async () => {
+      let currentRouting: ProjectRouting = PROJECT_ROUTING.ALL;
+      const currentProjectRoutingGetter = () => currentRouting;
+
+      const { rerender, onProjectRoutingChange } = renderFullProjectPicker({
+        currentProjectRoutingGetter,
+        defaultProjectRoutingGetter: () => PROJECT_ROUTING.ALL,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('projectPickerFilterDisplayAddFilterBtn')).toBeEnabled();
+      });
+      expect(screen.queryByTestId('projectPickerNamedExpressionBadge')).not.toBeInTheDocument();
+
+      currentRouting = '@origin_only';
+      rerender({
+        currentProjectRoutingGetter: () => currentRouting,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('projectPickerNamedExpressionBadge')).toHaveTextContent(
+          '@origin_only'
+        );
+      });
+      expect(onProjectRoutingChange).not.toHaveBeenCalled();
+      expect(screen.getByTestId('projectPickerFilterDisplayAddFilterBtn')).toBeDisabled();
+      expect(getProjectListItemSwitch(originProject._id)).toBeDisabled();
+    });
+
+    it('reports ALL after the named expression badge is removed', async () => {
+      const user = userEvent.setup();
+      const { onProjectRoutingChange } = renderFullProjectPicker({
+        currentProjectRoutingGetter: () => '@origin_only',
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('projectPickerNamedExpressionBadge')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByTestId('projectPickerNamedExpressionBadgeRemoveButton'));
+
+      await waitFor(() => {
+        expect(onProjectRoutingChange).toHaveBeenCalledWith(PROJECT_ROUTING.ALL);
+      });
+      expect(screen.queryByTestId('projectPickerNamedExpressionBadge')).not.toBeInTheDocument();
+      expect(screen.getByTestId('projectPickerFilterDisplayAddFilterBtn')).toBeEnabled();
+      expect(getProjectListItemSwitch(originProject._id)).toBeEnabled();
+    });
+
+    it('resolves the named expression and shows the evaluated value on the badge tooltip', async () => {
+      const user = userEvent.setup();
+      const resolveNamedProjectRouting = jest.fn().mockResolvedValue('_alias:_origin');
+      renderFullProjectPicker({
+        currentProjectRoutingGetter: () => '@origin_only',
+        resolveNamedProjectRouting,
+      });
+
+      await waitFor(() => {
+        expect(resolveNamedProjectRouting).toHaveBeenCalledWith('@origin_only');
+        expect(screen.getByTestId('projectPickerNamedExpressionBadge')).toBeInTheDocument();
+      });
+
+      await user.hover(screen.getByTestId('projectPickerNamedExpressionBadge'));
+      await waitFor(() => {
+        expect(screen.getByRole('tooltip')).toHaveTextContent('_alias:_origin');
+      });
     });
   });
 });

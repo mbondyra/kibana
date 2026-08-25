@@ -28,7 +28,11 @@ import {
   intersectServerMatchIds,
 } from '../utils/state_utils';
 import { type CPSProject, type ProjectsData } from '../../../types';
-import { parseDefaultProjectRouting, type ProjectRoutingStrategy } from '../utils';
+import {
+  getNamedProjectRoutingReference,
+  parseDefaultProjectRouting,
+  type ProjectRoutingStrategy,
+} from '../utils';
 
 interface ProjectPickerContext {
   state: ProjectPickerState;
@@ -40,6 +44,7 @@ interface ProjectPickerContext {
     | '_commitProposedFilters'
     | '_setFilterSearchLoading'
     | '_setFilterSearchError'
+    | '_setNamedProjectRoutingEvaluatedValue'
   >;
   fetchProjectsByRouting: (projectRouting?: ProjectRouting) => Promise<ProjectsData | null>;
 }
@@ -84,6 +89,12 @@ export interface ProjectPickerStateProviderProps
    * Callback function invoked with the project routing string when the project selection changes
    */
   onProjectRoutingChange: (projectRouting: ProjectRouting) => void;
+  /**
+   * Resolves a named project routing reference (`@my-expr`) to its evaluated Lucene value.
+   * Used for the picker button tooltip and named-expression badge tooltip.
+   * Optional: when omitted, those surfaces still show `@my-expr` without the evaluated value.
+   */
+  resolveNamedProjectRouting?: (reference: string) => Promise<string | undefined>;
 }
 
 export const createProjectPickerContext = once(() =>
@@ -149,6 +160,7 @@ const createInitialPickerState = ({
   isUsingSpaceDefaults: false,
   displayedFilterExpressions: new Map(),
   isFilterProposalPending: false,
+  namedProjectRouting: undefined,
 });
 
 export const ProjectPickerStateProvider = ({
@@ -161,12 +173,15 @@ export const ProjectPickerStateProvider = ({
   defaultProjectRoutingGetter,
   currentProjectRoutingGetter,
   fetchProjectsByRouting,
+  resolveNamedProjectRouting,
 }: PropsWithChildren<ProjectPickerStateProviderProps>) => {
   const ProjectPickerContext = useMemo(() => createProjectPickerContext(), []);
   const projectPickerReducers = useMemo(() => createStoreReducers(), []);
   const filterFetchAbortRef = useRef<AbortController | null>(null);
   const fetchProjectsByRoutingRef = useRef(fetchProjectsByRouting);
   fetchProjectsByRoutingRef.current = fetchProjectsByRouting;
+  const resolveNamedProjectRoutingRef = useRef(resolveNamedProjectRouting);
+  resolveNamedProjectRoutingRef.current = resolveNamedProjectRouting;
 
   const store = useCreateStore<ProjectPickerState, typeof projectPickerReducers>({
     initialState: createInitialPickerState({
@@ -179,10 +194,23 @@ export const ProjectPickerStateProvider = ({
     reducers: projectPickerReducers,
     derivatives: [...projectPickerDerivatives],
   });
+  const namedProjectRoutingRef = useRef(store.state.namedProjectRouting);
+  namedProjectRoutingRef.current = store.state.namedProjectRouting;
 
   useEffect(() => {
     const defaultProjectRouting = defaultProjectRoutingGetter() ?? '';
     const currentProjectRouting = currentProjectRoutingGetter() || defaultProjectRouting;
+    const namedReference = getNamedProjectRoutingReference(currentProjectRouting);
+
+    if (namedReference) {
+      store.actions._setStoreState({
+        availableProjects: new Map(availableProjects.map((project) => [project._id, project])),
+        defaultProjectRouting,
+        currentProjectRouting,
+      });
+      return;
+    }
+
     const parsed = parseDefaultProjectRouting(
       currentProjectRouting,
       availableProjects.map((project) => project._id),
@@ -192,6 +220,9 @@ export const ProjectPickerStateProvider = ({
     store.actions._setStoreState({
       availableProjects: new Map(availableProjects.map((project) => [project._id, project])),
       defaultProjectRouting,
+      // Only pass current routing when we must drop a named expression; otherwise this
+      // matches the pre-NPRE hydrate path (empty current still falls back to default above).
+      ...(namedProjectRoutingRef.current ? { currentProjectRouting } : {}),
       filterExpressions: parsed.filterExpressions,
       excludedOverrides: parsed.excludedOverrides,
     });
@@ -210,6 +241,27 @@ export const ProjectPickerStateProvider = ({
   useEffect(() => {
     store.actions._setProjectRoutingStrategy({ projectRoutingStrategy });
   }, [projectRoutingStrategy, store.actions]);
+
+  const namedProjectRoutingReference = store.state.namedProjectRouting?.reference;
+
+  useEffect(() => {
+    if (!namedProjectRoutingReference || !resolveNamedProjectRoutingRef.current) {
+      return;
+    }
+
+    let cancelled = false;
+    void resolveNamedProjectRoutingRef.current(namedProjectRoutingReference)
+      .then((value) => {
+        if (!cancelled && value) {
+          store.actions._setNamedProjectRoutingEvaluatedValue({ evaluatedValue: value });
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [namedProjectRoutingReference, store.actions]);
 
   // The identity of the pending proposal's enabled filters, or null when there is no proposal
   // to resolve. Search re-runs are keyed off this rather than off `proposedFilters` itself, so
@@ -312,6 +364,7 @@ export const ProjectPickerStateProvider = ({
       _commitProposedFilters,
       _setFilterSearchLoading,
       _setFilterSearchError,
+      _setNamedProjectRoutingEvaluatedValue,
       ...publicActions
     } = store.actions;
 

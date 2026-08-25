@@ -517,6 +517,111 @@ describe('createStoreReducers', () => {
 
       expect(nextState.proposedFilters).toBeNull();
     });
+
+    it('stores a named routing reference without proposing empty filters', () => {
+      const availableProjects = new Map([['p1', createProject({ _id: 'p1' })]]);
+      const state = createState({ availableProjects });
+
+      const nextState = reducers._setStoreState(state, {
+        availableProjects,
+        currentProjectRouting: '@origin_only',
+        filterExpressions: [],
+        excludedOverrides: [],
+      });
+
+      expect(nextState.namedProjectRouting).toEqual({
+        reference: '@origin_only',
+      });
+      expect(nextState.proposedFilters).toBeNull();
+      expect(nextState.filterExpressions.size).toBe(0);
+      expect(nextState.excludedOverrides).toEqual([]);
+    });
+
+    it('clears previously decoded filters when switching to named routing', () => {
+      const availableProjects = new Map([['p1', createProject({ _id: 'p1' })]]);
+      const state = createState({
+        availableProjects,
+        filterExpressions: createFilterExpressions([[typeSecurityExpression]]),
+        excludedOverrides: ['p1'],
+      });
+
+      const nextState = reducers._setStoreState(state, {
+        availableProjects,
+        currentProjectRouting: '@origin_only',
+        filterExpressions: [typeSecurityExpression],
+        excludedOverrides: ['p1'],
+      });
+
+      expect(nextState.namedProjectRouting?.reference).toBe('@origin_only');
+      expect(nextState.filterExpressions.size).toBe(0);
+      expect(nextState.excludedOverrides).toEqual([]);
+      expect(nextState.proposedFilters).toBeNull();
+    });
+
+    it('keeps an already-resolved evaluated value when hydrating the same named reference', () => {
+      const availableProjects = new Map([['p1', createProject({ _id: 'p1' })]]);
+      const state = createState({
+        availableProjects,
+        namedProjectRouting: {
+          reference: '@origin_only',
+          evaluatedValue: '_alias:_origin',
+        },
+      });
+
+      const nextState = reducers._setStoreState(state, {
+        availableProjects,
+        currentProjectRouting: '@origin_only',
+      });
+
+      expect(nextState.namedProjectRouting).toEqual({
+        reference: '@origin_only',
+        evaluatedValue: '_alias:_origin',
+      });
+    });
+  });
+
+  describe('#removeNamedProjectRouting', () => {
+    it('clears the named routing expression', () => {
+      const state = createState({
+        namedProjectRouting: { reference: '@origin_only' },
+      });
+
+      const nextState = reducers.removeNamedProjectRouting(state);
+
+      expect(nextState.namedProjectRouting).toBeUndefined();
+      expect(nextState.hasUserModifiedRouting).toBe(true);
+    });
+
+    it('is a no-op when no named routing is set', () => {
+      const state = createState();
+
+      expect(reducers.removeNamedProjectRouting(state)).toBe(state);
+    });
+  });
+
+  describe('#_setNamedProjectRoutingEvaluatedValue', () => {
+    it('stores the evaluated Lucene value on the named routing', () => {
+      const state = createState({
+        namedProjectRouting: { reference: '@origin_only' },
+      });
+
+      const nextState = reducers._setNamedProjectRoutingEvaluatedValue(state, {
+        evaluatedValue: '_alias:_origin',
+      });
+
+      expect(nextState.namedProjectRouting).toEqual({
+        reference: '@origin_only',
+        evaluatedValue: '_alias:_origin',
+      });
+    });
+
+    it('is a no-op when no named routing is set', () => {
+      const state = createState();
+
+      expect(
+        reducers._setNamedProjectRoutingEvaluatedValue(state, { evaluatedValue: '_alias:_origin' })
+      ).toBe(state);
+    });
   });
 
   describe('#includeAllVisibleProjects', () => {

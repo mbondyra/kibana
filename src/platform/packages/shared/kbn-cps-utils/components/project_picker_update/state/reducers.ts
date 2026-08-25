@@ -19,8 +19,10 @@ import {
 import type { ProjectRoutingStrategy } from '../utils/project_routing_codec';
 import {
   createFilterExpressionsMap,
+  getNamedProjectRoutingReference,
   parseDefaultProjectRouting,
   PROJECT_SELECTION_DIMENSION,
+  type NamedProjectRouting,
 } from '../utils';
 import { getEnabledFiltersIdentity } from '../utils/state_utils';
 import { computeVisibleProjectIds, getIncludedVisibleProjectIds } from './derivatives';
@@ -67,6 +69,12 @@ export interface ProjectPickerStoredState {
    * currently-rendered list is never recomputed from a mix of new filters and stale results.
    */
   proposedFilters: ProposedFilters | null;
+  /**
+   * Present when current routing is a named project routing expression (`@my-expr`)
+   * that the codec cannot represent as filters + toggles. The picker keeps the
+   * reference intact, shows it as a badge, and locks selection until it is removed.
+   */
+  namedProjectRouting?: NamedProjectRouting;
 }
 
 export interface ProjectPickerState extends ProjectPickerStoredState {
@@ -184,11 +192,47 @@ export function createStoreReducers() {
       state: ProjectPickerState,
       payload: Pick<ProjectPickerState, 'availableProjects'> & {
         defaultProjectRouting?: ProjectRouting;
+        currentProjectRouting?: ProjectRouting;
         filterExpressions?: FilterExpressionValue[];
         excludedOverrides?: string[];
       }
     ) {
       const availableProjectIds = Array.from(payload.availableProjects.keys());
+      const namedReference =
+        payload.currentProjectRouting !== undefined
+          ? getNamedProjectRoutingReference(payload.currentProjectRouting)
+          : undefined;
+
+      const nextState = {
+        ...state,
+        availableProjects: payload.availableProjects,
+        ...(payload.defaultProjectRouting !== undefined
+          ? { defaultProjectRouting: payload.defaultProjectRouting }
+          : {}),
+      };
+
+      if (payload.currentProjectRouting !== undefined && namedReference) {
+        const existingNamed =
+          state.namedProjectRouting?.reference === namedReference
+            ? state.namedProjectRouting
+            : { reference: namedReference };
+
+        return {
+          ...nextState,
+          namedProjectRouting: existingNamed,
+          // Named references cannot be represented as picker filters/toggles.
+          // Drop any previously decoded filter UI so it cannot sit beside the badge.
+          filterExpressions: new Map(),
+          excludedOverrides: [],
+          proposedFilters: null,
+          filterSearchError: null,
+        };
+      }
+
+      if (payload.currentProjectRouting !== undefined && state.namedProjectRouting) {
+        nextState.namedProjectRouting = undefined;
+      }
+
       const parsed =
         payload.filterExpressions !== undefined && payload.excludedOverrides !== undefined
           ? {
@@ -208,14 +252,6 @@ export function createStoreReducers() {
         getEnabledFiltersIdentity(state.filterExpressions) ===
           getEnabledFiltersIdentity(filterExpressions) &&
         sameProjectIdSet(excludedOverrides, state.excludedOverrides);
-
-      const nextState = {
-        ...state,
-        availableProjects: payload.availableProjects,
-        ...(payload.defaultProjectRouting !== undefined
-          ? { defaultProjectRouting: payload.defaultProjectRouting }
-          : {}),
-      };
 
       if (filtersUnchanged) {
         return nextState;
@@ -454,6 +490,44 @@ export function createStoreReducers() {
       }
     ),
     /**
+     * Stores the evaluated Lucene value for the current named routing expression.
+     * Display-only: does not decode into filters or unlock selection.
+     */
+    _setNamedProjectRoutingEvaluatedValue(
+      state: ProjectPickerState,
+      payload: { evaluatedValue: string }
+    ) {
+      if (!state.namedProjectRouting) {
+        return state;
+      }
+      if (state.namedProjectRouting.evaluatedValue === payload.evaluatedValue) {
+        return state;
+      }
+      return {
+        ...state,
+        namedProjectRouting: {
+          ...state.namedProjectRouting,
+          evaluatedValue: payload.evaluatedValue,
+        },
+      };
+    },
+    /**
+     * Drops the named routing expression so the picker can be represented as
+     * filters + toggles again. Encoded routing then falls back to ALL.
+     */
+    removeNamedProjectRouting: withUserInteractionMiddleware((state: ProjectPickerState) => {
+      if (!state.namedProjectRouting) {
+        return state;
+      }
+
+      return {
+        ...state,
+        namedProjectRouting: undefined,
+        proposedFilters: null,
+        filterSearchError: null,
+      };
+    }),
+    /**
      * Clears all filter expressions.
      */
     clearProjectFilters: withUserInteractionMiddleware((state: ProjectPickerState) => {
@@ -500,10 +574,19 @@ export function createStoreReducers() {
         state.originProjectId
       );
 
-      return proposeFilters(state, {
+      const next = proposeFilters(state, {
         filterExpressions: createFilterExpressionsMap(parsed.filterExpressions),
         excludedOverrides: [...parsed.excludedOverrides],
       });
+
+      if (!state.namedProjectRouting && next === state) {
+        return state;
+      }
+
+      return {
+        ...next,
+        namedProjectRouting: undefined,
+      };
     }),
     /**
      * Includes all visible projects.

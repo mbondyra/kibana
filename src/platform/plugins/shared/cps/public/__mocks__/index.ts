@@ -30,6 +30,7 @@ export const createCpsManagerMock = (): jest.Mocked<ICPSManager> => ({
       href: 'https://example.com',
     },
   })),
+  resolveNamedProjectRouting: jest.fn().mockResolvedValue(undefined),
 });
 
 let mockProjectRoutingSubject: BehaviorSubject<string | undefined> | undefined;
@@ -46,6 +47,7 @@ export const cpsServiceMock = {
       }
     }),
     getDefaultProjectRouting: jest.fn(() => undefined),
+    getProjectPickerAccess$: jest.fn(() => of(ProjectRoutingAccess.EDITABLE)),
     getProjectRouting$: jest.fn(() => {
       if (!mockProjectRoutingSubject) {
         mockProjectRoutingSubject = new BehaviorSubject<string | undefined>(undefined);

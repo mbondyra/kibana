@@ -456,6 +456,24 @@ describe('projectPickerDerivatives', () => {
     expect(derivedState.currentProjectRouting).toBe(PROJECT_ROUTING.ORIGIN);
   });
 
+  it('preserves a named project routing reference instead of encoding ALL', () => {
+    const availableProjects = new Map([
+      ['origin', createProject({ _id: 'origin' })],
+      ['p2', createProject({ _id: 'p2' })],
+    ]);
+
+    const derivedState = applyStoreDerivatives(
+      createState({
+        availableProjects,
+        namedProjectRouting: { reference: '@origin_only' },
+      }),
+      [...projectPickerDerivatives]
+    );
+
+    expect(derivedState.currentProjectRouting).toBe('@origin_only');
+    expect(derivedState.isUsingSpaceDefaults).toBe(false);
+  });
+
   it('emits PROJECT_ROUTING.ALL for dynamic exists `_alias` with no exclusions', () => {
     const availableProjects = new Map([
       ['origin', createProject({ _id: 'origin' })],

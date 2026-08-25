@@ -23,6 +23,7 @@ import * as styles from './button.styles';
 import { strings } from '../../../strings';
 import { createProjectPickerContext } from '../../state';
 import { CPSIconDisabled } from '../../../cps_icon';
+import { truncateNamedProjectRoutingValue } from '../../utils/named_project_routing';
 
 export interface ProjectPickerButtonProps extends Pick<EuiButtonProps, 'size' | 'isDisabled'> {
   onClick: () => void;
@@ -67,14 +68,42 @@ export const ProjectPickerButton = ({
   }
 
   const { state } = context;
+  const namedProjectRouting = state.namedProjectRouting;
   const filteredProjectsCount = state.selectedProjectIds.length;
   const totalProjectsCount = state.availableProjects.size;
 
   const allProjectsSelected = filteredProjectsCount === totalProjectsCount;
-  const shouldWarn = filteredProjectsCount === 0;
+  const shouldWarn = !namedProjectRouting && filteredProjectsCount === 0;
+
+  const namedEvaluatedValue = namedProjectRouting?.evaluatedValue;
+  const buttonLabel = namedProjectRouting
+    ? namedProjectRouting.reference
+    : allProjectsSelected
+    ? strings.allButtonLabel
+    : i18n.translate('cpsUtils.projectPicker.pickerButtonSelectionDifferentiationLabel', {
+        defaultMessage: '{filterProjectsCount}/{totalProjectsCount}',
+        values: {
+          filterProjectsCount: numeral(filteredProjectsCount).format('0a'),
+          totalProjectsCount: numeral(totalProjectsCount).format('0a'),
+        },
+      });
+
+  const namedTooltipContent =
+    namedProjectRouting && namedEvaluatedValue
+      ? i18n.translate('cpsUtils.projectPicker.namedExpressionButtonTooltip', {
+          defaultMessage: '{reference} evaluates to {evaluatedValue}',
+          values: {
+            reference: namedProjectRouting.reference,
+            evaluatedValue: truncateNamedProjectRoutingValue(namedEvaluatedValue),
+          },
+        })
+      : undefined;
 
   return (
-    <EuiToolTip content={customTooltipContent ?? strings.projectPickerButtonAriaLabel} id={id}>
+    <EuiToolTip
+      content={customTooltipContent ?? namedTooltipContent ?? strings.projectPickerButtonAriaLabel}
+      id={id}
+    >
       {shouldWarn ? (
         <EuiButton
           {...sharedButtonProps}
@@ -84,15 +113,7 @@ export const ProjectPickerButton = ({
           data-test-subj="cps-project-picker-button"
         >
           <EuiText size="s" css={styles.pickerButtonLabelStyles}>
-            <span data-test-subj="cps-project-picker-button-label">
-              {i18n.translate('cpsUtils.projectPicker.pickerButtonSelectionDifferentiationLabel', {
-                defaultMessage: '{filterProjectsCount}/{totalProjectsCount}',
-                values: {
-                  filterProjectsCount: numeral(filteredProjectsCount).format('0a'),
-                  totalProjectsCount: numeral(totalProjectsCount).format('0a'),
-                },
-              })}
-            </span>
+            <span data-test-subj="cps-project-picker-button-label">{buttonLabel}</span>
           </EuiText>
         </EuiButton>
       ) : (
@@ -104,20 +125,7 @@ export const ProjectPickerButton = ({
           data-test-subj="cps-project-picker-button"
         >
           <EuiText size="s" css={styles.pickerButtonLabelStyles}>
-            <span data-test-subj="cps-project-picker-button-label">
-              {allProjectsSelected
-                ? strings.allButtonLabel
-                : i18n.translate(
-                    'cpsUtils.projectPicker.pickerButtonSelectionDifferentiationLabel',
-                    {
-                      defaultMessage: '{filterProjectsCount}/{totalProjectsCount}',
-                      values: {
-                        filterProjectsCount: numeral(filteredProjectsCount).format('0a'),
-                        totalProjectsCount: numeral(totalProjectsCount).format('0a'),
-                      },
-                    }
-                  )}
-            </span>
+            <span data-test-subj="cps-project-picker-button-label">{buttonLabel}</span>
           </EuiText>
         </EuiButtonEmpty>
       )}
