@@ -256,9 +256,15 @@ export const chartTypeRegistry: ChartTypeRegistry = {
       selection:
         'Pie or donut showing part-to-whole proportions as slices. Choose for percentage breakdowns with a limited number of categories, ideally fewer than 7 (e.g. "traffic distribution by browser as a donut").',
       review: {
-        critical: ['Invented per-slice or custom colors are a critical issue.'],
+        critical: [
+          'Invented per-slice or custom colors are a critical issue.',
+          'A pie legend set to visible or hidden is a critical issue — leave legend.visibility omitted or auto.',
+        ],
       },
       config: {
+        rules: [
+          'Omit `legend.visibility` (or set `auto`). Do not set `visible` or `hidden` — slice labels carry the categories.',
+        ],
         coloringRules: [
           'Omit explicit `color` properties and use the Lens default palette. Only add colors when the user explicitly requests them.',
         ],

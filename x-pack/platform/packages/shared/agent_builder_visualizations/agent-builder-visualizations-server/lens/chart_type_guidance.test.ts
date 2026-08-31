@@ -38,7 +38,8 @@ describe('chart type guidance', () => {
       - Use \`type: \\"bar\\"\` only for meaningful progress-to-max.
       - For trend/delta secondary metrics, hide the label with \`styling.secondary.label.visible: false\` and omit \`label\`. Show labels only for distinct named measures.",
           "mosaic": "",
-          "pie": "",
+          "pie": "CHART-SPECIFIC RULES FOR PIE:
+      - Omit \`legend.visibility\` (or set \`auto\`). Do not set \`visible\` or \`hidden\` — slice labels carry the categories.",
           "region_map": "",
           "tag_cloud": "",
           "treemap": "",
@@ -78,8 +79,10 @@ describe('chart type guidance', () => {
       Critical:
       - Invented custom cell or text colors are a critical issue.
       ### pie
+      - Omit \`legend.visibility\` (or set \`auto\`). Do not set \`visible\` or \`hidden\` — slice labels carry the categories.
       Critical:
-      - Invented per-slice or custom colors are a critical issue.",
+      - Invented per-slice or custom colors are a critical issue.
+      - A pie legend set to visible or hidden is a critical issue — leave legend.visibility omitted or auto.",
         "selection": "Available chart types — choose the one that best fits the user's intent and the nature of the data being visualized:
       - metric: Displays a single numeric value, KPI, or aggregate statistic (count, sum, average) with an optional trend line. Choose for single numbers without ranges or targets.
       - gauge: Displays a single metric within a range with optional min/max/goal bounds. Choose when showing progress toward a goal or performance against thresholds (e.g. \\"CPU usage as a gauge\\", \\"sales target progress\\").
