@@ -6,11 +6,6 @@
  */
 
 import type { SupportedChartType } from '@kbn/agent-builder-common/tools/tool_result';
-import {
-  getColorPalettesPromptContent,
-  getSharedColorPalettesPromptContent,
-} from './color_palettes';
-import { titleRulesPromptContent, numberFormatRulesPromptContent } from './config_rules';
 import { chartTypeRegistry } from './chart_type_registry';
 
 export const getChartTypeSelectionPromptContent = () =>
@@ -35,40 +30,25 @@ export const getChartTypeConfigPromptContent = (chartType: SupportedChartType) =
 };
 
 /**
- * Compiles the full vis-author pack for review/prettify: title and number-format
- * rules, per-chart coloring, `config.rules`, and `review.critical` /
- * `review.suggestions`. The visualization author still sees only the
- * per-request slices ({@link getChartTypeConfigPromptContent},
- * {@link getColorPalettesPromptContent}).
+ * Screenshot-facing review for prettify: per-chart `review.critical` only.
+ * Suggestions stay off this path — they slow first-pass review. Title,
+ * number-format, coloring, and `config.rules` stay on the visualization-author
+ * path ({@link getChartTypeConfigPromptContent} and the color-palette prompt).
  */
 export const getChartTypeReviewPromptContent = (): string => {
   const sections = Object.entries(chartTypeRegistry).flatMap(([chartType, { prompt }]) => {
-    const coloring = getColorPalettesPromptContent(chartType as SupportedChartType, {
-      includeShared: false,
-    });
-    const configRules: string[] = prompt.config?.rules ?? [];
     const critical: string[] = prompt.review?.critical ?? [];
-    const suggestions: string[] = prompt.review?.suggestions ?? [];
 
-    if (!coloring && !configRules.length && !critical.length && !suggestions.length) {
+    if (!critical.length) {
       return [];
     }
 
-    return [
-      `### ${chartType}`,
-      coloring,
-      ...configRules.map((rule) => `- ${rule}`),
-      ...(critical.length ? ['Critical:', ...critical.map((rule) => `- ${rule}`)] : []),
-      ...(suggestions.length ? ['Suggestions:', ...suggestions.map((rule) => `- ${rule}`)] : []),
-    ];
+    return [`### ${chartType}`, 'Critical:', ...critical.map((rule) => `- ${rule}`)];
   });
 
-  return [
-    'CHART REVIEW RULES:',
-    titleRulesPromptContent,
-    numberFormatRulesPromptContent,
-    '### shared',
-    getSharedColorPalettesPromptContent({ includeMechanics: true }),
-    ...sections,
-  ].join('\n');
+  if (!sections.length) {
+    return '';
+  }
+
+  return ['CHART REVIEW RULES:', ...sections].join('\n');
 };

@@ -32,9 +32,9 @@ interface ChartTypeRegistryEntry<T extends z.ZodType> {
      */
     selection: string;
     /**
-     * Screenshot-facing review for this chart type. Compiled into the Prettify
-     * prompt together with `config.rules`. Do not put Lens JSON HOW here —
-     * that belongs in `config.rules` so the visualization author also sees it.
+     * Screenshot-facing review for this chart type. Prettify compiles
+     * `critical` only. Do not put Lens JSON HOW here — that belongs in
+     * `config.rules` so the visualization author sees it.
      */
     review?: {
       /**
@@ -42,7 +42,8 @@ interface ChartTypeRegistryEntry<T extends z.ZodType> {
        */
       critical?: string[];
       /**
-       * Weaker prompts: apply when they add meaning, not as required fixes.
+       * Optional painted prompts. Not compiled into first-pass prettify —
+       * they slow review. Keep apply-time HOW in `config.rules`.
        */
       suggestions?: string[];
     };
@@ -116,7 +117,7 @@ export const chartTypeRegistry: ChartTypeRegistry = {
         'Displays a single numeric value, KPI, or aggregate statistic (count, sum, average) with an optional trend line. Choose for single numbers without ranges or targets.',
       review: {
         critical: [
-          'A title on a metric is a critical issue. The query MUST include the exact phrase "remove the panel title" — on `add_section.panels` when wrapping, otherwise on `edit_panels`.',
+          'A title on a metric is a critical issue.',
           'Invented static colors or BACKGROUND fills on the primary metric are a critical issue.',
         ],
         suggestions: [
@@ -125,7 +126,7 @@ export const chartTypeRegistry: ChartTypeRegistry = {
       },
       config: {
         rules: [
-          'Do not set a panel title on a metric — it duplicates the painted metric name. Omit title so the metric is titleless.',
+          'Do not set a panel title on a metric — it duplicates the painted metric name.',
           'A single primary metric is valid, but when meaningful, enrich it from the same ES|QL with a trend background or secondary metric. Never invent another index or field.',
           'Use `type: "bar"` only for meaningful progress-to-max.',
           'For trend/delta secondary metrics, hide the label with `styling.secondary.label.visible: false` and omit `label`. Show labels only for distinct named measures.',

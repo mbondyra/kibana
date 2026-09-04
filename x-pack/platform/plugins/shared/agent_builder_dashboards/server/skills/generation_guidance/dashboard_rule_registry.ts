@@ -49,12 +49,12 @@ export const dashboardRuleRegistry: DashboardRuleRegistry = {
     prompt: {
       review: {
         critical: [
-          'Sections used only for decoration, with no topical grouping, are a critical issue.',
-          'A dashboard with about 6 or more visualization panels, or with distinct topics such as overview KPIs, trends, and breakdowns, that has no topical sections is a critical issue. Add named sections (`add_section`) with those panels, then `remove_panels` the old copies. A small single-topic dashboard that scans as one sequence is not this issue. If topical sections already group the panels, this is not an issue.',
-          'A panel in the wrong topical section is a critical issue — for example a KPI at top-level or in Trends/Breakdowns when an Overview/Key Metrics section exists, or a time-series among KPIs. Put it in the right section with `add_section` panels and `remove_panels` the old copy.',
-          'Key Metrics / Overview must be KPI-only. A table or time series in that section is a critical issue — move it out. Do not invent a mixed-role section.',
-          'A piecemeal layout is a critical issue — resizing a couple of panels and leaving gaps or misplaced panels. Review grid positions and composition together; if anything violates, rethink where panels live.',
-          'A dashboard that has time-series XY panels but none with legend statistics (avg/min/max) is a critical issue. Add them on one primary overview trend (at most two). The edit query MUST include the exact phrase "show avg/min/max in the legend" (e.g. "log volume over time, show avg/min/max in the legend"). Skip categorical bars and queries whose measure is already AVG/MIN/MAX of a field. If at least one already has them, this is not an issue.',
+          'Decorative sections with no topical grouping are a critical issue.',
+          'About 6+ visualization panels, or mixed topics (KPIs, trends, breakdowns), with no topical sections is a critical issue. Skip a small single-topic dashboard.',
+          'A panel in the wrong topical section is a critical issue (KPI outside Key Metrics, or a trend/table among KPIs).',
+          'Key Metrics / Overview must be KPI-only. A table or time series there is a critical issue.',
+          'A piecemeal layout is a critical issue — rethink where panels live.',
+          'Time-series XY with no legend avg/min/max is a critical issue. The edit query must include "show avg/min/max in the legend". Skip categorical bars, field AVG/MIN/MAX, and dashboards that already have them.',
         ],
       },
       config: {
@@ -66,10 +66,10 @@ export const dashboardRuleRegistry: DashboardRuleRegistry = {
     prompt: {
       review: {
         critical: [
-          'Any w or h that violates ### Grid sizes by chart type or Grid Packing Rules is a critical issue. A last panel in a row stretched to fill leftover columns (row sums to 48) is not this issue — except a datatable with w less than 24, which is always this issue.',
-          'Visible gaps or dead space is a critical issue: unused columns in a row, leftover odd widths (not 6/8/12/24/48), or a row/section that was only partly reflowed. Rethink where panels live — do not patch a subset.',
-          'An L-shaped hole is a critical issue — a short panel with empty space beside it while a taller neighbor continues. Do not invent that packing.',
-          'A datatable with w less than 24 is a critical issue — give it its own row at w: 48, or w: 24 beside another half-width panel.',
+          'Any w or h that violates ### Grid sizes by chart type or Grid Packing Rules is a critical issue. A last panel in a row stretched to fill leftover columns is not this issue — except a datatable with w less than 24.',
+          'Visible gaps, leftover odd widths, or a partly reflowed row/section is a critical issue — rethink where panels live.',
+          'An L-shaped hole is a critical issue.',
+          'A datatable with w less than 24 is a critical issue.',
         ],
       },
       config: {

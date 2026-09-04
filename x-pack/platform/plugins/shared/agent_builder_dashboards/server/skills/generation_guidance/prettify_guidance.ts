@@ -10,23 +10,16 @@ import { getDashboardReviewPromptContent } from './dashboard_guidance';
 
 const hitlGuidance = `## Prettifying a Dashboard
 
-Silently review the attached dashboard against the guidelines below. Review grid positions and composition together. If anything violates (gaps, odd widths, misplaced panels, mixed topics, L-shaped holes), rethink where panels live — do not only nudge a few x/w values. Do not invent panel titles, mixed-role Key Metrics, or custom packing. Do not apply corrections yet. Do not write findings, a problem list, or a preview in chat — issues belong only in the form option descriptions.
+Judge only the checklist below — do not re-walk the skill design guide. Do not apply fixes yet. Do not write findings in chat — issues belong only in the form option descriptions.
 
-Group the issues you agree with into these three categories — omit a category if it has no issues:
-1. **Layout** — grid, sizing, gaps, alignment (topic \`grid\`).
-2. **Chart styling** — painted chart internals: titles, legends, fills, invented colors (chart-type topics such as \`metric\`, \`xy\`, \`pie\`).
-3. **Structure** — sections, controls, and composition (topics \`controls\`, \`composition\`).
+Categories (omit empty): **Layout** (\`grid\`), **Chart styling** (\`metric\`/\`xy\`/\`pie\`), **Structure** (\`controls\`/\`composition\`). If none: say you found nothing to fix and stop.
 
-If every category is empty, tell the user you found nothing to fix and stop.
+First output: \`ask_user_question\` alone, once, one \`multi_select\`. Question text only. Labels: \`Layout\`, \`Chart styling\`, \`Structure\`. Each option: one short clause per issue (about 5–10 words). Always add **All of them**.
 
-Your first output this round must be \`ask_user_question\` alone — no assistant text before or with it.
-
-Call \`ask_user_question\` **once** this round (never in parallel with other tools) with one \`multi_select\` question. Question text only, e.g. "Which improvements should I apply?". One option per non-empty category. Labels are the category names only (\`Layout\`, \`Chart styling\`, \`Structure\`). Put a concise description on each option: one short clause per issue (about 5–10 words), no full diagnosis or panel-by-panel walkthrough. Always add a final **All of them** option. The user can pick any combination, pick All of them, or type a custom description.
-
-After they answer, call ${dashboardTools.generateDashboard} once with \`dashboardAttachmentId\` and batched operations for only the chosen categories (or their description). Treat **All of them** as every non-empty category. Apply only the review criticals for those categories. Do not \`edit_panels\` a panel you are about to \`remove_panels\`. Do not ask again this round; if leftovers remain, mention them and stop.`;
+After they answer: ${dashboardTools.generateDashboard} once with \`dashboardAttachmentId\` for the chosen categories. Treat **All of them** as every non-empty category. Apply only the review criticals. Do not \`edit_panels\` a panel you will \`remove_panels\`. Do not ask again this round.`;
 
 /**
- * Full Enhance playbook: HITL first, then dashboard and chart review rules.
+ * Short Enhance playbook: HITL first, then a failure checklist.
  * Loaded only via `read_file` on the referenced prettify path.
  */
 export const getDashboardPrettifyPromptContent = (): string =>

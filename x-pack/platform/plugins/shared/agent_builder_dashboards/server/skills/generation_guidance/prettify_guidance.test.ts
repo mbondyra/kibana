@@ -20,7 +20,7 @@ describe('getDashboardPrettifyPromptContent', () => {
     expect(content).toContain('**Structure**');
     expect(content).not.toContain('never empty');
     expect(content).toContain('**All of them**');
-    expect(content).toContain('Do not write findings');
+    expect(content).toContain('Do not write findings in chat');
     expect(content).toContain('issues belong only in the form option descriptions');
     expect(content).toContain('ask_user_question` alone');
     expect(content).toContain('one short clause per issue');
@@ -39,10 +39,18 @@ describe('getDashboardPrettifyPromptContent', () => {
   it('keeps vis-author exact phrases in review, not HITL', () => {
     const hitl = content.slice(0, content.indexOf('## Dashboard Review'));
 
-    expect(hitl).not.toContain('remove the panel title');
+    expect(hitl).not.toContain('A title on a metric is a critical issue');
     expect(hitl).not.toContain('show avg/min/max in the legend');
     expect(hitl).toContain('Apply only the review criticals');
-    expect(content).toContain('remove the panel title');
+    expect(content).toContain('A title on a metric is a critical issue');
     expect(content).toContain('show avg/min/max in the legend');
+  });
+
+  it('stays short enough to load as referenced content', () => {
+    expect(content).not.toContain('TITLE RULES:');
+    expect(content).not.toContain('COLOR PALETTE RULES:');
+    expect(content).not.toContain('DYNAMIC STEPS');
+    expect(content).not.toContain('Available dynamic palettes');
+    expect(content.length).toBeLessThan(4000);
   });
 });
