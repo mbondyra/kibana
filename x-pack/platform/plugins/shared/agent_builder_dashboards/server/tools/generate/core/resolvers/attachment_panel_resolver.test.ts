@@ -129,9 +129,9 @@ describe('createAttachmentPanelResolver', () => {
   it('attributes the failure to the operation that asked for the panel', () => {
     const resolve = createAttachmentPanelResolver({ attachments: makeAttachments(undefined) });
 
-    expect(resolve('missing', 'add_section')).toMatchObject({
+    expect(resolve('missing', 'add_panels')).toMatchObject({
       type: 'failure',
-      failure: { type: 'add_section' },
+      failure: { type: 'add_panels' },
     });
   });
 

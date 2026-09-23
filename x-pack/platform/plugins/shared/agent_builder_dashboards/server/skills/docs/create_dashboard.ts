@@ -23,14 +23,14 @@ Every dashboard MUST have a non-empty \`title\`. If the current dashboard's titl
 Operations run in order, so earlier operations should set up state needed by later ones. Batch all operations into a single ${dashboardTools.generateDashboard} call whenever possible.
 
 When a dashboard needs sections, prefer a single batched call:
-1. For existing panels, create an empty \`add_section\` with a unique \`key\` (e.g. \`"overview"\`), omitting \`panels\`. Then use \`update_panel_layouts\` with the original \`panelId\` values and that key as \`sectionId\`. This moves the panels with their configurations intact.
-2. Only use \`add_section.panels\` or \`add_panels\` to create new panels. They cannot move existing panels.
+1. For existing panels, create an \`add_section\` with a unique \`key\` (e.g. \`"overview"\`). Then use \`update_panel_layouts\` with the original \`panelId\` values and that key as \`sectionId\`. This moves the panels with their configurations intact.
+2. Only \`add_panels\` creates new panels; set \`sectionId\` to a section key or id to place them inside it. It cannot move existing panels.
 3. Create sections before referencing them. Keys must not match existing section IDs and are not saved; in later calls, use the generated section ID returned by the tool.
 
 For a new dashboard:
 - Start with \`set_metadata\` and provide both \`title\` and \`description\`. Only include \`time_range\` when the user explicitly named a specific time window (e.g. "last 7 days", "May 20–24"). Do not set it otherwise — a data-aware default is applied automatically.
 - Use \`add_panels\` to add panels in one batched operation. A single \`add_panels\` call may mix panel kinds and target different \`sectionId\` values, so batch related panels together.
-- Use \`add_section\` when panels naturally group into distinct topics or the dashboard is large enough that sections improve scanability. Include \`panels\` on the section when you can create that section's initial panels immediately.
+- Use \`add_section\` when panels naturally group into distinct topics or the dashboard is large enough that sections improve scanability. Create the section in the same call, then add its panels with \`add_panels\` and \`sectionId\` set to the section key.
 
 Pick the chart type for every new panel from \`${DASHBOARD_SKILL_ROOT}/reference/panels.md\`, and add the controls described in \`${DASHBOARD_SKILL_ROOT}/reference/controls.md\` in the same batched call.`,
 };

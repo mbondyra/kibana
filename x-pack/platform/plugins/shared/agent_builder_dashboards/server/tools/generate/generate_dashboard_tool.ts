@@ -117,7 +117,7 @@ Use operations[] to:
 2. add panels (resolved panel configs, or Lens/Vega visualizations from a natural-language query — pick the engine with the panel "renderer" field; defaults to Lens)
 3. edit existing Lens, Vega, or markdown panel content
 4. update panel layouts without changing content
-5. add / remove sections, including inline section panels during add_section
+5. add / remove sections (place panels in a section with add_panels + sectionId)
 6. remove panels
 7. add / remove controls (interactive filters pinned above the dashboard: dropdown, range slider, or time slider)
 8. add / edit custom content panels (\`source: "config"\`, \`type: "custom_content"\`) for HTML-based layouts that Lens and Vega cannot express

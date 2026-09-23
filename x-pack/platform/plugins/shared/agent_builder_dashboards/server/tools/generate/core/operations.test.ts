@@ -618,7 +618,7 @@ describe('executeDashboardOperations', () => {
     });
   });
 
-  it('adds a section with inline visualization panels in a single operation', async () => {
+  it('adds visualization panels into a new section in a single call', async () => {
     const result = await executeDashboardOperations({
       dashboardData: {
         title: 'Test dashboard',
@@ -626,10 +626,9 @@ describe('executeDashboardOperations', () => {
         panels: [],
       },
       operations: [
+        { operation: 'add_section', key: 'overview', title: 'Overview', grid: { y: 12 } },
         {
-          operation: 'add_section',
-          title: 'Overview',
-          grid: { y: 12 },
+          operation: 'add_panels',
           panels: [
             {
               source: 'request',
@@ -637,6 +636,7 @@ describe('executeDashboardOperations', () => {
               chartType: SupportedChartType.Metric,
               query: 'show total requests',
               grid: { x: 0, y: 0, w: 24, h: 9 },
+              sectionId: 'overview',
             },
             {
               source: 'request',
@@ -644,6 +644,7 @@ describe('executeDashboardOperations', () => {
               chartType: SupportedChartType.Metric,
               query: 'show error rate',
               grid: { x: 24, y: 0, w: 24, h: 9 },
+              sectionId: 'overview',
             },
           ],
         },
@@ -686,7 +687,7 @@ describe('executeDashboardOperations', () => {
     });
   });
 
-  it('records inline visualization failures when adding a section and keeps successful panels', async () => {
+  it('records visualization failures when filling a new section and keeps successful panels', async () => {
     const result = await executeDashboardOperations({
       dashboardData: {
         title: 'Test dashboard',
@@ -694,10 +695,9 @@ describe('executeDashboardOperations', () => {
         panels: [],
       },
       operations: [
+        { operation: 'add_section', key: 'overview', title: 'Overview', grid: { y: 12 } },
         {
-          operation: 'add_section',
-          title: 'Overview',
-          grid: { y: 12 },
+          operation: 'add_panels',
           panels: [
             {
               source: 'request',
@@ -705,6 +705,7 @@ describe('executeDashboardOperations', () => {
               chartType: SupportedChartType.Metric,
               query: 'show total requests',
               grid: { x: 0, y: 0, w: 24, h: 9 },
+              sectionId: 'overview',
             },
             {
               source: 'request',
@@ -712,6 +713,7 @@ describe('executeDashboardOperations', () => {
               chartType: SupportedChartType.Metric,
               query: 'show p95 latency',
               grid: { x: 24, y: 0, w: 24, h: 9 },
+              sectionId: 'overview',
             },
           ],
         },
@@ -725,7 +727,7 @@ describe('executeDashboardOperations', () => {
         'show p95 latency': {
           type: 'failure',
           failure: {
-            type: 'add_section',
+            type: 'add_panels',
             identifier: 'show p95 latency',
             error: 'ES|QL generation failed',
           },
@@ -745,14 +747,14 @@ describe('executeDashboardOperations', () => {
     ]);
     expect(result.failures).toEqual([
       {
-        type: 'add_section',
+        type: 'add_panels',
         identifier: 'show p95 latency',
         error: 'ES|QL generation failed',
       },
     ]);
   });
 
-  it('adds non-visualization section panels without invoking the visualization resolver', async () => {
+  it('adds non-visualization panels into a new section without invoking the visualization resolver', async () => {
     const resolvePanelContent = jest.fn<
       ReturnType<ResolvePanelContent>,
       Parameters<ResolvePanelContent>
@@ -765,22 +767,23 @@ describe('executeDashboardOperations', () => {
         panels: [],
       },
       operations: [
+        { operation: 'add_section', key: 'overview', title: 'Overview', grid: { y: 12 } },
         {
-          operation: 'add_section',
-          title: 'Overview',
-          grid: { y: 12 },
+          operation: 'add_panels',
           panels: [
             {
               source: 'config',
               type: 'markdown',
               config: { content: '### Section Summary' },
               grid: { x: 0, y: 0, w: 24, h: 4 },
+              sectionId: 'overview',
             },
             {
               source: 'config',
               type: 'vis',
               config: { type: 'metric' },
               grid: { x: 24, y: 0, w: 24, h: 9 },
+              sectionId: 'overview',
             },
           ],
         },
@@ -803,7 +806,7 @@ describe('executeDashboardOperations', () => {
     ]);
   });
 
-  it('resolves inline panels for multiple section creations in parallel', async () => {
+  it('resolves panels for multiple new sections in parallel', async () => {
     const firstSectionPanel = createDeferred<PanelContentAttempt>();
     const secondSectionPanel = createDeferred<PanelContentAttempt>();
     const resolvePanelContent = jest.fn<
@@ -824,10 +827,10 @@ describe('executeDashboardOperations', () => {
         panels: [],
       },
       operations: [
+        { operation: 'add_section', key: 'overview', title: 'Overview', grid: { y: 0 } },
+        { operation: 'add_section', key: 'errors', title: 'Errors', grid: { y: 1 } },
         {
-          operation: 'add_section',
-          title: 'Overview',
-          grid: { y: 0 },
+          operation: 'add_panels',
           panels: [
             {
               source: 'request',
@@ -835,13 +838,12 @@ describe('executeDashboardOperations', () => {
               chartType: SupportedChartType.Metric,
               query: 'show total requests',
               grid: { x: 0, y: 0, w: 24, h: 9 },
+              sectionId: 'overview',
             },
           ],
         },
         {
-          operation: 'add_section',
-          title: 'Errors',
-          grid: { y: 1 },
+          operation: 'add_panels',
           panels: [
             {
               source: 'request',
@@ -849,6 +851,7 @@ describe('executeDashboardOperations', () => {
               chartType: SupportedChartType.Metric,
               query: 'show error rate',
               grid: { x: 24, y: 0, w: 24, h: 9 },
+              sectionId: 'errors',
             },
           ],
         },
@@ -864,7 +867,7 @@ describe('executeDashboardOperations', () => {
       1,
       expect.objectContaining({
         type: 'vis',
-        operationType: 'add_section',
+        operationType: 'add_panels',
         identifier: 'show total requests',
       })
     );
@@ -872,7 +875,7 @@ describe('executeDashboardOperations', () => {
       2,
       expect.objectContaining({
         type: 'vis',
-        operationType: 'add_section',
+        operationType: 'add_panels',
         identifier: 'show error rate',
       })
     );
@@ -925,10 +928,9 @@ describe('executeDashboardOperations', () => {
         panels: [],
       },
       operations: [
+        { operation: 'add_section', key: 'overview', title: 'Overview', grid: { y: 0 } },
         {
-          operation: 'add_section',
-          title: 'Overview',
-          grid: { y: 0 },
+          operation: 'add_panels',
           panels: [
             {
               source: 'request',
@@ -936,6 +938,7 @@ describe('executeDashboardOperations', () => {
               chartType: SupportedChartType.Metric,
               query: 'show total requests',
               grid: { x: 0, y: 0, w: 24, h: 9 },
+              sectionId: 'overview',
             },
           ],
         },
@@ -962,7 +965,7 @@ describe('executeDashboardOperations', () => {
     expect(resolvePanelContent).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
-        operationType: 'add_section',
+        operationType: 'add_panels',
         identifier: 'show total requests',
       })
     );
@@ -1009,10 +1012,9 @@ describe('executeDashboardOperations', () => {
           panels: [],
         },
         operations: [
+          { operation: 'add_section', key: 'overview', title: 'Overview', grid: { y: 0 } },
           {
-            operation: 'add_section',
-            title: 'Overview',
-            grid: { y: 0 },
+            operation: 'add_panels',
             panels: [
               {
                 source: 'request',
@@ -1020,12 +1022,8 @@ describe('executeDashboardOperations', () => {
                 chartType: SupportedChartType.Metric,
                 query: 'show total requests',
                 grid: { x: 0, y: 0, w: 24, h: 9 },
+                sectionId: 'overview',
               },
-            ],
-          },
-          {
-            operation: 'add_panels',
-            panels: [
               {
                 source: 'request',
                 type: 'vis',
@@ -2661,8 +2659,6 @@ describe('add_controls / remove_controls operations', () => {
       ]);
     });
 
-    // add_section takes the same panel inputs as add_panels, so it needs the same resolver wired
-    // in. Without it the materializer throws, which fails the whole dashboard rather than a panel.
     it('adds an attachment panel inside a new section', async () => {
       const resolveAttachmentPanel = jest.fn().mockReturnValue({
         type: 'success',
@@ -2672,15 +2668,15 @@ describe('add_controls / remove_controls operations', () => {
       const result = await executeDashboardOperations({
         dashboardData: { title: 'Test dashboard', description: '', panels: [] },
         operations: [
+          { operation: 'add_section', key: 'overview', title: 'Overview', grid: { y: 0 } },
           {
-            operation: 'add_section',
-            title: 'Overview',
-            grid: { y: 0 },
+            operation: 'add_panels',
             panels: [
               {
                 source: 'attachment',
                 attachment_id: 'att-1',
                 grid: { x: 0, y: 0, w: 24, h: 10 },
+                sectionId: 'overview',
               },
             ],
           },
@@ -2689,7 +2685,7 @@ describe('add_controls / remove_controls operations', () => {
         resolveAttachmentPanel,
       });
 
-      expect(resolveAttachmentPanel).toHaveBeenCalledWith('att-1', 'add_section');
+      expect(resolveAttachmentPanel).toHaveBeenCalledWith('att-1', 'add_panels');
       expect(result.failures).toHaveLength(0);
       expect(getSections(result.dashboardData.panels)).toHaveLength(1);
     });
@@ -2697,21 +2693,21 @@ describe('add_controls / remove_controls operations', () => {
     it('keeps the section when an attachment inside it cannot be resolved', async () => {
       const resolveAttachmentPanel = jest.fn().mockReturnValue({
         type: 'failure',
-        failure: { type: 'add_section', identifier: 'att-missing', error: 'not found' },
+        failure: { type: 'add_panels', identifier: 'att-missing', error: 'not found' },
       });
 
       const result = await executeDashboardOperations({
         dashboardData: { title: 'Test dashboard', description: '', panels: [] },
         operations: [
+          { operation: 'add_section', key: 'overview', title: 'Overview', grid: { y: 0 } },
           {
-            operation: 'add_section',
-            title: 'Overview',
-            grid: { y: 0 },
+            operation: 'add_panels',
             panels: [
               {
                 source: 'attachment',
                 attachment_id: 'att-missing',
                 grid: { x: 0, y: 0, w: 24, h: 10 },
+                sectionId: 'overview',
               },
             ],
           },
@@ -2721,7 +2717,7 @@ describe('add_controls / remove_controls operations', () => {
       });
 
       expect(result.failures).toEqual([
-        expect.objectContaining({ type: 'add_section', identifier: 'att-missing' }),
+        expect.objectContaining({ type: 'add_panels', identifier: 'att-missing' }),
       ]);
       expect(getSections(result.dashboardData.panels)).toHaveLength(1);
     });

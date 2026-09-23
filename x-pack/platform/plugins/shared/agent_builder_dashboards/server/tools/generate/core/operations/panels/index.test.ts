@@ -6,7 +6,7 @@
  */
 
 import { SupportedChartType } from '@kbn/agent-builder-common/tools/tool_result';
-import { addPanelsItemSchema, addSectionPanelItemSchema, editPanelItemSchema } from '.';
+import { addPanelsItemSchema, editPanelItemSchema } from '.';
 
 const lensRequest = {
   source: 'request' as const,
@@ -16,24 +16,24 @@ const lensRequest = {
 };
 
 describe('panel item schemas', () => {
-  it.each([
-    ['add_panels', addPanelsItemSchema],
-    ['add_section', addSectionPanelItemSchema],
-  ])('routes a Lens request without renderer through the %s schema', (_, schema) => {
-    expect(
-      schema.safeParse({
-        ...lensRequest,
-        chartType: SupportedChartType.Metric,
-      }).success
-    ).toBe(true);
-  });
+  it.each([['add_panels', addPanelsItemSchema]])(
+    'routes a Lens request without renderer through the %s schema',
+    (_, schema) => {
+      expect(
+        schema.safeParse({
+          ...lensRequest,
+          chartType: SupportedChartType.Metric,
+        }).success
+      ).toBe(true);
+    }
+  );
 
-  it.each([
-    ['add_panels', addPanelsItemSchema],
-    ['add_section', addSectionPanelItemSchema],
-  ])('requires chartType for a Lens request through the %s schema', (_, schema) => {
-    expect(schema.safeParse(lensRequest).success).toBe(false);
-  });
+  it.each([['add_panels', addPanelsItemSchema]])(
+    'requires chartType for a Lens request through the %s schema',
+    (_, schema) => {
+      expect(schema.safeParse(lensRequest).success).toBe(false);
+    }
+  );
 });
 
 const customContentBase = {
@@ -44,40 +44,40 @@ const customContentBase = {
 };
 
 describe('custom_content panel schemas', () => {
-  it.each([
-    ['add_panels', addPanelsItemSchema],
-    ['add_section', addSectionPanelItemSchema],
-  ])('accepts a minimal custom_content panel (prompt only) through %s', (_, schema) => {
-    expect(schema.safeParse(customContentBase).success).toBe(true);
-  });
+  it.each([['add_panels', addPanelsItemSchema]])(
+    'accepts a minimal custom_content panel (prompt only) through %s',
+    (_, schema) => {
+      expect(schema.safeParse(customContentBase).success).toBe(true);
+    }
+  );
 
-  it.each([
-    ['add_panels', addPanelsItemSchema],
-    ['add_section', addSectionPanelItemSchema],
-  ])('accepts a custom_content panel with template and esqlQuery through %s', (_, schema) => {
-    expect(
-      schema.safeParse({
-        ...customContentBase,
-        config: {
-          prompt: 'Error rate by service',
-          template: '<div>{{ row["service.name"].value }}</div>',
-          esqlQuery: 'FROM logs-* | STATS count = COUNT(*) BY service.name',
-        },
-      }).success
-    ).toBe(true);
-  });
+  it.each([['add_panels', addPanelsItemSchema]])(
+    'accepts a custom_content panel with template and esqlQuery through %s',
+    (_, schema) => {
+      expect(
+        schema.safeParse({
+          ...customContentBase,
+          config: {
+            prompt: 'Error rate by service',
+            template: '<div>{{ row["service.name"].value }}</div>',
+            esqlQuery: 'FROM logs-* | STATS count = COUNT(*) BY service.name',
+          },
+        }).success
+      ).toBe(true);
+    }
+  );
 
-  it.each([
-    ['add_panels', addPanelsItemSchema],
-    ['add_section', addSectionPanelItemSchema],
-  ])('rejects a custom_content panel missing prompt through %s', (_, schema) => {
-    expect(
-      schema.safeParse({
-        ...customContentBase,
-        config: {},
-      }).success
-    ).toBe(false);
-  });
+  it.each([['add_panels', addPanelsItemSchema]])(
+    'rejects a custom_content panel missing prompt through %s',
+    (_, schema) => {
+      expect(
+        schema.safeParse({
+          ...customContentBase,
+          config: {},
+        }).success
+      ).toBe(false);
+    }
+  );
 
   it('accepts a custom_content edit_panels item', () => {
     expect(

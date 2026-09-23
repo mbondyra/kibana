@@ -22,9 +22,7 @@ import {
   PANEL_TYPE_DEFINITIONS,
   type AddPanelsItemInput,
   type CustomContentPanelConfig,
-  type NewPanelInput,
   type PanelContent,
-  type PanelRequestInput,
   type ResolvePanelContent,
 } from './panels';
 
@@ -35,18 +33,12 @@ export interface MaterializedPanelInput {
   authoringNote?: string;
 }
 
-export type PanelCreationRequest =
-  | {
-      operationType: 'add_section';
-      panelInput: PanelRequestInput;
-      panelInputIndex: number;
-    }
-  | {
-      operationType: 'add_panels';
-      panelInput: Extract<AddPanelsItemInput, { source: 'request' }>;
-      panelInputIndex: number;
-      sectionId?: string;
-    };
+export interface PanelCreationRequest {
+  operationType: 'add_panels';
+  panelInput: Extract<AddPanelsItemInput, { source: 'request' }>;
+  panelInputIndex: number;
+  sectionId?: string;
+}
 
 export interface ResolvedPanelCreationRequest {
   request: PanelCreationRequest;
@@ -64,28 +56,6 @@ const collectPanelCreationRequests = (
 
   for (const [operationIndex, operation] of operations.entries()) {
     switch (operation.operation) {
-      case 'add_section': {
-        if (!operation.panels) {
-          break;
-        }
-
-        const panelRequests = operation.panels.flatMap((panelInput, panelInputIndex) =>
-          panelInput.source === 'request'
-            ? [
-                {
-                  operationType: operation.operation,
-                  panelInput,
-                  panelInputIndex,
-                },
-              ]
-            : []
-        );
-
-        if (panelRequests.length > 0) {
-          requestsByOperationIndex.set(operationIndex, panelRequests);
-        }
-        break;
-      }
       case 'add_panels': {
         const panelRequests = operation.panels.flatMap((panelInput, panelInputIndex) =>
           panelInput.source === 'request'
@@ -196,7 +166,7 @@ export const createPanelInputMaterializer = ({
   operationType: InlinePanelOperationType;
   failures: PanelFailure[];
   resolveAttachmentPanel?: ResolveAttachmentPanel;
-}): ((item: NewPanelInput, panelInputIndex: number) => MaterializedPanelInput | undefined) => {
+}): ((item: AddPanelsItemInput, panelInputIndex: number) => MaterializedPanelInput | undefined) => {
   const resolvedRequestByInputIndex = new Map(
     getResolvedPanelCreationRequests({
       resolvedRequestsByOperationIndex: resolvedPanelCreationRequests,

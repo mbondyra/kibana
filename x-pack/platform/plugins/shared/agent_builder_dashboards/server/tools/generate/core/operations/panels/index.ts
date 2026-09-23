@@ -12,7 +12,6 @@ import {
   visPanelConfigInputSchema,
   visPanelDefinition,
   buildPanelRequestSchema,
-  panelRequestSchema,
   editPanelRequestInputSchema,
   type VisPanelResolutionRequest,
 } from './vis';
@@ -93,22 +92,6 @@ export const addPanelsItemSchema = z.discriminatedUnion('source', [
 
 export type AddPanelsItemInput = z.infer<typeof addPanelsItemSchema>;
 
-/** A single inline panel item accepted by `add_section` (section-relative, no sectionId). */
-export const addSectionPanelItemSchema = z.discriminatedUnion('source', [
-  configPanelInputSchema,
-  panelRequestSchema,
-  attachmentPanelInputSchema,
-]);
-
-/**
- * A "create a new panel" input — either an already-resolved `source: 'config'`
- * panel or a `source: 'request'` to resolve. The common shape that `add_panels`
- * and `add_section` materialize into panel content (`add_panels` items also carry
- * a `sectionId`, which is assignable to this base).
- */
-export type NewPanelInput = z.infer<typeof addSectionPanelItemSchema>;
-
-/** A single panel item accepted by `edit_panels` (targets an existing panel by id). */
 export const editPanelItemSchema = z.discriminatedUnion('source', [
   editPanelRequestInputSchema,
   z.discriminatedUnion('type', [

@@ -9,7 +9,7 @@ export const gridLayoutPrompt = `## Panel Layout
 
 The dashboard uses a **48-column grid**. On a 16:9 screen, roughly **20–24 rows** are visible without scrolling. Aim for **8–12 panels above the fold**.
 
-Every \`add_panels.panels[]\` item and every \`add_section.panels[]\` item requires \`grid: { x, y, w, h }\`. The origin \`(0, 0)\` is the top-left corner.
+Every \`add_panels.panels[]\` item requires \`grid: { x, y, w, h }\`. The origin \`(0, 0)\` is the top-left corner.
 
 ### Grid sizes by chart type
 
@@ -63,7 +63,7 @@ Always set \`x\` and \`y\` so panels tile with **no gaps**:
 ### Section grid rules
 
 - When using \`add_section\`, each section has its own coordinate space.
-- Panels nested under \`add_section.panels\` use that same section-relative coordinate space.
+- Panels added to a section (\`add_panels\` with \`sectionId\`) use that same section-relative coordinate space.
 - Panel coordinates inside a section are section-relative: each section starts at \`y: 0\`. The same 48-column grid and sizing guidance apply within each section.
 - A section occupies exactly one row (\`h: 1\`) in the outer dashboard grid. When placing widgets after a section, compute the next outer \`y\` as \`section.grid.y + 1\` (not by summing internal panel heights).
 - Internal section panel heights affect layout inside the section only; they do not increase the section's outer-grid height.
