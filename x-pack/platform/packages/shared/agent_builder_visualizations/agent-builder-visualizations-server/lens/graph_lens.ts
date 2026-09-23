@@ -134,6 +134,10 @@ export const createVisualizationGraph = async (
   esClient: IScopedClusterClient
 ) => {
   const defaultModel = await modelProvider.getDefaultModel();
+  // Config authoring is a narrow, schema-bound task, so the first attempt runs on the
+  // low-effort model (it resolves to the default model when none is configured). Any retry
+  // escalates to the default model, which bounds the downside to one cheap failed call.
+  const firstAttemptModel = await modelProvider.selectModel({ effortLevel: 'low' });
 
   // Node: Generate ES|QL query
   const generateESQLNode = async (state: VisualizationState) => {
@@ -232,10 +236,15 @@ export const createVisualizationGraph = async (
       additionalContext,
     });
 
+    const model = attempt === 1 ? firstAttemptModel : defaultModel;
+    logger.debug(
+      `Authoring configuration with connector '${model.connector.connectorId}' (attempt ${attempt})`
+    );
+
     let action: GenerateConfigAction;
     try {
       // Invoke model without schema validation
-      const response = await defaultModel.chatModel.invoke(prompt);
+      const response = await model.chatModel.invoke(prompt);
       const responseText = extractTextFromMessage(response);
       const { config: configResponse, authoringNote } = parseConfigAuthoringResponse(responseText);
 

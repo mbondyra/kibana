@@ -53,10 +53,10 @@ describe('createVisualizationGraph', () => {
   const events = {} as ToolEventEmitter;
   const esClient = { asCurrentUser: {} } as IScopedClusterClient;
 
-  // Returns a ModelProvider-shaped mock. `createVisualizationGraph` resolves the default model
-  // via `getDefaultModel()` for the config node; the ES|QL node resolves the
-  // low-effort model via `selectModel()`. Both resolve to the same connector so the
-  // default-model fallback in `generateVisualizationEsql` stays out of these tests.
+  // Returns a ModelProvider-shaped mock. `createVisualizationGraph` resolves the low-effort
+  // model via `selectModel()` for the first config attempt and for the ES|QL node, and the
+  // default model via `getDefaultModel()` for config retries. Both resolve to the same
+  // connector so model escalation stays out of these tests.
   const createMockModel = (invokeResult: string = asAuthoringResponse({ type: 'metric' })) => {
     const scopedModel = {
       connector: { connectorId: 'default-connector' },
