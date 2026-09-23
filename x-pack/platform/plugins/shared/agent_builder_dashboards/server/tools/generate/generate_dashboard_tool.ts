@@ -19,6 +19,7 @@ import {
 
 import { createCustomContentTemplateResolver } from '@kbn/custom-content-server';
 import { dashboardTools } from '../../../common';
+import { DASHBOARD_SKILL_ROOT } from '../../skills/docs/okf_document';
 import { retrieveLatestVersion } from './attachment_state';
 import {
   createAttachmentPanelResolver,
@@ -119,7 +120,9 @@ Use operations[] to:
 5. add / remove sections, including inline section panels during add_section
 6. remove panels
 7. add / remove controls (interactive filters pinned above the dashboard: dropdown, range slider, or time slider)
-8. add / edit custom content panels (\`source: "config"\`, \`type: "custom_content"\`) for HTML-based layouts that Lens and Vega cannot express`,
+8. add / edit custom content panels (\`source: "config"\`, \`type: "custom_content"\`) for HTML-based layouts that Lens and Vega cannot express
+
+Detailed guidance per task lives in the dashboard-management skill documents under \`${DASHBOARD_SKILL_ROOT}/\` (index in its SKILL.md). Read the documents for your task with \`read_file\` before calling this tool.`,
     schema: generateDashboardSchema,
     handler: async (
       { dashboardAttachmentId: previousAttachmentId, operations },

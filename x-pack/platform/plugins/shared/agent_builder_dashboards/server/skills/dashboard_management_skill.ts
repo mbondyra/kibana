@@ -9,11 +9,12 @@ import { defineSkillType } from '@kbn/agent-builder-server/skills/type_definitio
 import { generateDashboardTool } from '../tools';
 import { dashboardGeneration } from './generation_guidance';
 import { kibanaRendering } from './rendering_guidance';
+import { DASHBOARD_SKILL_BASE_PATH, DASHBOARD_SKILL_NAME } from './docs';
 
 export const dashboardManagementSkill = defineSkillType({
-  id: 'dashboard-management',
-  name: 'dashboard-management',
-  basePath: 'skills/platform/dashboard',
+  id: DASHBOARD_SKILL_NAME,
+  name: DASHBOARD_SKILL_NAME,
+  basePath: DASHBOARD_SKILL_BASE_PATH,
   description:
     'Compose and update Kibana dashboards, involving panel creation, layout, and inline visualization editing.',
   content: `## When to Use This Skill
