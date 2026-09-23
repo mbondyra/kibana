@@ -26,7 +26,7 @@ import { definePanelType } from '../panel_type';
  * `open_links_in_new_tab` to `true` when omitted.
  */
 export const markdownPanelConfigSchema = z.object({
-  content: z.string().max(50000).describe('Markdown text to render in the panel.'),
+  content: z.string().max(50000).describe('Markdown text.'),
   settings: z
     .object({
       open_links_in_new_tab: z
@@ -34,8 +34,7 @@ export const markdownPanelConfigSchema = z.object({
         .optional()
         .describe('Whether links open in a new tab. Defaults to true.'),
     })
-    .optional()
-    .describe('Optional markdown rendering settings.'),
+    .optional(),
 });
 
 /**
@@ -46,7 +45,7 @@ export const markdownPanelConfigInputSchema = z.object({
   source: z.literal('config'),
   type: z.literal('markdown'),
   grid: panelGridSchema,
-  config: markdownPanelConfigSchema.describe('Markdown panel config (e.g. { content }).'),
+  config: markdownPanelConfigSchema,
 });
 
 /**
@@ -57,10 +56,8 @@ export const markdownPanelConfigInputSchema = z.object({
 export const editMarkdownPanelConfigInputSchema = markdownPanelConfigInputSchema
   .omit({ grid: true })
   .extend({
-    panelId: z.string().max(256).describe('Existing markdown panel id to update.'),
-    config: markdownPanelConfigSchema.describe(
-      'New markdown panel config (e.g. { content }). Fully replaces the existing config.'
-    ),
+    panelId: z.string().max(256).describe('Existing markdown panel id.'),
+    config: markdownPanelConfigSchema.describe('Replaces the existing config entirely.'),
   });
 
 /**

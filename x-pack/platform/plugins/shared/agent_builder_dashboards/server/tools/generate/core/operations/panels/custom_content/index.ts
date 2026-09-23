@@ -21,15 +21,13 @@ export const customContentPanelConfigSchema = z.object({
     .string()
     .min(1)
     .max(CUSTOM_CONTENT_MAX_PROMPT_LENGTH)
-    .describe(
-      'Natural language description of what to display. A visually consistent HTML template is generated server-side from this prompt — do not supply a template yourself.'
-    ),
+    .describe('What to display. The HTML template is generated server-side; never supply one.'),
   esqlQuery: z
     .string()
     .max(CUSTOM_CONTENT_MAX_ESQL_QUERY_LENGTH)
     .optional()
     .describe(
-      'ES|QL query whose results are passed to the generated template as row objects. Omit for static content. Build it with the generate_esql tool rather than writing it yourself — the server runs the query to sample its schema and fails the panel if Elasticsearch refuses it.'
+      'ES|QL whose rows feed the template; omit for static content. Build it with generate_esql; a rejected query fails the panel.'
     ),
 });
 
@@ -46,15 +44,15 @@ export const customContentPanelConfigInputSchema = z.object({
   source: z.literal('config'),
   type: z.literal('custom_content'),
   grid: panelGridSchema,
-  config: customContentPanelConfigSchema.describe('Custom content panel config.'),
+  config: customContentPanelConfigSchema,
 });
 
 export const editCustomContentPanelConfigInputSchema = z.object({
   source: z.literal('config'),
   type: z.literal('custom_content'),
-  panelId: z.string().max(256).describe('Existing custom_content panel id to update.'),
+  panelId: z.string().max(256).describe('Existing custom_content panel id.'),
   config: customContentEditConfigSchema.describe(
-    'Updated config. Supply only the fields that change. The server refines the existing template based on the merged prompt and esqlQuery — preserving layout and design where possible.'
+    'Only the fields that change; the server refines the existing template from the merged prompt and esqlQuery.'
   ),
 });
 

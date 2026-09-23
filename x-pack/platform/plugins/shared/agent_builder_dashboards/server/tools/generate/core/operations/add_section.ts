@@ -23,7 +23,7 @@ export const addSectionOperation = defineOperation({
       .max(256)
       .optional()
       .describe(
-        'Optional key for referencing this new section in later operations in the same call, using sectionId (or remove_section.id). Must be unique within the call and must not match an existing section id. Not saved; future calls use the generated section id from the result.'
+        'Key to reference this section as sectionId later in this call. Unique, must not match an existing section id; not saved.'
       ),
     title: z.string().max(256).describe('Section title.'),
     grid: sectionGridSchema,
@@ -32,7 +32,7 @@ export const addSectionOperation = defineOperation({
       .min(1)
       .optional()
       .describe(
-        "Creates new panels inside the section, with section-relative grids. To group existing panels, omit this field and move their original panelIds with update_panel_layouts using this section's key."
+        'New panels with section-relative grids. To group existing panels, omit this and move them with update_panel_layouts.'
       ),
   }),
   handler: async ({ dashboardData, operation, operationIndex, context }) => {

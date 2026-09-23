@@ -18,7 +18,7 @@ export const attachmentPanelInputSchema = z.object({
     .string()
     .max(256)
     .describe(
-      'ID of a visualization attachment in this conversation, as returned by create_visualization. The panel is built from the attachment\'s latest version, so its renderer (Lens, Vega or custom content) determines the panel type. Prefer this over source: "config" whenever you have an attachment id — it avoids copying the visualization payload through the conversation.'
+      'Visualization attachment id from this conversation (a create_visualization result). Its latest version and renderer decide the panel. Prefer over source: "config".'
     ),
   grid: panelGridSchema,
 });

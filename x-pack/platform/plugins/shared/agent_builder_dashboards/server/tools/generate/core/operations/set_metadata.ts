@@ -18,13 +18,13 @@ export const setMetadataOperation = defineOperation({
       .max(256)
       .optional()
       .describe(
-        "Non-empty dashboard title. If the current title is empty, missing, or a placeholder, invent one from the dashboard's contents."
+        'Non-empty title. Invent one from the contents when the current title is missing or a placeholder.'
       ),
     description: z.string().max(2048).optional(),
     time_range: timeRangeSchema
       .optional()
       .describe(
-        'Override the dashboard time range. ONLY set this when the user explicitly requested a specific time window (e.g. "show the last 7 days", "set time range to May 20–24"). Do NOT set it otherwise — a data-aware default is applied automatically. Convert natural language to Kibana date math or ISO 8601: "last 30 minutes" → { from: "now-30m", to: "now" }, "last 90 days" → { from: "now-90d", to: "now" }, "May 20–24" → { from: "2024-05-20T00:00:00.000Z", to: "2024-05-24T23:59:59.999Z", mode: "absolute" }.'
+        'Only when the user named a time window; a data-aware default applies otherwise. Kibana date math ({ from: "now-7d", to: "now" }) or ISO 8601 with mode "absolute".'
       ),
   }),
   handler: ({ dashboardData, operation, context }) => {

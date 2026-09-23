@@ -107,103 +107,83 @@ export const visPanelConfigInputSchema = z.object({
   type: z.literal('vis'),
   grid: panelGridSchema,
   config: visPanelConfigSchema.describe(
-    'Already-resolved visualization config, passed by value from a visualization attachment\'s `visualization` field: either a Lens API config (has a top-level `type`) or a Vega config (`{ spec }`). Do not hand-build a config for a new visualization here — use source: "request" instead.'
+    'Visualization config by value: an attachment\'s `visualization` field, either a Lens API config (top-level `type`) or a Vega `{ spec }`. Never hand-build one; use source: "request".'
   ),
 });
 
-const panelRequestBaseSchema = z.object({
+const panelRequestShape = {
   source: z.literal('request'),
-  type: z
-    .literal('vis')
-    .default('vis')
-    .describe('Panel type to resolve. Only "vis" is currently resolvable from a request.'),
   grid: panelGridSchema,
-  query: z
-    .string()
-    .max(2048)
-    .describe('A natural language query describing the desired visualization.'),
+  query: z.string().max(2048).describe('Natural language description of the visualization.'),
   index: z
     .string()
     .max(256)
     .optional()
     .describe(
-      'Exact index, alias, or datastream identified for this panel. Pass it whenever known, because each panel is generated independently without dashboard context. Omit only when the source is unknown and discovery is needed.'
+      'Exact index, alias or data stream for this panel. Pass it whenever known; omit only when discovery is needed.'
     ),
   esql: z
     .string()
     .max(4096)
     .optional()
     .describe(
-      '(optional) A validated ES|QL query from a prior tool result or explicit user input. Omit this field when composing new visualizations — the tool generates the query from the natural language query. NEVER write or invent an ES|QL query yourself.'
+      'Validated ES|QL from a prior tool result or the user. Omit otherwise; never write it yourself.'
     ),
-});
-
-/** A new Lens panel requires the caller to choose its chart type. */
-export const lensPanelRequestSchema = panelRequestBaseSchema.extend({
   renderer: z
-    .literal('lens')
+    .enum(['lens', 'vega'])
     .optional()
-    .describe('(optional) Render with Lens. Lens is the default when renderer is omitted.'),
-  chartType: z
-    .nativeEnum(SupportedChartType)
-    .describe('The Lens chart type to create. Choose it from the dashboard chart type guidance.'),
-});
-
-/** A new Vega panel may carry the closest Lens chart type as an authoring hint. */
-export const vegaPanelRequestSchema = panelRequestBaseSchema.extend({
-  renderer: z
-    .literal('vega')
     .describe(
-      'Render with Vega-Lite. Use for small multiples/faceting, layered or combination charts, scatter/bubble plots with an encoded size dimension, custom encodings, or when the user explicitly asks for Vega/Vega-Lite.'
+      'Defaults to lens. Use vega for small multiples, layered or combination charts, scatter/bubble plots, custom encodings, or on explicit request.'
     ),
   chartType: z
     .nativeEnum(SupportedChartType)
     .optional()
-    .describe(
-      '(optional) The closest Lens chart type, used only as an authoring hint. Omit it when no Lens chart type represents the requested Vega-Lite visualization.'
-    ),
-});
+    .describe('Lens chart type. Required for Lens panels; for Vega an optional authoring hint.'),
+};
 
-/**
- * A `request`-source input creates a Lens or Vega visualization from a
- * natural-language (or ES|QL) query.
- */
-export const panelRequestSchema = z.union([lensPanelRequestSchema, vegaPanelRequestSchema]);
+const requireLensChartType = (
+  payload: z.core.ParsePayload<{ renderer?: 'lens' | 'vega'; chartType?: SupportedChartType }>
+): void => {
+  const { renderer, chartType } = payload.value;
+  if (renderer !== 'vega' && chartType === undefined) {
+    payload.issues.push({
+      code: 'custom',
+      message: 'chartType is required when creating a Lens panel.',
+      input: payload.value,
+    });
+  }
+};
+
+/** Builds the `source: "request"` panel input schema, extended with extra fields. */
+export const buildPanelRequestSchema = <TExtra extends z.ZodRawShape>(extra: TExtra) =>
+  z.object({ ...panelRequestShape, ...extra }).check(requireLensChartType);
+
+export const panelRequestSchema = z.object(panelRequestShape).check(requireLensChartType);
 
 export type PanelRequestInput = z.infer<typeof panelRequestSchema>;
 
-/**
- * The vis variant of an `edit_panels` item targets an existing Lens or Vega
- * panel by id. The existing panel determines the renderer, while chartType is
- * an optional instruction for changing or preserving its visual form.
- */
-export const editPanelRequestInputSchema = panelRequestBaseSchema
-  .omit({ grid: true, index: true })
-  .extend({
-    panelId: z.string().max(256).describe('Existing Lens or Vega panel id to update.'),
-    query: z
-      .string()
-      .max(2048)
-      .describe('A natural language query describing how to update the panel.'),
-    chartType: z
-      .nativeEnum(SupportedChartType)
-      .optional()
-      .describe(
-        '(optional) Change the existing panel to this chart type. Omit it to let the visualization resolver interpret the edit using the existing configuration.'
-      ),
-    preserveESQL: z
-      .boolean()
-      .optional()
-      .describe(
-        '(optional) Set true to keep the existing ES|QL query of the panel instead of regenerating it, e.g. when the edit only changes presentation (title, legend, axes, colors, number formats, thresholds) or chart type. Omit it when the edit changes what the panel measures.'
-      ),
-    applyChartRules: z
-      .boolean()
-      .optional()
-      .describe(
-        '(optional) Lens only. Set true to apply all presentation defaults, replacing custom styling. Omit it to change only the requested settings. Independent of preserveESQL, so enhancement can accompany a query change.'
-      ),
-  });
+export const editPanelRequestInputSchema = z.object({
+  source: z.literal('request'),
+  panelId: z.string().max(256).describe('Existing Lens or Vega panel id.'),
+  query: z.string().max(2048).describe('Natural language description of the change.'),
+  esql: panelRequestShape.esql,
+  chartType: z
+    .nativeEnum(SupportedChartType)
+    .optional()
+    .describe('Change the chart family. Omit to keep the existing one.'),
+  preserveESQL: z
+    .boolean()
+    .optional()
+    .describe(
+      'Keep the existing ES|QL query (presentation-only or chart-type edits). Omit when the edit changes what the panel measures.'
+    ),
+  applyChartRules: z
+    .boolean()
+    .optional()
+    .describe(
+      'Lens only. Apply all presentation defaults, replacing custom styling. Independent of preserveESQL.'
+    ),
+});
 
 export type EditPanelRequestInput = z.infer<typeof editPanelRequestInputSchema>;
 

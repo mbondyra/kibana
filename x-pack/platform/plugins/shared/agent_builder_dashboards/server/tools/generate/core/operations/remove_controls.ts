@@ -15,7 +15,7 @@ export const removeControlsOperation = defineOperation({
       .array(z.string().max(256))
       .min(1)
       .max(256)
-      .describe('IDs of controls to remove (from the controls[] list in the tool result).'),
+      .describe('Control ids from the controls[] list in the tool result.'),
   }),
   handler: ({ dashboardData, operation }) => {
     const idsToRemove = new Set(operation.control_ids);

@@ -21,17 +21,15 @@ export const updatePanelLayoutsOperation = defineOperation({
     panels: z
       .array(
         z.object({
-          panelId: z.string().max(256).describe('ID of the panel to update.'),
-          grid: panelGridSchema
-            .optional()
-            .describe('New grid position/size. Omit to keep the current grid.'),
+          panelId: z.string().max(256),
+          grid: panelGridSchema.optional().describe('Omit to keep the current grid.'),
           sectionId: z
             .string()
             .max(256)
             .nullable()
             .optional()
             .describe(
-              'Move panel to an existing section id or the key of an add_section earlier in this call. null promotes to top level. Omit to keep the current location.'
+              'Section id or add_section key to move into; null promotes to the top level; omit to keep.'
             ),
         })
       )
