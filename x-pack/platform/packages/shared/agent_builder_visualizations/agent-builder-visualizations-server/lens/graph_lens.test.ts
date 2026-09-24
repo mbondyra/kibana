@@ -43,10 +43,15 @@ const createMockLogger = (): Logger =>
     warn: jest.fn(),
   } as unknown as Logger);
 
+interface AuthoringResponse {
+  authoring_note?: string;
+  config: Record<string, unknown>;
+}
+
 const asAuthoringResponse = (
   config: Record<string, unknown>,
   authoringNote = 'Created a visualization using the requested data.'
-): string => `\`\`\`json\n${JSON.stringify({ authoring_note: authoringNote, config })}\n\`\`\``;
+): AuthoringResponse => ({ authoring_note: authoringNote, config });
 
 describe('createVisualizationGraph', () => {
   const logger = createMockLogger();
@@ -57,18 +62,22 @@ describe('createVisualizationGraph', () => {
   // model via `selectModel()` for the first config attempt and for the ES|QL node, and the
   // default model via `getDefaultModel()` for config retries. Both resolve to the same
   // connector so model escalation stays out of these tests.
-  const createMockModel = (invokeResult: string = asAuthoringResponse({ type: 'metric' })) => {
+  const createMockModel = (
+    invokeResult: AuthoringResponse = asAuthoringResponse({ type: 'metric' })
+  ) => {
+    // The config node calls `withStructuredOutput(...).invoke(prompt)`, which resolves to the
+    // tool-call arguments directly (no message wrapper to parse).
+    const structuredInvoke = jest.fn().mockResolvedValue(invokeResult);
     const scopedModel = {
       connector: { connectorId: 'default-connector' },
       chatModel: {
-        // invoke resolves to a message-like object; graph_lens reads `.content` via
-        // extractTextFromMessage.
-        invoke: jest.fn().mockResolvedValue({ content: invokeResult }),
+        withStructuredOutput: jest.fn(() => ({ invoke: structuredInvoke })),
       },
     };
     return {
       getDefaultModel: jest.fn().mockResolvedValue(scopedModel),
       selectModel: jest.fn().mockResolvedValue(scopedModel),
+      structuredInvoke,
     } as const;
   };
 
@@ -106,12 +115,7 @@ describe('createVisualizationGraph', () => {
   it('returns the authoring note without storing it in the validated config', async () => {
     const authoringNote = 'Created a titleless metric showing the total log count.';
     const graph = await createVisualizationGraph(
-      createMockModel(
-        `\`\`\`json\n${JSON.stringify({
-          authoring_note: authoringNote,
-          config: { type: 'metric' },
-        })}\n\`\`\``
-      ) as never,
+      createMockModel({ authoring_note: authoringNote, config: { type: 'metric' } }) as never,
       logger,
       events,
       esClient
@@ -141,9 +145,7 @@ describe('createVisualizationGraph', () => {
 
   it('accepts a valid config when the authoring note is missing', async () => {
     const graph = await createVisualizationGraph(
-      createMockModel(
-        `\`\`\`json\n${JSON.stringify({ config: { type: 'metric' } })}\n\`\`\``
-      ) as never,
+      createMockModel({ config: { type: 'metric' } }) as never,
       logger,
       events,
       esClient
@@ -211,11 +213,10 @@ describe('createVisualizationGraph', () => {
     expect(finalState.esqlQuery).toBe(
       'FROM logs-* | WHERE response.code != 503 | STATS count = COUNT(*)'
     );
-    const { chatModel } = await model.getDefaultModel();
-    expect(chatModel.invoke).toHaveBeenCalledWith(
+    expect(model.structuredInvoke).toHaveBeenCalledWith(
       expect.arrayContaining([['human', expect.stringContaining(finalState.esqlQuery)]])
     );
-    expect(chatModel.invoke).toHaveBeenCalledWith(
+    expect(model.structuredInvoke).toHaveBeenCalledWith(
       expect.arrayContaining([
         [
           'system',
@@ -257,7 +258,7 @@ describe('createVisualizationGraph', () => {
     );
     // Config generation must not run without a query: the prompt forbids the
     // model from emitting data_source, so validation could never succeed.
-    expect((await model.getDefaultModel()).chatModel.invoke as jest.Mock).not.toHaveBeenCalled();
+    expect(model.structuredInvoke).not.toHaveBeenCalled();
   });
 
   it('injects the validated esql query, overwriting any query emitted by the config LLM', async () => {
@@ -407,8 +408,7 @@ describe('createVisualizationGraph', () => {
       firstQuery,
       secondQuery,
     ]);
-    const { chatModel } = await model.getDefaultModel();
-    expect(chatModel.invoke).toHaveBeenCalledWith(
+    expect(model.structuredInvoke).toHaveBeenCalledWith(
       expect.arrayContaining([
         ['human', expect.stringContaining(JSON.stringify(parsedExistingConfig))],
       ])

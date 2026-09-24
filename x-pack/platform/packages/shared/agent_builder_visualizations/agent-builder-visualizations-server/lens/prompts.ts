@@ -29,7 +29,6 @@ export const createGenerateConfigPrompt = ({
   nlQuery,
   esqlQuery,
   chartType,
-  schema,
   existingConfig,
   parsedExistingConfig,
   preserveESQL = false,
@@ -39,7 +38,6 @@ export const createGenerateConfigPrompt = ({
   nlQuery: string;
   esqlQuery: string;
   chartType: SupportedChartType;
-  schema: object;
   existingConfig?: string;
   parsedExistingConfig?: VisualizationConfig | null;
   preserveESQL?: boolean;
@@ -49,12 +47,7 @@ export const createGenerateConfigPrompt = ({
   const keepsExistingQueries = preserveESQL && Boolean(existingConfig);
 
   const segments = [
-    `You are a Kibana Lens visualization configuration expert. Generate a valid configuration for a ${chartType} visualization based on the provided schema and ES|QL query.
-
-Schema for ${chartType}:
-<schema type="${chartType}">
-${JSON.stringify(schema)}
-</schema>`,
+    `You are a Kibana Lens visualization configuration expert. Author a valid configuration for a ${chartType} visualization from the ES|QL query, and submit it by calling the author_visualization tool. The tool's "config" parameter is the exact schema for ${chartType}.`,
     existingConfig ? getEditRulesPromptContent(applyChartRules) : '',
     `DATA SOURCE RULES:
 1. The ES|QL query is owned and injected by the system automatically. DO NOT output a 'data_source' field, and do not restate, copy, or modify the query anywhere in the config.
@@ -64,16 +57,10 @@ ${JSON.stringify(schema)}
         : 'Bind only result columns from the resolved ES|QL query supplied with the request.'
     }
 3. For ES|QL column bindings use { column: '<esql column name>', ...other options }, and bind only columns produced by the layer's query.
-4. Follow the schema definition strictly and never add properties it does not define. It intentionally omits 'data_source'; never add it.`,
+4. Follow the config schema strictly and never add properties it does not define. It intentionally omits 'data_source'; never add it.`,
     getChartTypeConfigPromptContent(chartType),
     getColorConfigPromptContent(chartType, parsedExistingConfig),
-    `Return ONLY a JSON object wrapped in a markdown code block. The "authoring_note" must be one factual sentence describing what the final chart measures, its breakdown, and notable presentation choices. Do not include reasoning. The "config" must contain only the Lens configuration:
-\`\`\`json
-{
-  "authoring_note": "One-sentence description of the authored chart",
-  "config": { ... }
-}
-\`\`\``,
+    `Call the author_visualization tool exactly once. "authoring_note" is one factual sentence describing what the final chart measures, its breakdown, and notable presentation choices, without reasoning. "config" contains only the Lens configuration.`,
     additionalContext ?? '',
   ];
 

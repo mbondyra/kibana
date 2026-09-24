@@ -15,7 +15,6 @@ describe('Lens config prompt', () => {
         nlQuery: 'Improve this chart',
         esqlQuery: 'FROM logs-* | STATS count = COUNT(*)',
         chartType: SupportedChartType.XY,
-        schema: {},
         existingConfig: JSON.stringify({ type: 'xy', layers: [] }),
         applyChartRules,
         preserveESQL: true,
@@ -49,7 +48,6 @@ describe('Lens config prompt', () => {
       nlQuery: 'count of logs',
       esqlQuery: 'FROM logs-* | STATS count = COUNT(*)',
       chartType: SupportedChartType.Metric,
-      schema: {},
     });
 
     expect(system).toEqual(['system', expect.not.stringContaining('EDIT RULES')]);
@@ -72,7 +70,6 @@ describe('Lens config prompt', () => {
       nlQuery,
       esqlQuery: 'FROM logs-* | STATS hosts = COUNT_DISTINCT(host)',
       chartType: SupportedChartType.Metric,
-      schema: {},
       existingConfig,
       preserveESQL: true,
       applyChartRules: true,
@@ -93,7 +90,6 @@ describe('Lens config prompt', () => {
       nlQuery: 'Apply presentation defaults.',
       esqlQuery: 'FROM logs-* | STATS hosts = COUNT_DISTINCT(host)',
       chartType,
-      schema: {},
     });
 
     expect(system).toEqual(['system', expect.stringContaining(expected)]);
@@ -105,7 +101,6 @@ describe('Lens config prompt', () => {
       nlQuery: 'traffic by browser',
       esqlQuery: 'FROM logs-* | STATS count = COUNT(*) BY browser',
       chartType: SupportedChartType.Pie,
-      schema: {},
     });
 
     expect(system).toEqual(['system', expect.stringContaining('default palette')]);

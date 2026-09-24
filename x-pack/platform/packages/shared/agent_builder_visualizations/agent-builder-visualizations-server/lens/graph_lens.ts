@@ -9,7 +9,6 @@ import type { ModelProvider, ToolEventEmitter } from '@kbn/agent-builder-server'
 import type { Logger } from '@kbn/logging';
 import { type IScopedClusterClient } from '@kbn/core-elasticsearch-server';
 import type { SupportedChartType } from '@kbn/agent-builder-common/tools/tool_result';
-import { extractTextFromMessage } from '../utils/extract_text_from_message';
 import { generateVisualizationEsql } from '../shared/generate_visualization_esql';
 import { chartTypeRegistry } from './chart_type_registry';
 import type { VisualizationConfig } from './chart_type_registry';
@@ -28,32 +27,49 @@ import {
 } from './actions_lens';
 import { createGenerateConfigPrompt } from './prompts';
 
-// Regex to extract JSON from markdown code blocks
-const INLINE_JSON_REGEX = /```(?:json)?\s*([\s\S]*?)\s*```/gm;
+const AUTHOR_VISUALIZATION_TOOL = 'author_visualization';
 
-const parseConfigAuthoringResponse = (
-  responseText: string
-): { config: Record<string, unknown>; authoringNote?: string } => {
-  const jsonMatches = Array.from(responseText.matchAll(INLINE_JSON_REGEX));
-  const jsonText = jsonMatches.length > 0 ? jsonMatches[0][1].trim() : responseText.trim();
-  const parsed = JSON.parse(jsonText);
+// Intersected with a record because `withStructuredOutput` constrains its output type to
+// `Record<string, any>`, which a plain interface does not satisfy.
+type ConfigAuthoringOutput = Record<string, unknown> & {
+  authoring_note?: string;
+  config?: Record<string, unknown>;
+};
 
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    throw new Error('Response is not a valid JSON object');
-  }
-
-  const { config, authoring_note: authoringNote } = parsed as {
-    config?: unknown;
-    authoring_note?: unknown;
+/**
+ * Tool parameters the model must fill: the authoring note plus the chart-type config schema.
+ * The provider enforces this shape through a forced tool call, which is far more reliable than
+ * free-text JSON, especially for small models. Any `$defs` of the config schema are hoisted to
+ * the root so its `#/$defs/...` references keep resolving.
+ */
+const buildConfigAuthoringOutputSchema = (configSchema: object): Record<string, unknown> => {
+  const { $defs, ...config } = configSchema as { $defs?: Record<string, unknown> };
+  return {
+    type: 'object',
+    description: 'Submit the authored Lens visualization configuration.',
+    properties: {
+      authoring_note: {
+        type: 'string',
+        description:
+          'One factual sentence describing what the final chart measures, its breakdown, and notable presentation choices. No reasoning.',
+      },
+      config,
+    },
+    required: ['authoring_note', 'config'],
+    additionalProperties: false,
+    ...($defs ? { $defs } : {}),
   };
+};
+
+const readConfigAuthoringOutput = (
+  output: ConfigAuthoringOutput
+): { config: Record<string, unknown>; authoringNote?: string } => {
+  const { config, authoring_note: authoringNote } = output;
   if (!config || typeof config !== 'object' || Array.isArray(config)) {
     throw new Error('Response must include a valid "config" object');
   }
   const normalizedNote = typeof authoringNote === 'string' ? authoringNote.trim() : '';
-  return {
-    config: config as Record<string, unknown>,
-    ...(normalizedNote ? { authoringNote: normalizedNote } : {}),
-  };
+  return { config, ...(normalizedNote ? { authoringNote: normalizedNote } : {}) };
 };
 
 const validateConfigForChartType = (
@@ -228,7 +244,6 @@ export const createVisualizationGraph = async (
       nlQuery: state.nlQuery,
       esqlQuery,
       chartType: state.chartType,
-      schema: state.schema,
       existingConfig: state.existingConfig,
       parsedExistingConfig: state.parsedExistingConfig,
       preserveESQL: state.preserveESQL,
@@ -243,10 +258,14 @@ export const createVisualizationGraph = async (
 
     let action: GenerateConfigAction;
     try {
-      // Invoke model without schema validation
-      const response = await model.chatModel.invoke(prompt);
-      const responseText = extractTextFromMessage(response);
-      const { config: configResponse, authoringNote } = parseConfigAuthoringResponse(responseText);
+      // The tool call constrains the shape; chart-type validation still runs in the next node.
+      const output = await model.chatModel
+        .withStructuredOutput<ConfigAuthoringOutput>(
+          buildConfigAuthoringOutputSchema(state.schema),
+          { name: AUTHOR_VISUALIZATION_TOOL }
+        )
+        .invoke(prompt);
+      const { config: configResponse, authoringNote } = readConfigAuthoringOutput(output);
 
       // Pin the ES|QL query before config validation. ES|QL generation owns the query,
       // and config generation only binds columns from it. Preserving ES|QL keeps
