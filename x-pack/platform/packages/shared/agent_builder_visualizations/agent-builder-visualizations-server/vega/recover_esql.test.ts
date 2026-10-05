@@ -32,6 +32,23 @@ describe('extractEsqlFromSpec', () => {
     expect(extractEsqlFromSpec({ data: { values: [{ a: 1 }] } })).toBeUndefined();
   });
 
+  it('recovers the query when the spec JSON has a trailing comma', () => {
+    // A stored spec can fail JSON.parse (trailing comma) and then an edit
+    // regenerates ES|QL from scratch, dropping the aggregation.
+    const spec = `{
+      "data": {
+        "url": {
+          "%type%": "esql",
+          "query": "FROM kibana_sample_data_logs | STATS count = COUNT(*) BY bucket = TBUCKET(100, ?_tstart, ?_tend), \`response.keyword\`",
+        }
+      }
+    }`;
+
+    expect(extractEsqlFromSpec(spec)).toBe(
+      'FROM kibana_sample_data_logs | STATS count = COUNT(*) BY bucket = TBUCKET(100, ?_tstart, ?_tend), `response.keyword`'
+    );
+  });
+
   it('returns undefined for empty, malformed, or blank-query input', () => {
     expect(extractEsqlFromSpec(undefined)).toBeUndefined();
     expect(extractEsqlFromSpec(null)).toBeUndefined();
