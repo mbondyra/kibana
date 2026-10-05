@@ -10,7 +10,6 @@ export const spec: Record<string, unknown> = {
   data: {
     url: {
       '%type%': 'esql',
-      '%timefield%': '@timestamp',
       query:
         'FROM traces-* | WHERE @timestamp >= ?_tstart AND @timestamp < ?_tend | STATS p95_latency = PERCENTILE(latency_ms, 95) BY service.name, time_bucket = BUCKET(@timestamp, 1 hour) | SORT time_bucket ASC',
     },

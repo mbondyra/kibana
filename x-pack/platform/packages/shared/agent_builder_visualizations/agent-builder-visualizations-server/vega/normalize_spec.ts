@@ -10,8 +10,12 @@ import type { EsqlEsqlColumnInfo } from '@elastic/elasticsearch/lib/api/types';
 /** Vega-Lite schema the generator targets. */
 export const VEGA_LITE_SCHEMA = 'https://vega.github.io/schema/vega-lite/v6.json';
 
-/** Default event-time field assumed when the query is time-aware but no date column is known. */
-const DEFAULT_TIMEFIELD = '@timestamp';
+/**
+ * Index time field Vega resolves on its own when `%timefield%` is omitted.
+ * Writing it into the spec is unnecessary, and a wrong explicit value overrides
+ * that index lookup.
+ */
+const INDEX_TIME_FIELD = '@timestamp';
 
 /**
  * Composite (multi-) view keys. Vega-Lite's `autosize: "fit"` only works for
@@ -36,10 +40,6 @@ interface EsqlDataUrl {
 const usesTimeParams = (query: string): boolean =>
   query.includes('?_tstart') || query.includes('?_tend');
 
-/** First date-typed result column, used as a last-resort `%timefield%`. */
-const findDateColumn = (columns: EsqlEsqlColumnInfo[] | undefined): string | undefined =>
-  columns?.find((column) => column.type === 'date' || column.type === 'date_nanos')?.name;
-
 // A source field token: a name that starts with a letter or `@` (so numeric
 // literals like the `75` in `TBUCKET(75, …)` are not mistaken for a field),
 // optionally wrapped in backticks.
@@ -61,26 +61,28 @@ const extractSourceTimeField = (query: string): string | undefined =>
   query.match(WHERE_TIME_FIELD)?.[1] ?? query.match(BUCKET_TIME_FIELD)?.[1];
 
 /**
- * Build the inline ES|QL data url for Kibana's Vega renderer. A `%timefield%` is
- * added only when the query is time-aware, because Kibana's renderer only binds
- * `?_tstart`/`?_tend` when a `%timefield%` is present; without it a time-aware
- * query is sent with unbound params and fails ("Unknown query parameter").
+ * Build the inline ES|QL data url for Kibana's Vega renderer.
  *
- * The timefield is the raw source field the query filters/buckets on, recovered
- * from the query text rather than from the result columns — a bucketed date
- * result column is an alias (e.g. `Date`), not a field Kibana can bind a time
- * range to.
+ * `%timefield%` is the mapped source field of the DSL time filter. It is taken
+ * from the query text (`WHERE` / `BUCKET`), never from a result column: an
+ * alias such as `time_bucket` is not an index field. `@timestamp` is omitted so
+ * Vega resolves the index time field itself. Time params are bound whether or
+ * not `%timefield%` is set.
  */
 const buildEsqlDataUrl = ({
   esqlQuery,
-  columns,
   timefield,
-}: Pick<NormalizeVegaSpecParams, 'esqlQuery' | 'columns' | 'timefield'>): EsqlDataUrl => {
+}: Pick<NormalizeVegaSpecParams, 'esqlQuery' | 'timefield'>): EsqlDataUrl => {
+  const mappedSourceField = usesTimeParams(esqlQuery)
+    ? extractSourceTimeField(esqlQuery)
+    : undefined;
+  // An explicit timefield counts only when it is that mapped source field.
+  // A result-column alias, or `@timestamp`, is not written into the spec.
+  const requested = mappedSourceField ?? timefield;
   const effectiveTimefield =
-    timefield ??
-    (usesTimeParams(esqlQuery)
-      ? extractSourceTimeField(esqlQuery) ?? findDateColumn(columns) ?? DEFAULT_TIMEFIELD
-      : undefined);
+    requested && requested === mappedSourceField && requested !== INDEX_TIME_FIELD
+      ? requested
+      : undefined;
 
   return {
     '%type%': 'esql',
@@ -230,9 +232,12 @@ interface NormalizeVegaSpecParams {
   spec: Record<string, unknown>;
   /** Canonical ES|QL query that owns the spec's data. */
   esqlQuery: string;
-  /** Result columns of the query, used to pick a date `%timefield%`. */
+  /** Result columns of the query. Not consulted for `%timefield%`. */
   columns?: EsqlEsqlColumnInfo[];
-  /** Explicit event-time field; overrides the column-based detection. */
+  /**
+   * Explicit event-time field. Emitted only when it is the mapped source field
+   * the query filters or buckets, and it is not `@timestamp`.
+   */
   timefield?: string;
 }
 
@@ -253,12 +258,11 @@ interface NormalizeVegaSpecParams {
 export const normalizeVegaSpec = ({
   spec,
   esqlQuery,
-  columns,
   timefield,
 }: NormalizeVegaSpecParams): Record<string, unknown> => {
   const { width, height, data, autosize, ...rest } = resolveSharedLegendConflicts(spec);
 
-  const url = buildEsqlDataUrl({ esqlQuery, columns, timefield });
+  const url = buildEsqlDataUrl({ esqlQuery, timefield });
 
   const normalized: Record<string, unknown> = {
     ...stripNestedDataSources(rest),
