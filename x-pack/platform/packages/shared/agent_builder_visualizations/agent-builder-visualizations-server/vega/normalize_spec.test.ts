@@ -255,13 +255,13 @@ describe('normalizeVegaSpec', () => {
     }
   );
 
-  it('escapes dotted field references against the injected columns', () => {
+  it('leaves dotted field names unchanged', () => {
     const result = normalizeVegaSpec({
       spec: { mark: 'bar', encoding: { x: { field: 'host.name' } } },
       esqlQuery: ESQL,
     });
 
-    expect(result.encoding).toEqual({ x: { field: 'host\\.name' } });
+    expect(result.encoding).toEqual({ x: { field: 'host.name' } });
   });
 
   it('preserves unrelated spec properties and does not mutate the input', () => {

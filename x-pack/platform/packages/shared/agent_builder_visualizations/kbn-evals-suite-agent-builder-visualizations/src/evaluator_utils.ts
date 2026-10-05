@@ -21,9 +21,9 @@ export const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /**
- * Vega-Lite reads `.`, `[` and `]` in an encoding `field` as nested access, so a
- * flat ES|QL column such as `host.name` must be written `host\\.name`. Returns the
- * column name the field refers to.
+ * Returns the ES|QL column a Vega-Lite `field` refers to. A stored spec may still
+ * contain a backslash escape from older output; Vega-Lite compiles either form
+ * to the same flat column.
  */
 export const unescapeVegaField = (field: string): string => field.replace(/\\([.[\]])/g, '$1');
 

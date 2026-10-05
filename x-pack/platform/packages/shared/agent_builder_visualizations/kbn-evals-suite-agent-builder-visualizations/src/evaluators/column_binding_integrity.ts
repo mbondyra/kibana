@@ -20,11 +20,11 @@ export interface ColumnBinding {
   path: string;
   column: string;
   role: BindingRole;
-  /** Vega field with an unescaped `.`, `[` or `]`, which Vega-Lite reads as nested access. */
-  nestedVegaAccess?: boolean;
+  /** The Vega field backslash-escaped a dot or bracket in the column name. */
+  escaped?: boolean;
 }
 
-export type BindingStatus = 'ok' | 'missing' | 'non_numeric_measure' | 'nested_vega_access';
+export type BindingStatus = 'ok' | 'missing' | 'non_numeric_measure' | 'escaped_field';
 
 export interface BindingCheck extends ColumnBinding {
   status: BindingStatus;
@@ -133,14 +133,14 @@ interface VegaScope {
   hasPivot: boolean;
 }
 
-// A `.`, `[` or `]` not preceded by a backslash.
-const UNESCAPED_VEGA_ACCESSOR = /(^|[^\\])[.[\]]/;
-
 const vegaRoleFor = (definition: Record<string, unknown>): BindingRole =>
   definition.type === 'quantitative' &&
   !(typeof definition.aggregate === 'string' && VEGA_COUNTING_AGGREGATES.has(definition.aggregate))
     ? 'measure'
     : 'other';
+
+/** A backslash before `.`, `[` or `]` in a Vega-Lite field string. */
+const ESCAPED_VEGA_FIELD = /\\(?:\.|\[|\])/;
 
 function collectVegaBindings(spec: unknown): ColumnBinding[] {
   if (typeof spec !== 'string') {
@@ -180,7 +180,7 @@ function walkVegaView(
       path: definitionPath,
       column,
       role: vegaRoleFor(definition),
-      ...(UNESCAPED_VEGA_ACCESSOR.test(definition.field) ? { nestedVegaAccess: true } : {}),
+      ...(ESCAPED_VEGA_FIELD.test(definition.field) ? { escaped: true } : {}),
     });
   };
 
@@ -276,8 +276,8 @@ export function checkColumnBindings(
     if (!column) {
       return { ...binding, status: 'missing' };
     }
-    if (binding.nestedVegaAccess) {
-      return { ...binding, status: 'nested_vega_access', columnType: column.type };
+    if (binding.escaped) {
+      return { ...binding, status: 'escaped_field', columnType: column.type };
     }
     if (binding.role === 'measure' && !isNumericColumn(column)) {
       return { ...binding, status: 'non_numeric_measure', columnType: column.type };
@@ -290,8 +290,8 @@ const describeFailure = (check: BindingCheck): string => {
   switch (check.status) {
     case 'missing':
       return `${check.path}: column "${check.column}" is not in the query result`;
-    case 'nested_vega_access':
-      return `${check.path}: Vega field "${check.column}" is not escaped, so Vega-Lite reads it as a nested path instead of the flat column`;
+    case 'escaped_field':
+      return `${check.path}: Vega field "${check.column}" is backslash-escaped; reference the column name directly`;
     default:
       return `${check.path}: measure "${check.column}" is ${check.columnType}, not numeric`;
   }
@@ -301,9 +301,11 @@ const describeFailure = (check: BindingCheck): string => {
  * CODE evaluator: executes each visualization's ES|QL and checks that every
  * column the Lens config (or Vega encoding) binds to exists in the result, and
  * that measure roles (Lens measures, quantitative Vega channels) bind numeric
- * columns. Catches configs that parse against the schema but reference columns
- * the query never produces. A chart that binds no column at all scores 0; only
- * a Vega spec without any encoding field is left unscored.
+ * columns. A Vega field that backslash-escapes a dotted column name fails:
+ * Vega-Lite compiles the plain name. Catches configs that parse against the
+ * schema but reference columns the query never produces. A chart that binds no
+ * column at all scores 0; only a Vega spec without any encoding field is left
+ * unscored.
  */
 export function createColumnBindingIntegrityEvaluator<
   TExample extends Example = Example,

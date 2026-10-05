@@ -168,7 +168,7 @@ describe('collectColumnBindings', () => {
     ]);
   });
 
-  it('marks unescaped dotted Vega fields as nested access', () => {
+  it('reads a dotted Vega field as the flat column name and marks a backslash escape', () => {
     expect(
       collectColumnBindings({
         esql: 'FROM a',
@@ -182,28 +182,23 @@ describe('collectColumnBindings', () => {
             },
           }),
         },
-      }).map(({ column, nestedVegaAccess }) => [column, nestedVegaAccess])
+      }).map(({ column, escaped }) => [column, escaped])
     ).toEqual([
-      ['machine.os.keyword', undefined],
       ['machine.os.keyword', true],
+      ['machine.os.keyword', undefined],
     ]);
   });
 });
 
 describe('checkColumnBindings', () => {
-  it('flags missing columns, non-numeric measures, and nested Vega access, tolerating backticks', () => {
+  it('flags missing columns and non-numeric measures, tolerating backticks and dotted names', () => {
     const checks = checkColumnBindings(
       [
         { path: 'x', column: '`response.keyword`', role: 'dimension' },
         { path: 'y[0]', column: 'count', role: 'measure' },
         { path: 'y[1]', column: 'response.keyword', role: 'measure' },
         { path: 'breakdown_by', column: 'host', role: 'dimension' },
-        {
-          path: 'spec.encoding.x',
-          column: 'response.keyword',
-          role: 'other',
-          nestedVegaAccess: true,
-        },
+        { path: 'spec.encoding.x', column: 'response.keyword', role: 'other' },
       ],
       RESULT_COLUMNS
     );
@@ -213,7 +208,22 @@ describe('checkColumnBindings', () => {
       ['y[0]', 'ok'],
       ['y[1]', 'non_numeric_measure'],
       ['breakdown_by', 'missing'],
-      ['spec.encoding.x', 'nested_vega_access'],
+      ['spec.encoding.x', 'ok'],
+    ]);
+  });
+
+  it('flags a Vega field that backslash-escapes a result column', () => {
+    const checks = checkColumnBindings(
+      [
+        { path: 'spec.encoding.x', column: 'response.keyword', role: 'other', escaped: true },
+        { path: 'spec.encoding.y', column: 'count', role: 'measure' },
+      ],
+      RESULT_COLUMNS
+    );
+
+    expect(checks.map(({ path, status }) => [path, status])).toEqual([
+      ['spec.encoding.x', 'escaped_field'],
+      ['spec.encoding.y', 'ok'],
     ]);
   });
 });
@@ -267,6 +277,62 @@ describe('createColumnBindingIntegrityEvaluator', () => {
     expect(result.explanation).toBe(
       '0/4 column binding(s) resolve. ES|QL execution failed: parse error'
     );
+  });
+
+  it('scores below 1 when a Vega spec escapes a dotted column name', async () => {
+    const result = await evaluate(
+      [
+        {
+          esql: 'FROM logs | STATS count = COUNT(*) BY response.keyword',
+          renderer: 'vega',
+          visualization: {
+            spec: JSON.stringify({
+              mark: 'bar',
+              encoding: {
+                x: { field: 'response\\.keyword', type: 'nominal' },
+                y: { field: 'count', type: 'quantitative' },
+              },
+            }),
+          },
+        },
+      ],
+      buildEsClient([
+        { name: 'count', type: 'long' },
+        { name: 'response.keyword', type: 'keyword' },
+      ])
+    );
+
+    expect(result.score).toBe(0.5);
+    expect(result.label).toBe('partial');
+    expect(result.explanation).toContain('response.keyword');
+    expect(result.explanation).toContain('backslash-escaped');
+  });
+
+  it('scores 1 when a Vega spec uses the dotted column name directly', async () => {
+    const result = await evaluate(
+      [
+        {
+          esql: 'FROM logs | STATS count = COUNT(*) BY response.keyword',
+          renderer: 'vega',
+          visualization: {
+            spec: JSON.stringify({
+              mark: 'bar',
+              encoding: {
+                x: { field: 'response.keyword', type: 'nominal' },
+                y: { field: 'count', type: 'quantitative' },
+              },
+            }),
+          },
+        },
+      ],
+      buildEsClient([
+        { name: 'count', type: 'long' },
+        { name: 'response.keyword', type: 'keyword' },
+      ])
+    );
+
+    expect(result.score).toBe(1);
+    expect(result.label).toBe('bound');
   });
 
   it('scores 0 when no visualization was produced', async () => {

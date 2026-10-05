@@ -6,7 +6,6 @@
  */
 
 import type { EsqlEsqlColumnInfo } from '@elastic/elasticsearch/lib/api/types';
-import { escapeVegaFieldReferences } from './field_escaping';
 
 /** Vega-Lite schema the generator targets. */
 export const VEGA_LITE_SCHEMA = 'https://vega.github.io/schema/vega-lite/v6.json';
@@ -246,7 +245,6 @@ interface NormalizeVegaSpecParams {
  * - drop fixed top-level sizing so the spec fills its container (using `fit`
  *   autosize for single/layered views; composite views are sized by Kibana
  *   without autosize, which `fit` does not support), and
- * - escape dotted ES|QL column names in field references, and
  * - drop conflicting `legend: null`/`false` entries on shared-scale layers
  *   (otherwise Vega-Lite warns `Conflicting legend property "disable"`).
  *
@@ -271,5 +269,5 @@ export const normalizeVegaSpec = ({
     data: { url },
   };
 
-  return escapeVegaFieldReferences(normalized);
+  return normalized;
 };

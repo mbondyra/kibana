@@ -223,12 +223,12 @@ describe('reference example specs (loaded on demand)', () => {
     }
   });
 
-  it('escapes dotted field references and filters time on the raw source field', async () => {
+  it('uses column names as field references and filters time on the raw source field', async () => {
     for (const example of VEGA_REFERENCE_EXAMPLES) {
       const spec = await example.load();
       const serialized = JSON.stringify(spec);
-      // Any dotted field used in an encoding is backslash-escaped, never left raw.
-      expect(serialized).not.toMatch(/"field":\s*"[a-z_]+\.[a-z_]+"/i);
+      // Vega-Lite flattens a dotted field itself. A stored escape is not required.
+      expect(serialized).not.toMatch(/"field":"[^"]*\\\\/);
 
       const url = (spec.data as { url?: Record<string, unknown> }).url ?? {};
       const query = String(url.query ?? '');

@@ -26,9 +26,9 @@ export const spec: Record<string, unknown> = {
     },
     y: { field: 'throughput', type: 'quantitative', title: 'Throughput', scale: { zero: false } },
     size: { field: 'error_count', type: 'quantitative', title: 'Errors' },
-    color: { field: 'host\\.name', type: 'nominal', title: 'Host' },
+    color: { field: 'host.name', type: 'nominal', title: 'Host' },
     tooltip: [
-      { field: 'host\\.name', type: 'nominal', title: 'Host' },
+      { field: 'host.name', type: 'nominal', title: 'Host' },
       { field: 'avg_latency', type: 'quantitative', title: 'Avg Latency', format: '.1f' },
       { field: 'throughput', type: 'quantitative', title: 'Throughput' },
       { field: 'error_count', type: 'quantitative', title: 'Errors' },
