@@ -5,6 +5,17 @@
  * 2.0.
  */
 
+/** Drop commas before `}` or `]` so a spec the Vega editor saved still parses. */
+const TRAILING_COMMA = /,(\s*[}\]])/g;
+
+const parseSpecJson = (text: string): unknown => {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return JSON.parse(text.replace(TRAILING_COMMA, '$1'));
+  }
+};
+
 /** Read the ES|QL query from a Kibana Vega-Lite `data.url` object, if it is one. */
 const esqlQueryFromUrl = (url: unknown): string | undefined => {
   if (!url || typeof url !== 'object') {
@@ -35,7 +46,7 @@ export const extractEsqlFromSpec = (
 
   let parsed: unknown;
   try {
-    parsed = typeof spec === 'string' ? JSON.parse(spec) : spec;
+    parsed = typeof spec === 'string' ? parseSpecJson(spec) : spec;
   } catch {
     return undefined;
   }
