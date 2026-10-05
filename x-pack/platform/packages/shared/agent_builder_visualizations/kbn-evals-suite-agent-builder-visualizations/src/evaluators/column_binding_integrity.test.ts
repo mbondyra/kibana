@@ -168,7 +168,7 @@ describe('collectColumnBindings', () => {
     ]);
   });
 
-  it('reads a dotted Vega field as the flat column name and marks a backslash escape', () => {
+  it('reads a dotted Vega field as the flat column name and marks a missing escape', () => {
     expect(
       collectColumnBindings({
         esql: 'FROM a',
@@ -182,10 +182,10 @@ describe('collectColumnBindings', () => {
             },
           }),
         },
-      }).map(({ column, escaped }) => [column, escaped])
+      }).map(({ column, unescaped }) => [column, unescaped])
     ).toEqual([
-      ['machine.os.keyword', true],
       ['machine.os.keyword', undefined],
+      ['machine.os.keyword', true],
     ]);
   });
 });
@@ -212,17 +212,17 @@ describe('checkColumnBindings', () => {
     ]);
   });
 
-  it('flags a Vega field that backslash-escapes a result column', () => {
+  it('flags a Vega field that leaves a dotted column name unescaped', () => {
     const checks = checkColumnBindings(
       [
-        { path: 'spec.encoding.x', column: 'response.keyword', role: 'other', escaped: true },
+        { path: 'spec.encoding.x', column: 'response.keyword', role: 'other', unescaped: true },
         { path: 'spec.encoding.y', column: 'count', role: 'measure' },
       ],
       RESULT_COLUMNS
     );
 
     expect(checks.map(({ path, status }) => [path, status])).toEqual([
-      ['spec.encoding.x', 'escaped_field'],
+      ['spec.encoding.x', 'unescaped_field'],
       ['spec.encoding.y', 'ok'],
     ]);
   });
@@ -279,11 +279,11 @@ describe('createColumnBindingIntegrityEvaluator', () => {
     );
   });
 
-  it('scores below 1 when a Vega spec escapes a dotted column name', async () => {
+  it('scores 1 when a Vega field escapes a dotted column and the query does not', async () => {
     const result = await evaluate(
       [
         {
-          esql: 'FROM logs | STATS count = COUNT(*) BY response.keyword',
+          esql: 'FROM logs | WHERE response.keyword != "403" | STATS count = COUNT(*) BY response.keyword',
           renderer: 'vega',
           visualization: {
             spec: JSON.stringify({
@@ -302,13 +302,11 @@ describe('createColumnBindingIntegrityEvaluator', () => {
       ])
     );
 
-    expect(result.score).toBe(0.5);
-    expect(result.label).toBe('partial');
-    expect(result.explanation).toContain('response.keyword');
-    expect(result.explanation).toContain('backslash-escaped');
+    expect(result.score).toBe(1);
+    expect(result.label).toBe('bound');
   });
 
-  it('scores 1 when a Vega spec uses the dotted column name directly', async () => {
+  it('scores below 1 when a Vega field leaves a dotted column name unescaped', async () => {
     const result = await evaluate(
       [
         {
@@ -331,8 +329,10 @@ describe('createColumnBindingIntegrityEvaluator', () => {
       ])
     );
 
-    expect(result.score).toBe(1);
-    expect(result.label).toBe('bound');
+    expect(result.score).toBe(0.5);
+    expect(result.label).toBe('partial');
+    expect(result.explanation).toContain('response.keyword');
+    expect(result.explanation).toContain('must escape dots');
   });
 
   it('scores 0 when no visualization was produced', async () => {

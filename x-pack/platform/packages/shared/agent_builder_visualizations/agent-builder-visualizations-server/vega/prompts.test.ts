@@ -30,10 +30,11 @@ describe('createAuthorVegaSpecPrompt', () => {
     expect(text).toContain('never raw Vega');
   });
 
-  it('does not tell the model to escape dots in field names', () => {
+  it('tells the model to escape dots in field names but not in the query', () => {
     const text = systemText('any chart');
-    expect(text).not.toContain('DOTS IN FIELD NAMES');
-    expect(text).not.toContain('backslash-escape');
+    expect(text).toContain('DOTS IN FIELD NAMES');
+    expect(text).toContain('response\\.keyword');
+    expect(text).toContain('Never put a backslash in the query');
   });
 
   it('guides faceting: columns as a sibling and explicit per-cell sizing', () => {

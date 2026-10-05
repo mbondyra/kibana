@@ -14,7 +14,7 @@ export const spec: Record<string, unknown> = {
         'FROM traces-* | WHERE @timestamp >= ?_tstart AND @timestamp < ?_tend | STATS p95_latency = PERCENTILE(latency_ms, 95) BY service.name, time_bucket = BUCKET(@timestamp, 1 hour) | SORT time_bucket ASC',
     },
   },
-  facet: { field: 'service.name', type: 'nominal', header: { title: 'Service' } },
+  facet: { field: 'service\\.name', type: 'nominal', header: { title: 'Service' } },
   columns: 3,
   spec: {
     width: 200,

@@ -260,13 +260,13 @@ describe('createVegaGraph', () => {
     expect(spec.data.url.query).toBe(PROVIDED_ESQL);
   });
 
-  it('keeps dotted field names produced by the model', async () => {
+  it('escapes dotted field references produced by the model', async () => {
     invoke.mockResolvedValue(asCodeBlock({ mark: 'bar', encoding: { x: { field: 'host.name' } } }));
 
     const state = await run({ esqlQuery: PROVIDED_ESQL });
 
     const spec = JSON.parse(state.spec!);
-    expect(spec.encoding.x.field).toBe('host.name');
+    expect(spec.encoding.x.field).toBe('host\\.name');
   });
 
   it('retries authoring after malformed output and then succeeds', async () => {

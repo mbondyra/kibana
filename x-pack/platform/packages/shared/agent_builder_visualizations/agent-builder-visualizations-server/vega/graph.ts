@@ -316,7 +316,7 @@ export const createVegaGraph = async (
       }
 
       // Deterministic hardening: pin schema, bind the canonical ES|QL data
-      // source, and strip fixed sizing.
+      // source, strip fixed sizing, and escape dotted field references.
       const normalized = normalizeVegaSpec({
         spec: lastAuthor.spec,
         esqlQuery: state.esqlQuery,

@@ -107,6 +107,10 @@ FACETING / SMALL MULTIPLES:
 - Build small multiples with the facet operator: a top-level "facet" (the field to split on) plus a "spec" (the per-cell chart). Put "columns" (the grid width, e.g. 4) as a SIBLING of "facet"/"spec" at the TOP LEVEL — NOT inside the "facet" object, where Vega-Lite silently ignores it and lays every cell out in one endless, unreadable row. Keep facet styling like "header" inside "facet".
 - Container auto-sizing does NOT apply to faceted (or repeated / concat) specs, so set explicit "width" and "height" INSIDE the inner "spec" (per-cell size, e.g. "width": 150, "height": 100). This is the one case where you DO set width/height — on the inner unit spec, never at the top level.
 - Only facet a low-cardinality field. If the field can take many values, pre-limit the ES|QL query (e.g. keep the top-N with SORT + LIMIT, or a WHERE filter) so the grid stays readable instead of producing hundreds of tiny cells.
+
+DOTS IN FIELD NAMES:
+- Vega treats an unescaped dot in a "field" string as nested-object access, but ES|QL columns are flat. Backslash-escape every dot in "field" strings ("response\\.keyword", "host\\.name").
+- The ES|QL query must keep the raw name (response.keyword). Never put a backslash in the query.
 ${referenceExamples ?? ''}
 Your task is to author the visualization specification for the following request:
 

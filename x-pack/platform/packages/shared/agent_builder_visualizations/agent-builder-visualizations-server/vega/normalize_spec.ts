@@ -6,6 +6,7 @@
  */
 
 import type { EsqlEsqlColumnInfo } from '@elastic/elasticsearch/lib/api/types';
+import { escapeVegaFieldReferences, unescapeEsqlQuery } from './field_escaping';
 
 /** Vega-Lite schema the generator targets. */
 export const VEGA_LITE_SCHEMA = 'https://vega.github.io/schema/vega-lite/v6.json';
@@ -73,9 +74,9 @@ const buildEsqlDataUrl = ({
   esqlQuery,
   timefield,
 }: Pick<NormalizeVegaSpecParams, 'esqlQuery' | 'timefield'>): EsqlDataUrl => {
-  const mappedSourceField = usesTimeParams(esqlQuery)
-    ? extractSourceTimeField(esqlQuery)
-    : undefined;
+  // Vega field escapes (`response\.keyword`) are invalid in ES|QL.
+  const query = unescapeEsqlQuery(esqlQuery);
+  const mappedSourceField = usesTimeParams(query) ? extractSourceTimeField(query) : undefined;
   // An explicit timefield counts only when it is that mapped source field.
   // A result-column alias, or `@timestamp`, is not written into the spec.
   const requested = mappedSourceField ?? timefield;
@@ -89,7 +90,7 @@ const buildEsqlDataUrl = ({
     // Always apply the dashboard context (time range + filters) so the panel
     // stays in sync with the dashboard the chart is embedded in.
     '%context%': true,
-    query: esqlQuery,
+    query,
     ...(effectiveTimefield ? { '%timefield%': effectiveTimefield } : {}),
   };
 };
@@ -249,7 +250,9 @@ interface NormalizeVegaSpecParams {
  *   otherwise shadow the injected root source,
  * - drop fixed top-level sizing so the spec fills its container (using `fit`
  *   autosize for single/layered views; composite views are sized by Kibana
- *   without autosize, which `fit` does not support), and
+ *   without autosize, which `fit` does not support),
+ * - escape dots in Vega `field` names (`response.keyword` → `response\.keyword`)
+ *   while leaving the ES|QL query on the raw field name, and
  * - drop conflicting `legend: null`/`false` entries on shared-scale layers
  *   (otherwise Vega-Lite warns `Conflicting legend property "disable"`).
  *
@@ -273,5 +276,5 @@ export const normalizeVegaSpec = ({
     data: { url },
   };
 
-  return normalized;
+  return escapeVegaFieldReferences(normalized);
 };
