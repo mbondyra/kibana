@@ -11,7 +11,6 @@ export const spec: Record<string, unknown> = {
   data: {
     url: {
       '%type%': 'esql',
-      '%timefield%': '@timestamp',
       query:
         'FROM ci-pipelines-* | WHERE @timestamp >= ?_tstart AND @timestamp < ?_tend | STATS start_time = MIN(@timestamp), end_time = MAX(@timestamp) BY stage | SORT start_time ASC',
     },

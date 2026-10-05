@@ -320,7 +320,6 @@ export const createVegaGraph = async (
       const normalized = normalizeVegaSpec({
         spec: lastAuthor.spec,
         esqlQuery: state.esqlQuery,
-        columns: state.columns,
       });
 
       action = {

@@ -234,7 +234,7 @@ describe('reference example specs (loaded on demand)', () => {
       const query = String(url.query ?? '');
       if (query.includes('?_tstart')) {
         expect(query).toMatch(/WHERE @timestamp >= \?_tstart AND @timestamp < \?_tend/);
-        expect(url['%timefield%']).toBe('@timestamp');
+        expect(url['%timefield%']).toBeUndefined();
       }
     }
   });
