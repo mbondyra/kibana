@@ -223,15 +223,16 @@ describe('reference example specs (loaded on demand)', () => {
     }
   });
 
-  it('escapes dotted field references and filters time on the raw source field', async () => {
+  it('escapes dotted field references and keeps the query on raw field names', async () => {
     for (const example of VEGA_REFERENCE_EXAMPLES) {
       const spec = await example.load();
       const serialized = JSON.stringify(spec);
-      // Any dotted field used in an encoding is backslash-escaped, never left raw.
-      expect(serialized).not.toMatch(/"field":\s*"[a-z_]+\.[a-z_]+"/i);
+      // A dotted Vega field is backslash-escaped. The query is not.
+      expect(serialized).not.toMatch(/"field":"[^"\\]*\.[^"\\]*"/);
 
       const url = (spec.data as { url?: Record<string, unknown> }).url ?? {};
       const query = String(url.query ?? '');
+      expect(query).not.toMatch(/\\\./);
       if (query.includes('?_tstart')) {
         expect(query).toMatch(/WHERE @timestamp >= \?_tstart AND @timestamp < \?_tend/);
         // `@timestamp` is the index default; Vega resolves it when `%timefield%` is omitted.

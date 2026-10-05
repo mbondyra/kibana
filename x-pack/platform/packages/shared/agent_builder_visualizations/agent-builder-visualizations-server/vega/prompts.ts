@@ -17,13 +17,7 @@ This query feeds a Vega chart, whose ES|QL data source only respects the time pi
 
 Therefore, for EVERY time-based chart — time series AND plain metrics/categorical:
 - Always add an explicit row filter on the raw source time field: \`WHERE <time field> >= ?_tstart AND <time field> < ?_tend\`.
-- Use the RAW source time field (e.g. \`@timestamp\`) directly in both that WHERE filter and any \`BUCKET(...)\`. Never filter or bucket on a field produced by \`RENAME\` or \`EVAL\`; the time filter must reference the original source field so Kibana can bind the range to it.
-
-## Field names for Vega
-
-Vega interprets a dot in a field name as a nested-object path, but ES|QL result columns are flat, so a column whose name contains a dot (e.g. \`host.name\`) is misread and renders as "undefined".
-- RENAME every such column to a readable, dotless alias in the query, e.g. \`RENAME host.name AS host\` or \`RENAME geo.dest AS destination\`, and reference the alias in the spec. Prefer this over leaving dotted names for the renderer to escape.
-- This applies to dimension/metric columns only. Do NOT rename the time field this way — keep filtering and bucketing on the raw source time field exactly as required above.`;
+- Use the RAW source time field (e.g. \`@timestamp\`) directly in both that WHERE filter and any \`BUCKET(...)\`. Never filter or bucket on a field produced by \`RENAME\` or \`EVAL\`; the time filter must reference the original source field so Kibana can bind the range to it.`;
 
 const formatColumns = (columns: EsqlEsqlColumnInfo[] | undefined): string => {
   if (!columns || columns.length === 0) {
@@ -115,7 +109,10 @@ FACETING / SMALL MULTIPLES:
 - Only facet a low-cardinality field. If the field can take many values, pre-limit the ES|QL query (e.g. keep the top-N with SORT + LIMIT, or a WHERE filter) so the grid stays readable instead of producing hundreds of tiny cells.
 
 DOTS IN FIELD NAMES:
-- Vega treats an unescaped dot in a field name as nested-object access, but ES|QL columns are flat. For a column whose name contains a dot (e.g. "geo.dest"), backslash-escape every dot in "field" strings ("geo\\.dest") and use bracket access in expressions (datum['geo.dest']).
+- Vega treats an unescaped dot in a "field" string as nested-object access, but ES|QL columns are flat. Backslash-escape every dot in "field" strings and in transform field lists such as "groupby" or "fold" ("response\\.keyword", "host\\.name").
+- In expressions ("calculate", "filter", "test"), use bracket access: datum['response.keyword'], never datum.response.keyword.
+- Do not use "impute" with a "method" on a dotted field; Vega-Lite cannot compile it. Use a "window" transform plus a "calculate" with bracket access instead.
+- The ES|QL query must keep the raw name (response.keyword). Never put a backslash in the query.
 ${referenceExamples ?? ''}
 Your task is to author the visualization specification for the following request:
 

@@ -264,13 +264,17 @@ describe('normalizeVegaSpec', () => {
     }
   );
 
-  it('escapes dotted field references against the injected columns', () => {
+  it('escapes dotted field names and leaves the query raw', () => {
     const result = normalizeVegaSpec({
-      spec: { mark: 'bar', encoding: { x: { field: 'host.name' } } },
-      esqlQuery: ESQL,
+      spec: { mark: 'bar', facet: { field: 'response.keyword' }, encoding: { x: { field: 'host.name' } } },
+      esqlQuery: 'FROM kibana_sample_data_logs | WHERE response\\.keyword != "403"',
     });
 
+    expect(result.facet).toEqual({ field: 'response\\.keyword' });
     expect(result.encoding).toEqual({ x: { field: 'host\\.name' } });
+    expect((result.data as { url: { query: string } }).url.query).toBe(
+      'FROM kibana_sample_data_logs | WHERE response.keyword != "403"'
+    );
   });
 
   it('preserves unrelated spec properties and does not mutate the input', () => {

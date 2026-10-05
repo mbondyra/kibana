@@ -30,8 +30,11 @@ describe('createAuthorVegaSpecPrompt', () => {
     expect(text).toContain('never raw Vega');
   });
 
-  it('always includes the dotted-field escaping guidance', () => {
-    expect(systemText('any chart')).toContain('DOTS IN FIELD NAMES');
+  it('tells the model to escape dots in field names but not in the query', () => {
+    const text = systemText('any chart');
+    expect(text).toContain('DOTS IN FIELD NAMES');
+    expect(text).toContain('response\\.keyword');
+    expect(text).toContain('Never put a backslash in the query');
   });
 
   it('guides faceting: columns as a sibling and explicit per-cell sizing', () => {
@@ -98,9 +101,8 @@ describe('vegaEsqlAdditionalInstructions', () => {
     );
   });
 
-  it('asks to RENAME dotted columns to dotless aliases, except the time field', () => {
-    expect(vegaEsqlAdditionalInstructions).toContain('Field names for Vega');
-    expect(vegaEsqlAdditionalInstructions).toContain('RENAME host.name AS host');
-    expect(vegaEsqlAdditionalInstructions).toContain('Do NOT rename the time field');
+  it('does not ask ES|QL generation to rename dotted columns', () => {
+    expect(vegaEsqlAdditionalInstructions).not.toContain('Field names for Vega');
+    expect(vegaEsqlAdditionalInstructions).not.toContain('RENAME host.name AS host');
   });
 });

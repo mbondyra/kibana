@@ -5,21 +5,35 @@
  * 2.0.
  */
 
-import { escapeVegaFieldReferences } from './field_escaping';
+import { escapeVegaFieldReferences, unescapeEsqlQuery } from './field_escaping';
 
 describe('escapeVegaFieldReferences', () => {
   it('escapes dots in a field reference', () => {
-    const spec = { encoding: { x: { field: 'host.name', type: 'nominal' } } };
+    const spec = { encoding: { x: { field: 'response.keyword', type: 'nominal' } } };
 
     expect(escapeVegaFieldReferences(spec)).toEqual({
-      encoding: { x: { field: 'host\\.name', type: 'nominal' } },
+      encoding: { x: { field: 'response\\.keyword', type: 'nominal' } },
     });
   });
 
-  it('leaves dot-free field references untouched', () => {
-    const spec = { encoding: { y: { field: 'count', type: 'quantitative' } } };
+  it('leaves a query dotted name raw, including one that arrived escaped', () => {
+    const spec = {
+      data: {
+        url: {
+          query: 'FROM logs | WHERE response\\.keyword != "403" AND host.name == "a"',
+        },
+      },
+      facet: { field: 'response.keyword' },
+    };
 
-    expect(escapeVegaFieldReferences(spec)).toEqual(spec);
+    expect(escapeVegaFieldReferences(spec)).toEqual({
+      data: {
+        url: {
+          query: 'FROM logs | WHERE response.keyword != "403" AND host.name == "a"',
+        },
+      },
+      facet: { field: 'response\\.keyword' },
+    });
   });
 
   it('does not double-escape an already escaped field', () => {
@@ -41,19 +55,12 @@ describe('escapeVegaFieldReferences', () => {
       },
     });
   });
+});
 
-  it('only rewrites the "field" key, not other dotted string values', () => {
-    const spec = { title: 'Requests by host.name', mark: 'bar' };
-
-    expect(escapeVegaFieldReferences(spec)).toEqual(spec);
-  });
-
-  it('does not mutate the input spec', () => {
-    const spec = { encoding: { x: { field: 'a.b' } } };
-    const snapshot = JSON.parse(JSON.stringify(spec));
-
-    escapeVegaFieldReferences(spec);
-
-    expect(spec).toEqual(snapshot);
+describe('unescapeEsqlQuery', () => {
+  it('removes backslashes that were added in front of dots', () => {
+    expect(unescapeEsqlQuery('WHERE response\\.keyword != "403"')).toBe(
+      'WHERE response.keyword != "403"'
+    );
   });
 });
