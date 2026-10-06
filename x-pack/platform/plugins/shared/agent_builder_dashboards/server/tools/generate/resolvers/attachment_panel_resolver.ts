@@ -19,12 +19,12 @@ import {
   type InlinePanelOperationType,
   type PanelContent,
   type PanelContentAttempt,
+  getRendererEmbeddableType,
 } from '@kbn/dashboard-authoring';
-import { EMBEDDABLE_TYPE_BY_RENDERER } from '@kbn/dashboard-authoring';
 
 /** Maps a stored visualization payload onto the embeddable that renders it. */
 const toPanelContent = (data: VisualizationAttachmentData): PanelContent => {
-  const type = EMBEDDABLE_TYPE_BY_RENDERER[getEffectiveRenderer(data)];
+  const type = getRendererEmbeddableType(getEffectiveRenderer(data));
 
   // Custom content stores markup rather than a chart config, so its panel config is rebuilt.
   if (isCustomContentVisualization(data)) {
