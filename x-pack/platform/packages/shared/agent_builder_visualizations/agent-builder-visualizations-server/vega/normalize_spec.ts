@@ -5,18 +5,10 @@
  * 2.0.
  */
 
-import type { EsqlEsqlColumnInfo } from '@elastic/elasticsearch/lib/api/types';
 import { escapeVegaFieldReferences } from './field_escaping';
 
 /** Vega-Lite schema the generator targets. */
 export const VEGA_LITE_SCHEMA = 'https://vega.github.io/schema/vega-lite/v6.json';
-
-/**
- * Index time field Vega resolves on its own when `%timefield%` is omitted.
- * Writing it into the spec is unnecessary, and a wrong explicit value overrides
- * that index lookup.
- */
-const INDEX_TIME_FIELD = '@timestamp';
 
 /**
  * Composite (multi-) view keys. Vega-Lite's `autosize: "fit"` only works for
@@ -34,66 +26,22 @@ interface EsqlDataUrl {
   '%type%': 'esql';
   '%context%': true;
   query: string;
-  '%timefield%'?: string;
 }
-
-/** Whether the query references the time-picker params (`?_tstart` / `?_tend`). */
-const usesTimeParams = (query: string): boolean =>
-  query.includes('?_tstart') || query.includes('?_tend');
-
-// A source field token: a name that starts with a letter or `@` (so numeric
-// literals like the `75` in `TBUCKET(75, …)` are not mistaken for a field),
-// optionally wrapped in backticks.
-const TIME_FIELD_TOKEN = String.raw`\`?([A-Za-z@][\w.@]*)\`?`;
-// `<time field> >= ?_tstart` (or `>`/`<=`/`<`, and `?_tend`).
-const WHERE_TIME_FIELD = new RegExp(`${TIME_FIELD_TOKEN}\\s*(?:>=|>|<=|<)\\s*\\?_t(?:start|end)`);
-// `BUCKET(<time field>, …)` — the bucketed source field (TBUCKET takes no field).
-const BUCKET_TIME_FIELD = new RegExp(`\\bBUCKET\\s*\\(\\s*${TIME_FIELD_TOKEN}`, 'i');
-
-/**
- * Extract the raw source time field bound to the time-picker params from the
- * query text. Kibana's Vega ES|QL renderer binds/filters on this `%timefield%`,
- * which must be a real source field — never a `BUCKET`/`RENAME`/`EVAL` alias,
- * because those are result columns, not filterable index fields (see issue
- * #275519). Prefers the field compared against `?_tstart`/`?_tend` in a `WHERE`
- * clause, then the field passed to `BUCKET(...)`.
- */
-const extractSourceTimeField = (query: string): string | undefined =>
-  query.match(WHERE_TIME_FIELD)?.[1] ?? query.match(BUCKET_TIME_FIELD)?.[1];
 
 /**
  * Build the inline ES|QL data url for Kibana's Vega renderer.
  *
- * `%timefield%` is the mapped source field of the DSL time filter. It is taken
- * from the query text (`WHERE` / `BUCKET`), never from a result column: an
- * alias such as `time_bucket` is not an index field. `@timestamp` is omitted so
- * Vega resolves the index time field itself. Time params are bound whether or
- * not `%timefield%` is set.
+ * `%timefield%` is never set: the renderer always binds `?_tstart`/`?_tend` and
+ * resolves the time filter field from the query (falling back to `@timestamp`
+ * on the index), and an explicit `%timefield%` would override that resolution.
  */
-const buildEsqlDataUrl = ({
-  esqlQuery,
-  timefield,
-}: Pick<NormalizeVegaSpecParams, 'esqlQuery' | 'timefield'>): EsqlDataUrl => {
-  const mappedSourceField = usesTimeParams(esqlQuery)
-    ? extractSourceTimeField(esqlQuery)
-    : undefined;
-  // An explicit timefield counts only when it is that mapped source field.
-  // A result-column alias, or `@timestamp`, is not written into the spec.
-  const requested = mappedSourceField ?? timefield;
-  const effectiveTimefield =
-    requested && requested === mappedSourceField && requested !== INDEX_TIME_FIELD
-      ? requested
-      : undefined;
-
-  return {
-    '%type%': 'esql',
-    // Always apply the dashboard context (time range + filters) so the panel
-    // stays in sync with the dashboard the chart is embedded in.
-    '%context%': true,
-    query: esqlQuery,
-    ...(effectiveTimefield ? { '%timefield%': effectiveTimefield } : {}),
-  };
-};
+const buildEsqlDataUrl = (esqlQuery: string): EsqlDataUrl => ({
+  '%type%': 'esql',
+  // Always apply the dashboard context (time range + filters) so the panel
+  // stays in sync with the dashboard the chart is embedded in.
+  '%context%': true,
+  query: esqlQuery,
+});
 
 /**
  * Mark channels that own a scale + legend in Vega-Lite. When several layers
@@ -233,13 +181,6 @@ interface NormalizeVegaSpecParams {
   spec: Record<string, unknown>;
   /** Canonical ES|QL query that owns the spec's data. */
   esqlQuery: string;
-  /** Result columns of the query. Not consulted for `%timefield%`. */
-  columns?: EsqlEsqlColumnInfo[];
-  /**
-   * Explicit event-time field. Emitted only when it is the mapped source field
-   * the query filters or buckets, and it is not `@timestamp`.
-   */
-  timefield?: string;
 }
 
 /**
@@ -260,11 +201,10 @@ interface NormalizeVegaSpecParams {
 export const normalizeVegaSpec = ({
   spec,
   esqlQuery,
-  timefield,
 }: NormalizeVegaSpecParams): Record<string, unknown> => {
   const { width, height, data, autosize, ...rest } = resolveSharedLegendConflicts(spec);
 
-  const url = buildEsqlDataUrl({ esqlQuery, timefield });
+  const url = buildEsqlDataUrl(esqlQuery);
 
   const normalized: Record<string, unknown> = {
     ...stripNestedDataSources(rest),

@@ -25,129 +25,16 @@ describe('normalizeVegaSpec', () => {
     expect(result.data).toEqual({ url: { '%type%': 'esql', '%context%': true, query: ESQL } });
   });
 
-  it('omits %timefield% when the query filters @timestamp', () => {
-    // `@timestamp` is the index default. Vega resolves it when the property is
-    // absent, so the spec must not pin it — and must not substitute the bucket alias.
-    const timeSeriesEsql =
-      'FROM logs-* | STATS count = COUNT() BY Date = BUCKET(@timestamp, 75, ?_tstart, ?_tend)';
+  it.each([
+    'FROM logs-* | STATS count = COUNT() BY Date = BUCKET(@timestamp, 75, ?_tstart, ?_tend)',
+    'FROM logs-* | WHERE event.created >= ?_tstart AND event.created < ?_tend | STATS count = COUNT()',
+    'FROM flights-* | STATS count = COUNT() BY Date = BUCKET(timestamp, 75, ?_tstart, ?_tend)',
+    'FROM logs-* | STATS count = COUNT() BY time_bucket = TBUCKET(75, ?_tstart, ?_tend), host.name',
+    ESQL,
+  ])('never sets %%timefield%% (%s)', (esqlQuery) => {
+    const result = normalizeVegaSpec({ spec: { mark: 'line' }, esqlQuery });
 
-    const result = normalizeVegaSpec({
-      spec: { mark: 'line' },
-      esqlQuery: timeSeriesEsql,
-      columns: [
-        { name: 'Date', type: 'date' },
-        { name: 'count', type: 'long' },
-      ],
-    });
-
-    expect(result.data).toEqual({
-      url: { '%type%': 'esql', '%context%': true, query: timeSeriesEsql },
-    });
-  });
-
-  it('binds %timefield% to a mapped source field other than @timestamp', () => {
-    const timeAwareEsql =
-      'FROM logs-* | WHERE event.created >= ?_tstart AND event.created < ?_tend | STATS count = COUNT()';
-
-    const result = normalizeVegaSpec({
-      spec: { mark: 'line' },
-      esqlQuery: timeAwareEsql,
-      // A date result column is not a mapped index field and must not win.
-      columns: [
-        { name: 'Date', type: 'date' },
-        { name: 'count', type: 'long' },
-      ],
-    });
-
-    expect(result.data).toEqual({
-      url: {
-        '%type%': 'esql',
-        '%context%': true,
-        query: timeAwareEsql,
-        '%timefield%': 'event.created',
-      },
-    });
-  });
-
-  it('binds %timefield% to the field passed to BUCKET when that field is not @timestamp', () => {
-    const timeSeriesEsql =
-      'FROM flights-* | STATS count = COUNT() BY Date = BUCKET(timestamp, 75, ?_tstart, ?_tend)';
-
-    const result = normalizeVegaSpec({
-      spec: { mark: 'line' },
-      esqlQuery: timeSeriesEsql,
-      columns: [
-        { name: 'Date', type: 'date' },
-        { name: 'count', type: 'long' },
-      ],
-    });
-
-    expect(result.data).toEqual({
-      url: {
-        '%type%': 'esql',
-        '%context%': true,
-        query: timeSeriesEsql,
-        '%timefield%': 'timestamp',
-      },
-    });
-  });
-
-  it('does not use a date result column as %timefield% when the query names no source field', () => {
-    // TBUCKET takes no field. `time_bucket` is an alias, not a mapped index field.
-    const tbucketEsql =
-      'FROM kibana_sample_data_logs | STATS count = COUNT() BY time_bucket = TBUCKET(75, ?_tstart, ?_tend), response.keyword';
-
-    const result = normalizeVegaSpec({
-      spec: { mark: 'line' },
-      esqlQuery: tbucketEsql,
-      columns: [
-        { name: 'time_bucket', type: 'date' },
-        { name: 'count', type: 'long' },
-        { name: 'response.keyword', type: 'keyword' },
-      ],
-    });
-
-    expect(result.data).toEqual({
-      url: { '%type%': 'esql', '%context%': true, query: tbucketEsql },
-    });
-  });
-
-  it('omits %timefield% when an explicit @timestamp is provided', () => {
-    const result = normalizeVegaSpec({
-      spec: { mark: 'line' },
-      esqlQuery: ESQL,
-      timefield: '@timestamp',
-    });
-
-    expect(result.data).toEqual({
-      url: { '%type%': 'esql', '%context%': true, query: ESQL },
-    });
-  });
-
-  it('ignores an explicit timefield that is not a mapped source field', () => {
-    const tbucketEsql =
-      'FROM logs-* | STATS count = COUNT() BY bucket = TBUCKET(75, ?_tstart, ?_tend)';
-
-    const result = normalizeVegaSpec({
-      spec: { mark: 'line' },
-      esqlQuery: tbucketEsql,
-      columns: [{ name: 'created_at', type: 'date_nanos' }],
-      timefield: 'created_at',
-    });
-
-    expect(result.data).toEqual({
-      url: { '%type%': 'esql', '%context%': true, query: tbucketEsql },
-    });
-  });
-
-  it('does not add %timefield% when the query is not time-aware', () => {
-    const result = normalizeVegaSpec({
-      spec: { mark: 'bar' },
-      esqlQuery: ESQL,
-      columns: [{ name: 'status', type: 'keyword' }],
-    });
-
-    expect(result.data).toEqual({ url: { '%type%': 'esql', '%context%': true, query: ESQL } });
+    expect(result.data).toEqual({ url: { '%type%': 'esql', '%context%': true, query: esqlQuery } });
   });
 
   it('replaces any data source the model may have authored', () => {
