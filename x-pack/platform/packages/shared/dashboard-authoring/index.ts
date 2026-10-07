@@ -15,6 +15,7 @@ export type { DashboardValidationIssue, ValidateDashboard } from './src/validate
 
 export { getRendererEmbeddableType } from './src/panels';
 export type {
+  AuthoredLensPanelResolutionRequest,
   CustomContentPanelAddRequest,
   CustomContentPanelEditRequest,
   CustomContentPanelResolutionRequest,
@@ -27,6 +28,7 @@ export type { ResolveAttachmentPanel } from './src/types';
 export { createControlFieldCapabilitiesResolver } from './src/control_field_capabilities_resolver';
 
 export {
+  directUpsertDashboardSchema,
   executeDashboardUpsert,
   hasValidNewDashboardMetadata,
   upsertDashboardSchema,

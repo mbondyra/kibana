@@ -10,7 +10,10 @@ import type { AgentBuilderPluginSetup } from '@kbn/agent-builder-server';
 import { createDashboardsSkill } from './dashboards_skill';
 import { registerSkills } from './register_skills';
 
-const skill = createDashboardsSkill({ getDashboardStateSchema: jest.fn() });
+const skill = createDashboardsSkill({
+  getDashboardStateSchema: jest.fn(),
+  panelAuthoring: 'delegated',
+});
 const enhanceContent =
   skill.referencedContent?.find(({ name }) => name === 'enhance-dashboard')?.content ?? '';
 
@@ -21,7 +24,10 @@ describe('registerSkills', () => {
       skills: { register },
     } as unknown as AgentBuilderPluginSetup;
 
-    registerSkills(agentBuilder, { getDashboardStateSchema: jest.fn() });
+    registerSkills(agentBuilder, {
+      getDashboardStateSchema: jest.fn(),
+      panelAuthoring: 'delegated',
+    });
 
     expect(register).toHaveBeenCalledTimes(1);
     expect(register).toHaveBeenCalledWith(expect.objectContaining({ id: 'dashboards' }));

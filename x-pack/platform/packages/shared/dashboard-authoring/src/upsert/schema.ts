@@ -8,7 +8,7 @@
 import { z } from '@kbn/zod/v4';
 import { timeRangeSchema } from '@kbn/agent-builder-dashboards-common';
 import { controlInputSchema } from '../controls';
-import { upsertPanelContentSchema } from '../panels';
+import { directUpsertPanelContentSchema, upsertPanelContentSchema } from '../panels';
 import { GRID_COLUMNS } from '../layout';
 
 const metadataSchema = z.object({
@@ -55,70 +55,88 @@ const panelSizeSchema = z
     'Explicit panel size. Set it only when the user asks for a specific size (e.g. "make it full width"); otherwise the layout step sizes the panel. Position always comes from the layout step.'
   );
 
-const upsertPanelSchema = z.object({
-  id: idSchema.describe(
-    'Panel id. An existing panel id updates that panel; a new id creates a panel with this id. Use a short readable slug for new panels, e.g. "error-rate-trend".'
-  ),
-  section: idSchema
-    .nullable()
-    .optional()
-    .describe(
-      'Section id to place the panel in, or null for the top level. Omit to keep an existing panel where it is; new panels go to the top level when omitted.'
+const createUpsertPanelSchema = <
+  TContent extends typeof upsertPanelContentSchema | typeof directUpsertPanelContentSchema
+>(
+  contentSchema: TContent
+) =>
+  z.object({
+    id: idSchema.describe(
+      'Panel id. An existing panel id updates that panel; a new id creates a panel with this id. Use a short readable slug for new panels, e.g. "error-rate-trend".'
     ),
-  content: upsertPanelContentSchema
-    .optional()
-    .describe(
-      'Panel content. Required for new panels. For an existing panel of the same kind, edits it (e.g. a request with a query describing the change). Content of a different kind, or an attachment, replaces the panel content and keeps its id. Omit to only move or resize the panel.'
-    ),
-  grid: panelSizeSchema.optional(),
-});
+    section: idSchema
+      .nullable()
+      .optional()
+      .describe(
+        'Section id to place the panel in, or null for the top level. Omit to keep an existing panel where it is; new panels go to the top level when omitted.'
+      ),
+    content: contentSchema
+      .optional()
+      .describe(
+        'Panel content. Required for new panels. For an existing panel of the same kind, edits it (e.g. a request with a query describing the change). Content of a different kind, or an attachment, replaces the panel content and keeps its id. Omit to only move or resize the panel.'
+      ),
+    grid: panelSizeSchema.optional(),
+  });
+
+const createUpsertDashboardSchema = <
+  TContent extends typeof upsertPanelContentSchema | typeof directUpsertPanelContentSchema
+>(
+  contentSchema: TContent
+) =>
+  z.object({
+    set: metadataSchema
+      .optional()
+      .describe('Dashboard metadata to set. A new dashboard requires a title.'),
+    sections: z
+      .array(upsertSectionSchema)
+      .max(50)
+      .optional()
+      .describe(
+        'Sections to create or update. Sections group related panels under a collapsible title.'
+      ),
+    panels: z
+      .array(createUpsertPanelSchema(contentSchema))
+      .max(100)
+      .optional()
+      .describe(
+        'Panels to create, edit, move, or resize, by id. Panels you leave out stay unchanged.'
+      ),
+    controls: z
+      .array(controlInputSchema)
+      .max(20)
+      .optional()
+      .describe(
+        'Controls to add. Use options_list_control for categorical/keyword fields, range_slider_control for numeric fields, time_slider_control for time sub-range filtering (at most one per dashboard).'
+      ),
+    remove: z
+      .array(idSchema)
+      .max(200)
+      .optional()
+      .describe(
+        'Ids of panels, sections, or controls to remove. Removing a section also removes the panels still in it; move panels you want to keep with `panels[].section` first.'
+      ),
+    layout: z
+      .string()
+      .max(2048)
+      .optional()
+      .describe(
+        'Layout instructions from the user, e.g. "put the metrics in one row" or "order the sections by importance". Arranges the whole dashboard again. Omit it otherwise: new, moved, and removed panels are placed automatically.'
+      ),
+  });
 
 /**
  * The desired changes to a dashboard, keyed by id: metadata, sections, panels and controls to
- * create or update, ids to remove, and optional layout instructions.
+ * create or update, ids to remove, and optional layout instructions. Lens panels are generated
+ * from requests.
  */
-export const upsertDashboardSchema = z.object({
-  set: metadataSchema
-    .optional()
-    .describe('Dashboard metadata to set. A new dashboard requires a title.'),
-  sections: z
-    .array(upsertSectionSchema)
-    .max(50)
-    .optional()
-    .describe(
-      'Sections to create or update. Sections group related panels under a collapsible title.'
-    ),
-  panels: z
-    .array(upsertPanelSchema)
-    .max(100)
-    .optional()
-    .describe(
-      'Panels to create, edit, move, or resize, by id. Panels you leave out stay unchanged.'
-    ),
-  controls: z
-    .array(controlInputSchema)
-    .max(20)
-    .optional()
-    .describe(
-      'Controls to add. Use options_list_control for categorical/keyword fields, range_slider_control for numeric fields, time_slider_control for time sub-range filtering (at most one per dashboard).'
-    ),
-  remove: z
-    .array(idSchema)
-    .max(200)
-    .optional()
-    .describe(
-      'Ids of panels, sections, or controls to remove. Removing a section also removes the panels still in it; move panels you want to keep with `panels[].section` first.'
-    ),
-  layout: z
-    .string()
-    .max(2048)
-    .optional()
-    .describe(
-      'Layout instructions from the user, e.g. "put the metrics in one row" or "order the sections by importance". Arranges the whole dashboard again. Omit it otherwise: new, moved, and removed panels are placed automatically.'
-    ),
-});
+export const upsertDashboardSchema = createUpsertDashboardSchema(upsertPanelContentSchema);
 
-export type DashboardUpsert = z.infer<typeof upsertDashboardSchema>;
+/** The upsert for direct authoring, where the caller may also write Lens configs. */
+export const directUpsertDashboardSchema = createUpsertDashboardSchema(
+  directUpsertPanelContentSchema
+);
+
+export type DashboardUpsert = z.infer<typeof directUpsertDashboardSchema>;
 
 export type UpsertPanelItem = NonNullable<DashboardUpsert['panels']>[number];
 

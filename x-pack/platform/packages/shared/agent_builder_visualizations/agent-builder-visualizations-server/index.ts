@@ -6,10 +6,17 @@
  */
 
 export { buildLensConfig } from './lens/build_lens_config';
+export {
+  getLensAuthoringGuide,
+  getLensSchemaSectionNames,
+  validateAuthoredLensConfig,
+} from './lens/direct_authoring';
+export type { AuthoredLensConfigValidation } from './lens/direct_authoring';
 export { getChartTypeSelectionPromptContent } from './lens/chart_type_guidance';
 export { seriesStatisticsAgentGuidance } from './shared/series_statistics_prompt';
-export { getEsqlDataSourceCarriers } from './lens/graph_lens';
+export { getEsqlDataSourceCarriers, getExistingEsqlQueries } from './lens/graph_lens';
 export type { VisualizationConfig } from './lens/types';
 export { selectDefaultTimeRange } from './time_range/select_default_time_range';
 export { buildVegaConfig } from './vega';
 export { generateVisualizationEsql } from './shared/generate_visualization_esql';
+export { buildEsqlAdditionalInstructions } from './shared/esql_instructions';

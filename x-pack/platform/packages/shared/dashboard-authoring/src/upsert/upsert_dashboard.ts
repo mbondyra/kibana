@@ -33,6 +33,8 @@ import {
   editPanelInputSchema,
   getEditableEmbeddableTypes,
   newPanelInputSchema,
+  type EditPanelInput,
+  type NewPanelInput,
   type ResolvePanelContent,
   type UpsertPanelContent,
 } from '../panels';
@@ -196,6 +198,26 @@ const planPanelContent = ({
     return resolvePanelContent(request);
   };
 
+  const toConfigContent = (
+    input: Extract<NewPanelInput | EditPanelInput, { source: 'config' }>,
+    panelToEdit?: AttachmentPanel
+  ): NonNullable<PanelPlan['resolveContent']> => {
+    if (input.type === 'lens') {
+      const { config, esql } = input;
+      return () =>
+        resolveRequest({
+          identifier: id,
+          renderer: 'lens',
+          existingPanel: panelToEdit,
+          authored: { config, esql },
+        });
+    }
+    return () => ({
+      type: 'success',
+      panelContent: buildConfigPanelContent(input.type, input.config),
+    });
+  };
+
   const isEdit =
     existingPanel !== undefined && getEditableEmbeddableTypes(content).includes(existingPanel.type);
 
@@ -210,12 +232,7 @@ const planPanelContent = ({
     }
     const editInput = parsed.data;
     if (editInput.source === 'config') {
-      return {
-        resolveContent: () => ({
-          type: 'success',
-          panelContent: buildConfigPanelContent(editInput.type, editInput.config),
-        }),
-      };
+      return { resolveContent: toConfigContent(editInput, existingPanel) };
     }
     const result = toEditResolutionRequest(editInput, existingPanel);
     if ('error' in result) {
@@ -235,12 +252,7 @@ const planPanelContent = ({
   }
   const newInput = parsed.data;
   if (newInput.source === 'config') {
-    return {
-      resolveContent: () => ({
-        type: 'success',
-        panelContent: buildConfigPanelContent(newInput.type, newInput.config),
-      }),
-    };
+    return { resolveContent: toConfigContent(newInput) };
   }
   if (newInput.source === 'attachment') {
     return {

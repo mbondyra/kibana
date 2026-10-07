@@ -11,13 +11,18 @@ import {
   seriesStatisticsAgentGuidance,
 } from '@kbn/agent-builder-visualizations-server';
 import { dashboardTools } from '../../../common';
+import type { PanelAuthoringMode } from '../../config';
 import type { DashboardGuidanceModule } from '../guidance_module';
 import { dashboardCompositionPrompt } from './design/composition';
+import {
+  authorLensPanelsReference,
+  directLensAuthoringGuidance,
+} from './direct_authoring_guidance';
 import { ENHANCE_DASHBOARD_REFERENCE_NAME, enhanceDashboardReference } from './enhance_guidance';
 
 const chartTypeSelectionGuidance = getChartTypeSelectionPromptContent();
 
-const guidance = `## Dashboard Changes
+const buildGuidance = (panelAuthoringGuidance: string) => `## Dashboard Changes
 
 The ${dashboardTools.generateDashboard} tool applies the changes you describe to the current dashboard (if any). Describe the desired result, keyed by id, rather than steps: \`set\` for metadata, \`sections\` and \`panels\` to create or update, \`controls\` to add, \`remove\` for ids to delete, and \`layout\` for the user's layout instructions. Everything you leave out stays unchanged. See the environment workflow below for how the current dashboard is referenced and how the result is surfaced.
 
@@ -42,7 +47,7 @@ Each visualization request is authored in a separate context. New-panel authors 
 
 - Use \`source: "request"\` to create or edit a Lens, Vega, or custom content panel from a natural-language query — this is the only way to make a **new** generated panel.
 - Use \`source: "attachment"\` to place a visualization that \`${platformCoreTools.createVisualization}\` already returned in this conversation. A \`source: "request"\` would generate a **new**, different panel instead.
-- Use \`source: "config"\` for panels you author by value: markdown and ML anomaly panels.
+- Use \`source: "config"\` for panels you author by value: markdown and ML anomaly panels.${panelAuthoringGuidance}
 
 ## Panel Type Selection
 
@@ -78,7 +83,12 @@ Controls query the index directly, so columns created in ES|QL (\`DISSECT\`, \`G
  * Dashboard generation guidance. It says nothing about how the current dashboard is referenced or
  * how the result is surfaced. Grid rules are left to the tool's layout step.
  */
-export const dashboardGeneration: DashboardGuidanceModule = {
-  guidance,
-  referencedContent: [enhanceDashboardReference],
-};
+export const getDashboardGeneration = (
+  panelAuthoring: PanelAuthoringMode
+): DashboardGuidanceModule =>
+  panelAuthoring === 'direct'
+    ? {
+        guidance: buildGuidance(directLensAuthoringGuidance),
+        referencedContent: [enhanceDashboardReference, authorLensPanelsReference],
+      }
+    : { guidance: buildGuidance(''), referencedContent: [enhanceDashboardReference] };

@@ -7,3 +7,4 @@
 
 export { generateDashboardTool } from './generate';
 export type { GenerateDashboardToolDeps } from './generate';
+export { getPanelSchemaTool } from './panel_schema';

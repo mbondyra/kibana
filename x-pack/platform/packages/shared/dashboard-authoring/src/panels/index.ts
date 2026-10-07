@@ -17,6 +17,7 @@ import {
   singleMetricViewerPanelKind,
 } from './ml_panels';
 import { attachmentPanelInputSchema } from './attachment_source';
+import { lensConfigPanelKind, type AuthoredLensPanelResolutionRequest } from './lens_config';
 
 /**
  * Panel kind registry.
@@ -24,7 +25,8 @@ import { attachmentPanelInputSchema } from './attachment_source';
  * Panel inputs are discriminated by `source`:
  * - `'request'`: generated server-side, discriminated by `renderer`
  *   (`lens` — the default when omitted —, `vega`, or `custom_content`).
- * - `'config'`: authored by value, discriminated by `type`.
+ * - `'config'`: authored by value, discriminated by `type`. Lens configs (`type: 'lens'`) are
+ *   validated by the host before they are stored, and are offered only in direct authoring.
  * - `'attachment'`: an existing visualization attachment from the conversation.
  *
  * Each kind's module describes it once (`defineConfigPanelKind` or `defineRequestPanelKind`). Registering
@@ -35,22 +37,26 @@ import { attachmentPanelInputSchema } from './attachment_source';
 export { attachmentPanelInputSchema } from './attachment_source';
 export type { AttachmentPanelInput } from './attachment_source';
 export type { VisPanelResolutionRequest } from './vis';
+export type { AuthoredLensPanelResolutionRequest } from './lens_config';
 export type {
   CustomContentPanelAddRequest,
   CustomContentPanelEditRequest,
   CustomContentPanelResolutionRequest,
 } from './custom_content';
 
-const CONFIG_PANEL_KINDS = [
+/** By-value kinds stored as given. */
+const STORED_CONFIG_PANEL_KINDS = [
   markdownPanelKind,
   anomalyChartsPanelKind,
   anomalySwimlanePanelKind,
   singleMetricViewerPanelKind,
 ] as const;
 
+const CONFIG_PANEL_KINDS = [...STORED_CONFIG_PANEL_KINDS, lensConfigPanelKind] as const;
+
 const REQUEST_PANEL_KINDS = [lensPanelKind, vegaPanelKind, customContentPanelKind] as const;
 
-type ConfigPanelKind = (typeof CONFIG_PANEL_KINDS)[number];
+type StoredConfigPanelKind = (typeof STORED_CONFIG_PANEL_KINDS)[number];
 type RequestPanelKind = (typeof REQUEST_PANEL_KINDS)[number];
 
 /** Maps a non-empty kind list onto the non-empty option tuple `z.discriminatedUnion` expects. */
@@ -66,11 +72,15 @@ const configPanelInputSchema = z.discriminatedUnion(
 
 export type ConfigPanelInput = z.infer<typeof configPanelInputSchema>;
 
-const configPanelKindByType = new Map<ConfigPanelInput['type'], ConfigPanelKind>(
-  CONFIG_PANEL_KINDS.map((kind) => [kind.type, kind])
-);
+/** By-value panel types stored as given, without host validation. */
+export type StoredConfigPanelType = StoredConfigPanelKind['type'];
 
-const getConfigPanelKind = (type: ConfigPanelInput['type']): ConfigPanelKind => {
+const configPanelKindByType = new Map<
+  ConfigPanelInput['type'],
+  (typeof CONFIG_PANEL_KINDS)[number]
+>(CONFIG_PANEL_KINDS.map((kind) => [kind.type, kind]));
+
+const getConfigPanelKind = (type: ConfigPanelInput['type']) => {
   const kind = configPanelKindByType.get(type);
   if (!kind) {
     throw new Error(`Panel type "${type}" is not registered.`);
@@ -80,18 +90,22 @@ const getConfigPanelKind = (type: ConfigPanelInput['type']): ConfigPanelKind => 
 
 /** Builds panel content from a by-value panel's `type` and `config`. */
 export const buildConfigPanelContent = (
-  type: ConfigPanelInput['type'],
+  type: StoredConfigPanelType,
   config: AttachmentPanel['config']
 ): PanelContent => {
-  const { embeddableType, toEmbeddableConfig } = getConfigPanelKind(type);
+  const kind = STORED_CONFIG_PANEL_KINDS.find((entry) => entry.type === type);
+  if (!kind) {
+    throw new Error(`Panel type "${type}" is not registered.`);
+  }
+  const { embeddableType, toEmbeddableConfig } = kind;
   return { type: embeddableType, config: toEmbeddableConfig ? toEmbeddableConfig(config) : config };
 };
 
 /** Finds the by-value panel type stored as the given embeddable type, if any. */
 export const findConfigPanelType = (
   embeddableType: string
-): { type: ConfigPanelInput['type']; label: string } | undefined => {
-  const kind = CONFIG_PANEL_KINDS.find((entry) => entry.embeddableType === embeddableType);
+): { type: StoredConfigPanelType; label: string } | undefined => {
+  const kind = STORED_CONFIG_PANEL_KINDS.find((entry) => entry.embeddableType === embeddableType);
   return kind && { type: kind.type, label: kind.label };
 };
 
@@ -125,24 +139,37 @@ export type EditPanelInput = z.infer<typeof editPanelInputSchema>;
 
 export type EditPanelRequestInput = Extract<EditPanelInput, { source: 'request' }>;
 
+const toUpsertPanelContentSchema = <
+  TConfigKinds extends readonly [
+    (typeof CONFIG_PANEL_KINDS)[number],
+    ...Array<(typeof CONFIG_PANEL_KINDS)[number]>
+  ]
+>(
+  configKinds: TConfigKinds
+) =>
+  z.discriminatedUnion('source', [
+    z.discriminatedUnion(
+      'type',
+      mapKinds(configKinds, ({ upsertContentSchema }) => upsertContentSchema)
+    ),
+    z.discriminatedUnion(
+      'renderer',
+      mapKinds(REQUEST_PANEL_KINDS, ({ upsertContentSchema }) => upsertContentSchema)
+    ),
+    attachmentPanelInputSchema.omit({ grid: true }),
+  ]);
+
 /**
  * Panel content of an `upsert_dashboard` item: the create and edit fields of any panel kind,
  * without placement. Upsert re-parses it with `newPanelInputSchema` or `editPanelInputSchema`
- * once it knows whether the panel exists.
+ * once it knows whether the panel exists. Lens panels are generated from requests only.
  */
-export const upsertPanelContentSchema = z.discriminatedUnion('source', [
-  z.discriminatedUnion(
-    'type',
-    mapKinds(CONFIG_PANEL_KINDS, ({ upsertContentSchema }) => upsertContentSchema)
-  ),
-  z.discriminatedUnion(
-    'renderer',
-    mapKinds(REQUEST_PANEL_KINDS, ({ upsertContentSchema }) => upsertContentSchema)
-  ),
-  attachmentPanelInputSchema.omit({ grid: true }),
-]);
+export const upsertPanelContentSchema = toUpsertPanelContentSchema(STORED_CONFIG_PANEL_KINDS);
 
-export type UpsertPanelContent = z.infer<typeof upsertPanelContentSchema>;
+/** Panel content for direct authoring, which adds Lens configs written by the caller. */
+export const directUpsertPanelContentSchema = toUpsertPanelContentSchema(CONFIG_PANEL_KINDS);
+
+export type UpsertPanelContent = z.infer<typeof directUpsertPanelContentSchema>;
 
 /**
  * Embeddable types an upsert content can edit in place. A request without a renderer edits Lens or
@@ -164,6 +191,7 @@ export const getEditableEmbeddableTypes = (content: UpsertPanelContent): string[
 /** Every panel resolution request the resolver can receive, discriminated by `renderer`. */
 export type PanelResolutionRequest =
   | VisPanelResolutionRequest
+  | AuthoredLensPanelResolutionRequest
   | CustomContentPanelResolutionRequest;
 
 /** Engine that renders a `source: 'request'` panel. */

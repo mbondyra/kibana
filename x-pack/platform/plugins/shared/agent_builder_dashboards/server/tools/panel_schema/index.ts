@@ -5,10 +5,4 @@
  * 2.0.
  */
 
-export { executeDashboardUpsert } from './upsert_dashboard';
-export {
-  hasValidNewDashboardMetadata,
-  directUpsertDashboardSchema,
-  upsertDashboardSchema,
-} from './schema';
-export type { DashboardUpsert } from './schema';
+export { getPanelSchemaTool } from './get_panel_schema_tool';

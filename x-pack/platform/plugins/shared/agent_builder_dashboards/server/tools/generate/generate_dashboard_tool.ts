@@ -12,12 +12,14 @@ import type { BuiltinSkillBoundedTool } from '@kbn/agent-builder-server/skills';
 import type { DashboardPluginStart } from '@kbn/dashboard-plugin/server';
 import {
   createControlFieldCapabilitiesResolver,
+  directUpsertDashboardSchema,
   executeDashboardUpsert,
   getErrorMessage,
   hasValidNewDashboardMetadata,
   upsertDashboardSchema,
 } from '@kbn/dashboard-authoring';
 import { dashboardTools } from '../../../common';
+import type { PanelAuthoringMode } from '../../config';
 import { retrieveLatestVersion } from './attachment_state';
 import { normalizeLegacyVegaPanels } from './legacy_vega_panels';
 import { createAttachmentPanelResolver } from './resolvers/attachment_panel_resolver';
@@ -29,21 +31,40 @@ import { persistDashboardResult, toErrorResult } from './dashboard_result';
 const newDashboardMetadataErrorMessage =
   'New dashboards require `set.title` with a non-empty title.';
 
+const dashboardAttachmentIdSchema = z
+  .string()
+  .max(256)
+  .optional()
+  .describe(
+    '(optional) The id of the dashboard attachment to update. Omit to create a new dashboard. The tool reads the current dashboard payload from this reference, so you never have to pass the full payload back in.'
+  );
+
 const generateDashboardSchema = z.object({
-  dashboardAttachmentId: z
-    .string()
-    .max(256)
-    .optional()
-    .describe(
-      '(optional) The id of the dashboard attachment to update. Omit to create a new dashboard. The tool reads the current dashboard payload from this reference, so you never have to pass the full payload back in.'
-    ),
+  dashboardAttachmentId: dashboardAttachmentIdSchema,
   ...upsertDashboardSchema.shape,
 });
+
+const directGenerateDashboardSchema = z.object({
+  dashboardAttachmentId: dashboardAttachmentIdSchema,
+  ...directUpsertDashboardSchema.shape,
+});
+
+type GenerateDashboardSchema =
+  | typeof generateDashboardSchema
+  | typeof directGenerateDashboardSchema;
+
+const panelContentDescriptions: Record<PanelAuthoringMode, string> = {
+  delegated:
+    'Panel content is generated from a natural-language query (`source: "request"`; pick the engine with "renderer": Lens (default), Vega, or custom content for HTML-based layouts that Lens and Vega cannot express), authored by value (`source: "config"`: markdown or ML anomaly panels), or taken from an existing visualization attachment (`source: "attachment"`).',
+  direct:
+    'Panel content is authored by value (`source: "config"`: Lens panels from your own ES|QL query and Lens config, markdown, or ML anomaly panels), generated from a natural-language query (`source: "request"`; pick the engine with "renderer": Lens (default), Vega, or custom content for HTML-based layouts that Lens and Vega cannot express), or taken from an existing visualization attachment (`source: "attachment"`).',
+};
 
 export interface GenerateDashboardToolDeps {
   getDashboardStateSchema: () => Promise<
     ReturnType<DashboardPluginStart['getDashboardStateSchema']>
   >;
+  panelAuthoring: PanelAuthoringMode;
 }
 
 /**
@@ -53,7 +74,8 @@ export interface GenerateDashboardToolDeps {
  */
 export const generateDashboardTool = ({
   getDashboardStateSchema,
-}: GenerateDashboardToolDeps): BuiltinSkillBoundedTool<typeof generateDashboardSchema> => {
+  panelAuthoring,
+}: GenerateDashboardToolDeps): BuiltinSkillBoundedTool<GenerateDashboardSchema> => {
   return {
     id: dashboardTools.generateDashboard,
     type: ToolType.builtin,
@@ -63,13 +85,13 @@ Persists the resulting dashboard as an attachment and returns its id plus a comp
 
 - \`set\`: dashboard title, description, and time range.
 - \`sections\`: sections to create or rename.
-- \`panels\`: panels to create, edit, replace, or move between sections, by id. Panel content is generated from a natural-language query (\`source: "request"\`; pick the engine with "renderer": Lens (default), Vega, or custom content for HTML-based layouts that Lens and Vega cannot express), authored by value (\`source: "config"\`: markdown or ML anomaly panels), or taken from an existing visualization attachment (\`source: "attachment"\`).
+- \`panels\`: panels to create, edit, replace, or move between sections, by id. ${panelContentDescriptions[panelAuthoring]}
 - \`controls\`: interactive filters pinned above the dashboard (dropdown, range slider, or time slider).
 - \`remove\`: ids of panels, sections, or controls to remove.
 - \`layout\`: the user's layout instructions, if any.
 
 Panel positions and sizes are arranged automatically after the changes are applied.`,
-    schema: generateDashboardSchema,
+    schema: panelAuthoring === 'direct' ? directGenerateDashboardSchema : generateDashboardSchema,
     handler: async (
       { dashboardAttachmentId: previousAttachmentId, ...upsert },
       { logger, attachments, events, esClient, modelProvider }

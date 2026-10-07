@@ -18,6 +18,7 @@ import type {
   AgentBuilderDashboardsPluginSetup,
   AgentBuilderDashboardsPluginStart,
 } from './types';
+import type { AgentBuilderDashboardsConfig } from './config';
 import { registerSkills } from './skills';
 import { createDashboardAttachmentType } from './attachment_types';
 import { createDashboardSmlType } from './sml_types';
@@ -32,9 +33,11 @@ export class AgentBuilderDashboardsPlugin
     >
 {
   private readonly logger: Logger;
+  private readonly config: AgentBuilderDashboardsConfig;
 
-  constructor(initializerContext: PluginInitializerContext) {
+  constructor(initializerContext: PluginInitializerContext<AgentBuilderDashboardsConfig>) {
     this.logger = initializerContext.logger.get();
+    this.config = initializerContext.config.get();
   }
 
   setup(
@@ -66,7 +69,10 @@ export class AgentBuilderDashboardsPlugin
     );
     setupDeps.agentBuilderSml.registerType(createDashboardSmlType({ getDashboardClient }));
 
-    registerSkills(setupDeps.agentBuilder, { getDashboardStateSchema });
+    registerSkills(setupDeps.agentBuilder, {
+      getDashboardStateSchema,
+      panelAuthoring: this.config.panelAuthoring,
+    });
 
     return {};
   }

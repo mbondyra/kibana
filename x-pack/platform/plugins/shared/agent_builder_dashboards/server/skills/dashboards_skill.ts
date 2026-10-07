@@ -7,12 +7,18 @@
 
 import { defineSkillType } from '@kbn/agent-builder-server/skills/type_definition';
 import { DASHBOARDS_SKILL_ID } from '../../common';
-import { generateDashboardTool, type GenerateDashboardToolDeps } from '../tools';
-import { dashboardGeneration } from './generation_guidance';
+import {
+  generateDashboardTool,
+  getPanelSchemaTool,
+  type GenerateDashboardToolDeps,
+} from '../tools';
+import { getDashboardGeneration } from './generation_guidance';
 import { kibanaRendering } from './rendering_guidance';
 
-export const createDashboardsSkill = (deps: GenerateDashboardToolDeps) =>
-  defineSkillType({
+export const createDashboardsSkill = (deps: GenerateDashboardToolDeps) => {
+  const dashboardGeneration = getDashboardGeneration(deps.panelAuthoring);
+
+  return defineSkillType({
     id: DASHBOARDS_SKILL_ID,
     name: DASHBOARDS_SKILL_ID,
     basePath: 'skills/platform/dashboard',
@@ -38,5 +44,9 @@ ${kibanaRendering.guidance}
       ...(dashboardGeneration.referencedContent ?? []),
       ...(kibanaRendering.referencedContent ?? []),
     ],
-    getInlineTools: () => [generateDashboardTool(deps)],
+    getInlineTools: () =>
+      deps.panelAuthoring === 'direct'
+        ? [generateDashboardTool(deps), getPanelSchemaTool()]
+        : [generateDashboardTool(deps)],
   });
+};
