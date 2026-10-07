@@ -89,8 +89,9 @@ describe('createAuthorVegaSpecPrompt', () => {
 
 describe('vegaEsqlAdditionalInstructions', () => {
   it('defers to the shared time guidance instead of requiring an extra time filter', () => {
-    expect(vegaEsqlAdditionalInstructions).toContain('add no extra time filter');
-    expect(vegaEsqlAdditionalInstructions).not.toContain('?_tstart');
+    expect(vegaEsqlAdditionalInstructions).toContain(
+      'follow the time guidance above and add no time filter beyond what it requires'
+    );
   });
 
   it('keeps time filtering and bucketing on a source field', () => {
