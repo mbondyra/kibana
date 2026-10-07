@@ -9,6 +9,7 @@ import { defineSkillType } from '@kbn/agent-builder-server/skills/type_definitio
 import { DASHBOARDS_SKILL_ID } from '../../common';
 import {
   generateDashboardTool,
+  generatePanelEsqlTool,
   getPanelSchemaTool,
   type GenerateDashboardToolDeps,
 } from '../tools';
@@ -46,7 +47,7 @@ ${kibanaRendering.guidance}
     ],
     getInlineTools: () =>
       deps.panelAuthoring === 'direct'
-        ? [generateDashboardTool(deps), getPanelSchemaTool()]
+        ? [generateDashboardTool(deps), generatePanelEsqlTool(), getPanelSchemaTool()]
         : [generateDashboardTool(deps)],
   });
 };

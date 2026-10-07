@@ -45,7 +45,7 @@ export const lensPanelConfigInputSchema = z.object({
   type: z.literal('lens'),
   grid: panelGridSchema,
   esql: esqlSchema.describe(
-    'ES|QL query backing the chart. It must run, and return every column the config binds.'
+    'ES|QL query backing the chart, as returned by the panel ES|QL generation tool. Never write or change it yourself. It must run, and return every column the config binds.'
   ),
   config: lensConfigSchema,
 });
@@ -56,7 +56,9 @@ export const editLensPanelConfigInputSchema = lensPanelConfigInputSchema
     panelId: z.string().max(256).describe('Existing Lens panel id to update.'),
     esql: esqlSchema
       .optional()
-      .describe('(optional) New ES|QL query. Omit it to keep the panel query.'),
+      .describe(
+        '(optional) New ES|QL query from the panel ES|QL generation tool. Omit it to keep the panel query.'
+      ),
     config: lensConfigSchema.describe(
       'Complete new Lens API config. Fully replaces the existing config. Omit `data_source`.'
     ),

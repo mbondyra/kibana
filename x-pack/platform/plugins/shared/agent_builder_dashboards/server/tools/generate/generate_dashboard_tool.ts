@@ -57,7 +57,7 @@ const panelContentDescriptions: Record<PanelAuthoringMode, string> = {
   delegated:
     'Panel content is generated from a natural-language query (`source: "request"`; pick the engine with "renderer": Lens (default), Vega, or custom content for HTML-based layouts that Lens and Vega cannot express), authored by value (`source: "config"`: markdown or ML anomaly panels), or taken from an existing visualization attachment (`source: "attachment"`).',
   direct:
-    'Panel content is authored by value (`source: "config"`: Lens panels from your own ES|QL query and Lens config, markdown, or ML anomaly panels), generated from a natural-language query (`source: "request"`; pick the engine with "renderer": Lens (default), Vega, or custom content for HTML-based layouts that Lens and Vega cannot express), or taken from an existing visualization attachment (`source: "attachment"`).',
+    'Panel content is authored by value (`source: "config"`: Lens panels from a `${dashboardTools.generatePanelEsql}` query and your Lens config, markdown, or ML anomaly panels), generated from a natural-language query (`source: "request"`; pick the engine with "renderer": Lens (default), Vega, or custom content for HTML-based layouts that Lens and Vega cannot express), or taken from an existing visualization attachment (`source: "attachment"`).',
 };
 
 export interface GenerateDashboardToolDeps {

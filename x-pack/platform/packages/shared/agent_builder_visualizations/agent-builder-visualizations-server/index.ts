@@ -19,4 +19,3 @@ export type { VisualizationConfig } from './lens/types';
 export { selectDefaultTimeRange } from './time_range/select_default_time_range';
 export { buildVegaConfig } from './vega';
 export { generateVisualizationEsql } from './shared/generate_visualization_esql';
-export { buildEsqlAdditionalInstructions } from './shared/esql_instructions';

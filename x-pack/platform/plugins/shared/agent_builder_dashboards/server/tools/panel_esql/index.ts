@@ -5,7 +5,4 @@
  * 2.0.
  */
 
-export { generateDashboardTool } from './generate';
-export type { GenerateDashboardToolDeps } from './generate';
-export { generatePanelEsqlTool } from './panel_esql';
-export { getPanelSchemaTool } from './panel_schema';
+export { generatePanelEsqlTool } from './generate_panel_esql_tool';
