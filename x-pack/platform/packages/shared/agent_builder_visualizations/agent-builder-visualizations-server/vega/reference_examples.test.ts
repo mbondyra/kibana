@@ -223,7 +223,7 @@ describe('reference example specs (loaded on demand)', () => {
     }
   });
 
-  it('escapes dotted field references and filters time on the raw source field', async () => {
+  it('escapes dotted field references and follows the shared time guidance', async () => {
     for (const example of VEGA_REFERENCE_EXAMPLES) {
       const spec = await example.load();
       const serialized = JSON.stringify(spec);
@@ -233,8 +233,14 @@ describe('reference example specs (loaded on demand)', () => {
       const url = (spec.data as { url?: Record<string, unknown> }).url ?? {};
       const query = String(url.query ?? '');
       if (query.includes('?_tstart')) {
-        expect(query).toMatch(/WHERE @timestamp >= \?_tstart AND @timestamp < \?_tend/);
         expect(url['%timefield%']).toBeUndefined();
+        // Time series bucket with TBUCKET and add no timestamp WHERE; other charts filter it.
+        if (query.includes('TBUCKET(')) {
+          expect(query).toMatch(/TBUCKET\(\d+, \?_tstart, \?_tend\)/);
+          expect(query).not.toMatch(/WHERE @timestamp/);
+        } else {
+          expect(query).toMatch(/WHERE @timestamp >= \?_tstart AND @timestamp < \?_tend/);
+        }
       }
     }
   });

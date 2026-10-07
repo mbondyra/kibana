@@ -12,7 +12,7 @@ export const spec: Record<string, unknown> = {
     url: {
       '%type%': 'esql',
       query:
-        'FROM logs-* | WHERE @timestamp >= ?_tstart AND @timestamp < ?_tend | STATS request_count = COUNT(*), avg_latency = AVG(latency_ms) BY day = BUCKET(@timestamp, 1 day) | SORT day ASC',
+        'FROM logs-* | STATS request_count = COUNT(*), avg_latency = AVG(latency_ms) BY day = TBUCKET(100, ?_tstart, ?_tend) | SORT day ASC',
     },
   },
   encoding: {
