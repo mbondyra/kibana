@@ -13,6 +13,11 @@ import type { IScopedClusterClient } from '@kbn/core-elasticsearch-server';
 import { generateEsql } from '@kbn/agent-builder-genai-utils';
 import { buildEsqlAdditionalInstructions } from './esql_instructions';
 import { validateQueryTarget } from './validate_query_target';
+import {
+  buildTimeFieldInstructions,
+  findTimeFieldCandidates,
+  findTimeFieldError,
+} from './time_field_binding';
 
 /** Normalized result of resolving an ES|QL query for a visualization. */
 interface GeneratedVisualizationEsql {
@@ -96,6 +101,30 @@ const findTargetError = (query: string | undefined, index: string | undefined) =
   query && index ? validateQueryTarget({ query, target: index }) : undefined;
 
 /**
+ * Date fields a query on `index` must bind to the time picker; empty when none is needed
+ * or the index cannot be inspected (the check is then skipped).
+ */
+const resolveTimeFieldCandidates = async (
+  esClient: IScopedClusterClient,
+  index: string | undefined,
+  logger: Logger
+): Promise<string[]> => {
+  if (!index) {
+    return [];
+  }
+  try {
+    return await findTimeFieldCandidates({ esClient, index });
+  } catch (error) {
+    logger.debug(
+      `Could not resolve date fields of '${index}' (${
+        error instanceof Error ? error.message : String(error)
+      }); skipping the time field check`
+    );
+    return [];
+  }
+};
+
+/**
  * Resolve a visualization-ready ES|QL query, shared by the Lens and Vega
  * engines so both generate queries the same way.
  *
@@ -121,22 +150,32 @@ export const generateVisualizationEsql = async ({
   timeRange,
   extraInstructions,
 }: GenerateVisualizationEsqlParams): Promise<GeneratedVisualizationEsql> => {
-  const instructions = buildEsqlAdditionalInstructions(index);
+  const timeFieldCandidates = await resolveTimeFieldCandidates(esClient, index, logger);
+  const instructions = [
+    buildEsqlAdditionalInstructions(index),
+    index && timeFieldCandidates.length > 0
+      ? buildTimeFieldInstructions(index, timeFieldCandidates)
+      : undefined,
+    extraInstructions,
+  ]
+    .filter(Boolean)
+    .join('\n');
+  const findQueryError = (query: string | undefined) =>
+    findTargetError(query, index) ?? findTimeFieldError(query, timeFieldCandidates);
+
   const requestParams = {
     nlQuery: buildEsqlEditContext(nlQuery, existingQueries),
     index,
     events,
     logger,
     esClient: esClient.asCurrentUser,
-    additionalInstructions: extraInstructions
-      ? `${instructions}\n${extraInstructions}`
-      : instructions,
+    additionalInstructions: instructions,
     execute: 'schema' as const,
     ...(timeRange ? { timeRange } : {}),
   };
 
   const response = await generateEsql({ ...requestParams, modelProvider, maxRetries: 2 });
-  const responseError = response.error ?? findTargetError(response.query, index);
+  const responseError = response.error ?? findQueryError(response.query);
 
   if (response.query && !responseError) {
     return { query: response.query, columns: response.results?.columns };
@@ -159,6 +198,12 @@ export const generateVisualizationEsql = async ({
 
   if (!fallbackResponse.query || fallbackError) {
     return { error: fallbackError ?? 'No queries generated' };
+  }
+
+  // A chart that ignores the time picker beats no chart, so this check never fails generation.
+  const timeFieldError = findTimeFieldError(fallbackResponse.query, timeFieldCandidates);
+  if (timeFieldError) {
+    logger.warn(`Keeping an ES|QL query that ignores the time picker: ${timeFieldError}`);
   }
 
   return { query: fallbackResponse.query, columns: fallbackResponse.results?.columns };
