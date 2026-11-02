@@ -7,7 +7,10 @@
 
 import { buildLensConfig } from '@kbn/agent-builder-visualizations-server';
 import type { ModelProvider, ToolEventEmitter } from '@kbn/agent-builder-server';
-import { CUSTOM_CONTENT_EMBEDDABLE_TYPE } from '@kbn/custom-content-common';
+import {
+  CUSTOM_CONTENT_EMBEDDABLE_TYPE,
+  CUSTOM_CONTENT_GENERATING_UI_EVENT,
+} from '@kbn/custom-content-common';
 import { createCustomContentTemplateResolver } from '@kbn/custom-content-server';
 import type { IScopedClusterClient } from '@kbn/core-elasticsearch-server';
 import type { Logger } from '@kbn/logging';
@@ -30,11 +33,13 @@ const grid = { x: 0, y: 0, w: 12, h: 5 };
 
 describe('createPanelResolver', () => {
   const resolveTemplate = jest.fn();
+  const sendUiEvent = jest.fn();
   let resolve: ReturnType<typeof createPanelResolver>;
 
   beforeEach(() => {
     mockedBuildLensConfig.mockReset();
     resolveTemplate.mockReset();
+    sendUiEvent.mockReset();
     mockedBuildLensConfig.mockResolvedValue({
       validatedConfig: { type: 'metric' },
     } as Awaited<ReturnType<typeof buildLensConfig>>);
@@ -48,7 +53,7 @@ describe('createPanelResolver', () => {
         warn: jest.fn(),
       } as unknown as Logger,
       modelProvider: {} as ModelProvider,
-      events: {} as ToolEventEmitter,
+      events: { sendUiEvent } as unknown as ToolEventEmitter,
       esClient: {} as IScopedClusterClient,
     });
   });
@@ -77,6 +82,9 @@ describe('createPanelResolver', () => {
       expect.objectContaining({ prompt: 'change the title' })
     );
     expect(mockedBuildLensConfig).not.toHaveBeenCalled();
+    expect(sendUiEvent).toHaveBeenCalledWith(CUSTOM_CONTENT_GENERATING_UI_EVENT, {
+      embeddable_id: 'cc-1',
+    });
     expect(result).toMatchObject({
       type: 'success',
       panelContent: { type: CUSTOM_CONTENT_EMBEDDABLE_TYPE },

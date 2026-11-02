@@ -11,6 +11,7 @@ import {
   type ToolResult,
 } from '@kbn/agent-builder-common/tools/tool_result';
 import { ATTACHMENT_REF_ACTOR } from '@kbn/agent-builder-common/attachments';
+import { CUSTOM_CONTENT_GENERATING_UI_EVENT } from '@kbn/custom-content-common';
 import { CUSTOM_CONTENT_CONTEXT_ATTACHMENT_TYPE } from '../../common/panel_context_attachment';
 import { CUSTOM_CONTENT_UPDATED_UI_EVENT } from '../../common/ui_events';
 import { createUpdateCustomContentTool } from './update_custom_content_tool';
@@ -377,7 +378,17 @@ describe('createUpdateCustomContentTool handler', () => {
       expect(ret.results[0].data).toEqual(
         expect.objectContaining({ attachment_id: 'att-1', version: undefined })
       );
-      expect(ctx.sendUiEvent).not.toHaveBeenCalled();
+      expect(ctx.sendUiEvent).not.toHaveBeenCalledWith(
+        CUSTOM_CONTENT_UPDATED_UI_EVENT,
+        expect.anything()
+      );
+    });
+
+    it('sends a generating UI event for the panel before generating it', async () => {
+      const { ctx } = await callHandler({ embeddable_id: 'p1', prompt: 'Show KPIs' }, existing);
+      expect(ctx.sendUiEvent).toHaveBeenNthCalledWith(1, CUSTOM_CONTENT_GENERATING_UI_EVENT, {
+        embeddable_id: 'p1',
+      });
     });
   });
 

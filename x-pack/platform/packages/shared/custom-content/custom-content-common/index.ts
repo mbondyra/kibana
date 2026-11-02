@@ -15,8 +15,6 @@ export {
   CUSTOM_CONTENT_DEFAULT_HEIGHT,
   CUSTOM_CONTENT_MIN_HEIGHT,
   CUSTOM_CONTENT_MAX_HEIGHT,
-  CUSTOM_CONTENT_UPDATE_PANEL_TOOL_ID,
-  CUSTOM_CONTENT_GENERATE_DASHBOARD_TOOL_ID,
 } from './constants';
 
 export {
@@ -32,6 +30,9 @@ export type {
   ResolveCustomContentQueryParams,
   ResolvedCustomContentQuery,
 } from './resolve_custom_content_query';
+
+export { CUSTOM_CONTENT_GENERATING_UI_EVENT } from './ui_events';
+export type { CustomContentGeneratingUiEventData } from './ui_events';
 
 export { stripMarkdownFences } from './strip_markdown_fences';
 export { CUSTOM_CONTENT_LIQUID_OPTIONS } from './liquid_options';

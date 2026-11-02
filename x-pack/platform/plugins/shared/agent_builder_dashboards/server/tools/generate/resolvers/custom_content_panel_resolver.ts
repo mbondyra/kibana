@@ -70,16 +70,20 @@ const resolveCustomContentState = async (
  * Resolves custom content panel requests. New panels get a template generated
  * from the request; edits refine the existing panel's template, keeping its
  * ES|QL query unless the request replaces, removes or regenerates it. Static panels have no query. On edits, upsert
- * has already checked that the existing panel is custom content.
+ * has already checked that the existing panel is custom content. `onGenerating` is called with the
+ * panel id before an existing panel is regenerated.
  */
 export const createCustomContentPanelResolver = ({
   resolveTemplate,
   generateEsql,
+  onGenerating,
 }: {
   resolveTemplate: CustomContentTemplateResolver;
   generateEsql: CustomContentEsqlGenerator;
+  onGenerating?: (panelId: string) => void;
 }) => {
   return async (request: CustomContentPanelResolutionRequest): Promise<PanelContentAttempt> => {
+    if (request.existingPanel) onGenerating?.(request.existingPanel.id);
     try {
       return {
         type: 'success',

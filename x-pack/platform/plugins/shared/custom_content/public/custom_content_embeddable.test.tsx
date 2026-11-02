@@ -13,7 +13,7 @@ import { ChatEventType, TimelineEventType } from '@kbn/agent-builder-common';
 import { customContentEmbeddableFactory } from './custom_content_embeddable';
 import type { CustomContentApi } from './custom_content_embeddable';
 import type { CustomContentEmbeddableState } from '../server';
-import { readEsqlQuery } from '@kbn/custom-content-common';
+import { CUSTOM_CONTENT_GENERATING_UI_EVENT, readEsqlQuery } from '@kbn/custom-content-common';
 import { CUSTOM_CONTENT_UPDATED_UI_EVENT } from '../common/ui_events';
 import { apiIsPresentationContainer } from '@kbn/presentation-publishing';
 import type { openLazyFlyout } from '@kbn/presentation-util';
@@ -563,6 +563,16 @@ describe('customContentEmbeddableFactory', () => {
       },
     });
 
+    const buildGeneratingEvent = (embeddableId: string) => ({
+      type: ChatEventType.toolUi,
+      data: {
+        tool_id: 'custom_content_update_panel',
+        tool_call_id: 'tool-call-1',
+        custom_event: CUSTOM_CONTENT_GENERATING_UI_EVENT,
+        data: { embeddable_id: embeddableId },
+      },
+    });
+
     // `useBatchedPublishingSubjects` flushes on the next macrotask
     const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -578,17 +588,14 @@ describe('customContentEmbeddableFactory', () => {
       const { embeddable } = await buildEmbeddable(baseState);
       await act(async () => render(<embeddable.Component />));
       await act(async () => capturedComponentProps?.onGenerateWithChat?.());
-      await act(async () => {
-        openChat.mock.calls[0][0].onSubmit();
-        await flush();
-      });
 
       const emit = (...events: unknown[]) =>
         act(async () => {
           events.forEach((event) => chatEvents$.next(event));
           await flush();
         });
-      return { embeddable, emit, activeConversation$, getChatEvents$, openChat };
+      if (!isNewConversation) await emit(buildGeneratingEvent('test-uuid'));
+      return { embeddable, emit, activeConversation$, getChatEvents$ };
     };
 
     const expectGenerating = (isGenerating: boolean) =>
@@ -617,55 +624,16 @@ describe('customContentEmbeddableFactory', () => {
       expectGenerating(false);
     });
 
-    const buildToolCallEvent = (toolId: string, params: Record<string, unknown>) => ({
-      type: 'tool_call',
-      data: { tool_call_id: 'tool-call-2', tool_id: toolId, params },
-    });
-
-    it('does not show the generating state again when a later message is submitted', async () => {
-      const { emit, openChat } = await renderGeneratingPanel();
-      await emit({ type: TimelineEventType.executionTerminated, execution_id: 'e1', data: {} });
-      expectGenerating(false);
-
-      await act(async () => {
-        openChat.mock.calls[0][0].onSubmit();
-        await flush();
-      });
-
-      expectGenerating(false);
-    });
-
-    it.each([
-      ['the update tool', 'custom_content_update_panel', { embeddable_id: 'test-uuid' }],
-      [
-        'the dashboard tool',
-        'platform.dashboard.generate_dashboard',
-        { panels: [{ id: 'other-uuid' }, { id: 'test-uuid' }] },
-      ],
-    ])('shows the generating state when %s targets this panel', async (_, toolId, params) => {
+    it('stays idle until a tool starts generating this panel', async () => {
       const { emit } = await renderGeneratingPanel();
       await emit({ type: TimelineEventType.executionTerminated, execution_id: 'e1', data: {} });
       expectGenerating(false);
 
-      await emit(buildToolCallEvent(toolId, params));
+      await emit(buildGeneratingEvent('other-uuid'));
+      expectGenerating(false);
 
+      await emit(buildGeneratingEvent('test-uuid'));
       expectGenerating(true);
-    });
-
-    it.each([
-      ['the update tool', 'custom_content_update_panel', { embeddable_id: 'other-uuid' }],
-      [
-        'the dashboard tool',
-        'platform.dashboard.generate_dashboard',
-        { panels: [{ id: 'other-uuid' }] },
-      ],
-    ])('ignores %s calls that target another panel', async (_, toolId, params) => {
-      const { emit } = await renderGeneratingPanel();
-      await emit({ type: TimelineEventType.executionTerminated, execution_id: 'e1', data: {} });
-
-      await emit(buildToolCallEvent(toolId, params));
-
-      expectGenerating(false);
     });
 
     it('applies the update from the first run of a new conversation', async () => {
@@ -676,6 +644,8 @@ describe('customContentEmbeddableFactory', () => {
 
       // The chat creates the conversation before sending, so its id is published before the run streams
       await act(async () => activeConversation$.next({ id: 'new-conv' }));
+      await emit(buildGeneratingEvent('test-uuid'));
+      expectGenerating(true);
       await emit(buildUpdateEvent('test-uuid', '<p>first run</p>'));
 
       expect(getChatEvents$).toHaveBeenCalledWith('new-conv');
@@ -698,39 +668,6 @@ describe('customContentEmbeddableFactory', () => {
   });
 
   describe('handleGenerateWithChat', () => {
-    it('shows a generating state while the panel chat round is running', async () => {
-      const openChat = jest.fn();
-      mockAgentBuilder = {
-        openChat,
-        events: {
-          ui: { activeConversation$: new BehaviorSubject(null) },
-          getChatEvents$: jest.fn(() => new Subject()),
-        },
-      };
-
-      const { embeddable } = await buildEmbeddable(baseState);
-      await act(async () => render(<embeddable.Component />));
-      await act(async () => capturedComponentProps?.onGenerateWithChat?.());
-
-      await act(async () => {
-        openChat.mock.calls[0][0].onSubmit();
-        await new Promise((resolve) => setTimeout(resolve, 0));
-      });
-      expect(screen.getByTestId('mockCustomContentComponent')).toHaveAttribute(
-        'data-is-generating',
-        'true'
-      );
-
-      await act(async () => {
-        openChat.mock.calls[0][0].onClose();
-        await new Promise((resolve) => setTimeout(resolve, 0));
-      });
-      expect(screen.getByTestId('mockCustomContentComponent')).toHaveAttribute(
-        'data-is-generating',
-        'false'
-      );
-    });
-
     it('clicking "Generate with chat" from the empty prompt on a new panel does not remove it', async () => {
       const removePanel = jest.fn();
       const openChat = jest.fn();

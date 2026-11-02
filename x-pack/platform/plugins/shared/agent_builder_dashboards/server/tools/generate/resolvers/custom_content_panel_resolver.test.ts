@@ -43,9 +43,11 @@ const editRequest = (
 describe('createCustomContentPanelResolver', () => {
   const resolveTemplate = jest.fn();
   const generateEsql = jest.fn();
-  const resolve = createCustomContentPanelResolver({ resolveTemplate, generateEsql });
+  const onGenerating = jest.fn();
+  const resolve = createCustomContentPanelResolver({ resolveTemplate, generateEsql, onGenerating });
 
   beforeEach(() => {
+    onGenerating.mockReset();
     resolveTemplate.mockReset();
     resolveTemplate.mockResolvedValue({ template: '<div>resolved</div>', height: 320 });
     generateEsql.mockReset();
@@ -136,6 +138,20 @@ describe('createCustomContentPanelResolver', () => {
         type: 'failure',
         error: 'Generated template was rejected: contains a <script> tag.',
       });
+    });
+  });
+
+  describe('generating notification', () => {
+    it('reports the existing panel id before regenerating it', async () => {
+      await resolve(editRequest(customContentPanel({ template: '<div>old</div>' })));
+
+      expect(onGenerating).toHaveBeenCalledWith('cc-1');
+    });
+
+    it('does not report new panels, which have no rendered embeddable yet', async () => {
+      await resolve(addRequest());
+
+      expect(onGenerating).not.toHaveBeenCalled();
     });
   });
 

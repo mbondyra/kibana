@@ -6,6 +6,10 @@
  */
 
 import { generateCustomContentEsql } from '@kbn/agent-builder-visualizations-server';
+import {
+  CUSTOM_CONTENT_GENERATING_UI_EVENT,
+  type CustomContentGeneratingUiEventData,
+} from '@kbn/custom-content-common';
 import { createCustomContentTemplateResolver } from '@kbn/custom-content-server';
 import type { ResolvePanelContent } from '@kbn/dashboard-agent-authoring';
 import { createVisPanelResolver, type VisPanelResolverDeps } from './vis_panel_resolver';
@@ -40,6 +44,11 @@ export const createPanelResolver = (deps: VisPanelResolverDeps): ResolvePanelCon
   const resolveCustomContentPanel = createCustomContentPanelResolver({
     resolveTemplate: createCustomContentTemplateResolver(deps),
     generateEsql: createCustomContentEsqlGenerator(deps),
+    onGenerating: (panelId) =>
+      deps.events.sendUiEvent<
+        typeof CUSTOM_CONTENT_GENERATING_UI_EVENT,
+        CustomContentGeneratingUiEventData
+      >(CUSTOM_CONTENT_GENERATING_UI_EVENT, { embeddable_id: panelId }),
   });
 
   return (request) =>
