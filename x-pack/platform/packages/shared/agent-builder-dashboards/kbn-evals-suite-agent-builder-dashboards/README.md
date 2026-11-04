@@ -54,7 +54,9 @@ Chart presentation is checked on each panel's Lens Config API config, against th
   - in every container (the top level or a section) the gold does not list under `changes`, the seed panels keep their grids. At the top level only `x`, `w` and `h` are compared, because adding or removing a section shifts the outer `y`;
   - the top-level panels and sections that survive keep their relative order;
   - collapsed sections stay collapsed;
+  - the seed controls come back unchanged, since no layout edit asks to change them;
   - each gold placement holds: the container, first in it, beside a panel (same row and height), below one, a width, or after and before another item in reading order. A placement names a seed id, or the first added panel of a kind or the first added section.
+- **Dashboard Panel Edits** (`CODE`): a panel the prompt edits in place keeps its id and gets what was asked. It's gated on a gold `panelEdits` list, where each entry names a seed panel and any of: the chart kind, the title (case-insensitive), a color (any `color` value in the config within 20° of the named hue and saturated enough, so `#BD271E` counts as red and `#ffcccc` does not), or a markdown bullet list (two or more items). Scored as the fraction of edited panels that match. Dashboard Layout Edit still scores the rest of the layout on the same runs.
 - **Trajectory**: `load_skill` → `generate_dashboard`. Content-mode enhance also expects `get_index_mapping` before the write, because it may change queries. Appearance mode changes no query, so reading the attachment is enough and the mapping call is not expected. Discover results examples read the attachment instead of the mapping, in every run on both models, so the mapping call is not expected there. Skipped on routing examples.
 - **Trace-based**: tokens, latency, and tool-call counts from OTel spans.
 
@@ -91,11 +93,11 @@ Thirty examples, because each dashboard example costs 150k–300k input tokens:
 
 Every example carries `metadata.behaviour` (`creation` | `routing` | `enhance` | `discover_results` | `layout_edit`) and `metadata.dataSource` (`logs`, or `logs_dissect` for the Discover results). Enhance examples also carry `metadata.enhanceMode`, so golden-cluster results can be sliced.
 
-- **Layout edit** (`datasets/layout_edit.ts`, 17), over the seeded sectioned dashboard: remove panels from one or two sections, remove a section, add a KPI, a chart in a section, or a section before or between others, move panels between sections and the top level, restyle or edit panels, set widths, add to a collapsed section, and empty a section.
+- **Layout edit** (`datasets/layout_edit.ts`, 17), over the seeded sectioned dashboard: remove panels from one or two sections, remove a section, add a KPI, a chart in a section, or a section before or between others, move panels between sections and the top level, restyle or edit panels, set widths, add to a collapsed section, and empty a section. The two in-place edits (recolor and rename a chart; turn the pie into a table and the intro into a bullet list) also carry `panelEdits` gold.
 
 ### Seeded dashboard
 
-`src/fixtures/messy_logs_dashboard.ts` is a working dashboard over `kibana_sample_data_logs`. Its panels are minimal ES|QL Lens configs, the kind that parse against the Lens ES|QL schemas, so appearance mode can enhance each of them in place. It is sent as a by-value attachment with the opening turn, the same way the enhance action attaches the open dashboard. It declares its defects as rule ids.
+`src/fixtures/messy_logs_dashboard.ts` is a working dashboard over `kibana_sample_data_logs`. Its defects sit on minimal ES|QL Lens configs, the kind that parse against the Lens ES|QL schemas, so appearance mode can enhance each of them in place. It also holds a data-view Lens bar chart, a Vega chart and an ML anomaly swim lane (`src/fixtures/non_esql_panels.ts`) with no defect. The agent cannot edit the data-view chart and has no reason to touch the others, so Mode Compliance and No Regression catch an enhance that drops or breaks them. It is sent as a by-value attachment with the opening turn, the same way the enhance action attaches the open dashboard. It declares its defects as rule ids.
 
 Layout and composition defects:
 - a placeholder title, which must be rewritten (`title_not_rewritten`; Dashboard Titles & Labels still flags a placeholder result)
@@ -124,7 +126,9 @@ Content defects, which only content mode should fix:
 - a Traffic section (six panels);
 - a note between Traffic and Errors;
 - an Errors section (five panels);
-- a Visitors section (three panels).
+- a Visitors section (three panels);
+- an Other sources section with the same data-view Lens, Vega and ML panels as the messy seed, which no edit touches, so `stable.other-sources` shows they survive;
+- an options list, a range slider and a time slider, which no edit asks to change.
 
 It breaks no `must` rule, so any gap, overlap or styling miss in a result comes from the edit. Its ids are readable, so the gold can name what a prompt moves. A variant with Visitors collapsed covers edits of a collapsed section.
 

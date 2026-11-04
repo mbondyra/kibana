@@ -15,6 +15,7 @@ import type {
   DashboardStructureGold,
   EnhanceMode,
   LayoutEditGold,
+  PanelEditGold,
 } from '../../../src/types';
 import { getDefectScope } from '../../../src/evaluators/seed_defects';
 import { GENERATE_DASHBOARD_TOOL_ID } from '../../../src/extract_dashboard';
@@ -159,10 +160,12 @@ export const discoverResultsExample = ({
 export const layoutEditExample = ({
   question,
   layoutEdit,
+  panelEdits,
   dashboard = SECTIONED_LOGS_DASHBOARD,
 }: {
   question: string;
   layoutEdit: LayoutEditGold;
+  panelEdits?: readonly PanelEditGold[];
   dashboard?: DashboardAttachmentData;
 }): DashboardDatasetExample => ({
   input: { question, dashboard },
@@ -170,6 +173,7 @@ export const layoutEditExample = ({
   output: {
     route: 'dashboard',
     layoutEdit,
+    ...(panelEdits ? { panelEdits } : {}),
     goldenToolPath: ['load_skill', GENERATE_DASHBOARD_TOOL_ID],
   },
 });

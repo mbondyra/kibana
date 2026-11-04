@@ -115,6 +115,15 @@ describe('dashboard layout edit evaluator', () => {
     expect(expanded.explanation).toBe('collapsed: expanded [visitors]');
   });
 
+  it('fails controls the edit dropped or changed', async () => {
+    const [, ...rest] = SECTIONED_LOGS_DASHBOARD.pinned_panels ?? [];
+    const result = await evaluateEdit(removeTopUrls, {
+      ...edit(inSection('traffic', withoutPanel('top-urls'))),
+      pinned_panels: rest,
+    });
+    expect(result.explanation).toContain('controls: controls [machine.os.keyword-options_list, ');
+  });
+
   it('checks where the prompt puts an added panel', async () => {
     const gold: LayoutEditGold = {
       changes: [TOP_LEVEL, 'errors'],

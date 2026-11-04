@@ -80,6 +80,23 @@ export interface LayoutEditGold {
   placements?: readonly LayoutPlacementGold[];
 }
 
+/** A named hue a static panel color may be asked for. */
+export type PanelColorName = 'red';
+
+/** What one seed panel looks like after an edit; every listed field is checked. */
+export interface PanelEditGold {
+  /** Seed panel id; the edit keeps it. */
+  panel: string;
+  /** Lens chart type, or the embeddable type for other panels. */
+  kind?: string;
+  /** Panel title, matched case-insensitively. */
+  title?: string;
+  /** A static color in the panel config has this hue. */
+  color?: PanelColorName;
+  /** The markdown content holds a bullet list of at least two items. */
+  bulletList?: boolean;
+}
+
 /** Where the dashboard's controls may draw their fields from, and what the prompt asked of them. */
 export interface ControlsGold {
   /**
@@ -126,6 +143,8 @@ export type DashboardDatasetExample = Example<
     /** The time range the dashboard must end up with. */
     timeRange?: { from: string; to: string };
     layoutEdit?: LayoutEditGold;
+    /** Panels the prompt edits in place, and what each must look like after. */
+    panelEdits?: readonly PanelEditGold[];
     goldenToolPath?: string[];
   },
   {
