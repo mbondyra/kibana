@@ -78,6 +78,7 @@ export const registerDashboardAppIntegration = ({
   // the user can't edit open in a new dashboard, which the origin then follows on save. One per
   // conversation started here, so switching back to an earlier conversation still finds its own.
   const unlinkedStagedAttachmentIds = new Set<string>();
+  let stagedAttachmentId: string | undefined;
 
   const addAttachmentFromDashboard = () => {
     const isLinkable = canWriteDashboards && canApplyAgentChangesInPlace(api);
@@ -93,6 +94,7 @@ export const registerDashboardAppIntegration = ({
       if (!isLinkable) {
         unlinkedStagedAttachmentIds.add(attachmentId);
       }
+      stagedAttachmentId = attachmentId;
       agentBuilder.addAttachment({
         id: attachmentId,
         origin: dashboardId,
@@ -247,6 +249,11 @@ export const registerDashboardAppIntegration = ({
     manualChangesSubscription.unsubscribe();
     conversationChangesSubscription.unsubscribe();
     otherDashboardUpdateNotifier.removeAll();
+    // a dashboard the user left is no longer context for their next message; attachments already
+    // sent stay in the conversation
+    if (stagedAttachmentId) {
+      agentBuilder.removeAttachment(stagedAttachmentId);
+    }
     if (pendingAddAttachmentTimeout !== undefined) {
       clearTimeout(pendingAddAttachmentTimeout);
       pendingAddAttachmentTimeout = undefined;

@@ -133,6 +133,7 @@ describe('registerDashboardAppIntegration', () => {
   let mockApi: MockDashboardApi;
   let chatEventsByConversationId: Map<string, Subject<ChatEvent>>;
   let addAttachment: jest.Mock;
+  let removeAttachment: jest.Mock;
   let updateAttachmentOrigin: jest.Mock;
   let getUpdateOrigin: jest.Mock;
   let checkSavedDashboardExist: jest.Mock;
@@ -155,6 +156,7 @@ describe('registerDashboardAppIntegration', () => {
     mockApi = createMockDashboardApi(mockAnyStateChange$.pipe(skip(1)));
     chatEventsByConversationId = new Map();
     addAttachment = jest.fn();
+    removeAttachment = jest.fn();
     updateAttachmentOrigin = jest.fn().mockResolvedValue(undefined);
     getUpdateOrigin = jest.fn(
       (attachmentId: string) => async (origin: string) =>
@@ -182,6 +184,7 @@ describe('registerDashboardAppIntegration', () => {
     const activeConversation$ = new BehaviorSubject<ActiveConversation | null>(null);
     const agentBuilder = {
       addAttachment,
+      removeAttachment,
       updateAttachmentOrigin,
       events: {
         getChatEvents$: jest.fn((conversationId: string) => {
@@ -611,5 +614,25 @@ describe('registerDashboardAppIntegration', () => {
         expect.objectContaining({ id: 'dashboard-attachment-id', origin: 'dashboard-1' })
       );
     });
+  });
+
+  it('removes the attachment it staged in the chat input when the user leaves the dashboard', () => {
+    register();
+    emitConversationChange({});
+    jest.runOnlyPendingTimers();
+
+    cleanup();
+
+    expect(removeAttachment).toHaveBeenCalledWith('draft-attachment-id-1');
+  });
+
+  it("doesn't remove anything when the user leaves a dashboard that staged nothing", () => {
+    register();
+    emitConversationChange({ id: 'conversation-1', attachments: [] });
+    jest.runOnlyPendingTimers();
+
+    cleanup();
+
+    expect(removeAttachment).not.toHaveBeenCalled();
   });
 });
