@@ -12,6 +12,10 @@ import {
   type DashboardAttachment,
 } from '@kbn/agent-builder-dashboards-common';
 import { handlePreview } from './handle_preview';
+import {
+  createAttachmentLinks,
+  type AttachmentLinks,
+} from './dashboard_integration/attachment_links';
 
 const buildAttachment = (origin?: string): DashboardAttachment => ({
   id: 'attachment-1',
@@ -46,6 +50,7 @@ const preview = async ({
 }) => {
   const dashboardLocator = { navigate: jest.fn(), getRedirectUrl: jest.fn() };
   const toasts = { addWarning: jest.fn(), addError: jest.fn() };
+  const attachmentLinks = createAttachmentLinks();
   await handlePreview({
     attachment,
     dashboardApi: dashboardApi as unknown as DashboardApi | undefined,
@@ -54,8 +59,15 @@ const preview = async ({
     dashboardLocator,
     toasts: toasts as unknown as NotificationsStart['toasts'],
     checkSavedDashboardExist: async () => linkedDashboardExists,
+    attachmentLinks,
   });
-  return { dashboardLocator, toasts };
+  return { dashboardLocator, toasts, attachmentLinks };
+};
+
+const isNextDashboardLinked = (attachmentLinks: AttachmentLinks, attachmentId: string) => {
+  const nextDashboardApi = buildDashboardApi(undefined) as unknown as DashboardApi;
+  attachmentLinks.claimNextDashboardLink(nextDashboardApi);
+  return attachmentLinks.isLinked(nextDashboardApi, attachmentId);
 };
 
 describe('handlePreview with a published dashboard', () => {
@@ -141,6 +153,45 @@ describe('handlePreview with a published dashboard', () => {
       expect(toasts.addWarning).toHaveBeenCalledTimes(1);
     }
   );
+
+  describe('links the dashboard that shows the attachment', () => {
+    it('when it applies the attachment to the open dashboard', async () => {
+      const dashboardApi = buildDashboardApi(undefined);
+
+      const { attachmentLinks } = await preview({ attachment: buildAttachment(), dashboardApi });
+
+      expect(
+        attachmentLinks.isLinked(dashboardApi as unknown as DashboardApi, 'attachment-1')
+      ).toBe(true);
+    });
+
+    it.each([
+      ['opens it from another dashboard', false],
+      ['forks a managed dashboard', true],
+    ])('when it opens a new dashboard as it %s', async (_, isManaged) => {
+      const { attachmentLinks } = await preview({
+        attachment: buildAttachment(),
+        dashboardApi: buildDashboardApi('dashboard-1', isManaged),
+      });
+
+      expect(isNextDashboardLinked(attachmentLinks, 'attachment-1')).toBe(true);
+    });
+
+    it('when it opens a new dashboard from outside the Dashboard app', async () => {
+      const { attachmentLinks } = await preview({ attachment: buildAttachment() });
+
+      expect(isNextDashboardLinked(attachmentLinks, 'attachment-1')).toBe(true);
+    });
+
+    it("but not a new dashboard when it opens the attachment's saved one", async () => {
+      const { attachmentLinks } = await preview({
+        attachment: buildAttachment('dashboard-2'),
+        dashboardApi: buildDashboardApi('dashboard-1'),
+      });
+
+      expect(isNextDashboardLinked(attachmentLinks, 'attachment-1')).toBe(false);
+    });
+  });
 
   it('shows an error toast when the attachment fails to open', async () => {
     const dashboardApi = buildDashboardApi('dashboard-1');

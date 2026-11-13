@@ -15,6 +15,7 @@ import {
   toDashboardLocatorParams,
   type DashboardLocator,
 } from './open_in_dashboard_app';
+import type { AttachmentLinks } from './attachment_links';
 
 interface PreviewAttachmentInDashboardParams {
   attachment: DashboardAttachment;
@@ -22,6 +23,7 @@ interface PreviewAttachmentInDashboardParams {
   dashboardLocator?: DashboardLocator;
   toasts: NotificationsStart['toasts'];
   checkSavedDashboardExist: (dashboardId: string) => Promise<boolean>;
+  attachmentLinks: AttachmentLinks;
 }
 
 /** Shows the attachment in the Dashboard app, for a user who can write dashboards. */
@@ -31,16 +33,22 @@ export const previewAttachmentInDashboard = async ({
   dashboardLocator,
   toasts,
   checkSavedDashboardExist,
+  attachmentLinks,
 }: PreviewAttachmentInDashboardParams): Promise<void> => {
   const dashboardState = attachmentDataToDashboardState(attachment.data);
   const currentSavedObjectId = dashboardApi.savedObjectId$.getValue();
+  const linkNextDashboard = () => attachmentLinks.linkNextDashboard(attachment.id, dashboardApi);
   const applyAgentChanges = async () => {
-    await applyAgentChangesToDashboard({
+    const outcome = await applyAgentChangesToDashboard({
       api: dashboardApi,
       dashboardState,
       dashboardLocator,
       toasts,
+      onOpenInNewDashboard: linkNextDashboard,
     });
+    if (outcome === 'applied') {
+      attachmentLinks.link(dashboardApi, attachment.id);
+    }
   };
 
   // a) Viewing saved dashboard + attachment linked to same dashboard -> apply state
@@ -66,6 +74,9 @@ export const previewAttachmentInDashboard = async ({
   // c) Attachment linked to different existing dashboard -> navigate to linked dashboard or a new unsaved dashboard with the attachment's state
   // A host app's own `dashboardApi.locator` (e.g. Security's) may keep only `dashboardId` and drop
   // the attachment's panels, so navigate through the Dashboard app locator instead.
+  if (!linkedDashboardExists) {
+    linkNextDashboard();
+  }
   await openInDashboardApp(dashboardLocator, {
     ...toDashboardLocatorParams(dashboardState),
     dashboardId: linkedDashboardExists ? attachment.origin : undefined,

@@ -398,7 +398,7 @@ describe('registerDashboardAttachmentUiDefinition', () => {
       cleanup?.();
     });
 
-    it('relinks to the current dashboard when the attachment origin points to a deleted dashboard', async () => {
+    it("doesn't relink an attachment whose dashboard was deleted to the current dashboard", async () => {
       const { getAttachment } = createMockAttachment('attachment-1', 'deleted-dashboard-id');
       const mockApi = createMockDashboardApi('current-dashboard-id');
 
@@ -423,11 +423,7 @@ describe('registerDashboardAttachmentUiDefinition', () => {
       await Promise.resolve();
       await Promise.resolve();
 
-      expect(deps.updateAttachmentOrigin).toHaveBeenCalledWith(
-        'conversation-1',
-        'attachment-1',
-        'current-dashboard-id'
-      );
+      expect(deps.updateAttachmentOrigin).not.toHaveBeenCalled();
       cleanup?.();
     });
 

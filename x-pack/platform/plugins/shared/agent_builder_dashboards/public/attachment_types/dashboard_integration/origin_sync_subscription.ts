@@ -18,18 +18,18 @@ import type { UpdateOriginResponse } from '@kbn/agent-builder-common';
 export const createOriginSyncSubscription = ({
   api,
   getAttachments,
-  checkSavedDashboardExist,
+  findLinkedAttachment,
   updateOrigin,
 }: {
   api: DashboardApi;
   getAttachments: () => undefined | DashboardAttachment[];
-  checkSavedDashboardExist: (dashboardId: string) => Promise<boolean>;
+  findLinkedAttachment: (attachments: DashboardAttachment[]) => DashboardAttachment | undefined;
   updateOrigin: (
     attachmentId: string,
     origin: string
   ) => Promise<UpdateOriginResponse | undefined> | undefined;
 }): Subscription => {
-  return api.onSave$.subscribe(async ({ previousDashboardId, dashboardId }: DashboardSaveEvent) => {
+  return api.onSave$.subscribe(({ previousDashboardId, dashboardId }: DashboardSaveEvent) => {
     if (!dashboardId) {
       return;
     }
@@ -37,28 +37,11 @@ export const createOriginSyncSubscription = ({
     if (!attachments) {
       return;
     }
-    const attachmentToSync = attachments.find(({ origin }) => {
-      if (origin === previousDashboardId || origin === dashboardId) {
-        return true;
-      }
-      return false;
-    });
+    const attachmentToSync =
+      findLinkedAttachment(attachments) ??
+      attachments.find(({ origin }) => origin === previousDashboardId || origin === dashboardId);
     if (attachmentToSync) {
       return updateOrigin(attachmentToSync.id, dashboardId);
-    }
-
-    // if no attachment to sync, check if there is an attachment with a non-existing
-    // origin (dashboard has been removed)
-    let attachmentWithNonExistingOrigin: DashboardAttachment | undefined;
-    for (const attachment of attachments) {
-      if (attachment.origin && !(await checkSavedDashboardExist(attachment.origin))) {
-        attachmentWithNonExistingOrigin = attachment;
-        break;
-      }
-    }
-
-    if (attachmentWithNonExistingOrigin) {
-      return updateOrigin(attachmentWithNonExistingOrigin.id, dashboardId);
     }
   });
 };

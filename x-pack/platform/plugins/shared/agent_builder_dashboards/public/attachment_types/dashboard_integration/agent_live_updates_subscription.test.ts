@@ -55,7 +55,7 @@ const createHarness = (
       events: { ui: { activeConversation$ }, getChatEvents$ },
     } as unknown as AgentBuilderPluginStart,
     api: { savedObjectId$: { getValue: () => savedObjectId } } as unknown as DashboardApi,
-    isStagedFromDashboard: (attachmentId) => stagedAttachmentIds.includes(attachmentId),
+    isLinkedToDashboard: (attachmentId) => stagedAttachmentIds.includes(attachmentId),
     upsertAttachment,
     onOpenDashboardUpdated,
     onOtherDashboardUpdated,

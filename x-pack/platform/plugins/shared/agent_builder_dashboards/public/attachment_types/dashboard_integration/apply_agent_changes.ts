@@ -23,6 +23,8 @@ interface ApplyAgentChangesParams {
   dashboardState: DashboardState;
   dashboardLocator?: DashboardLocator;
   toasts: NotificationsStart['toasts'];
+  /** Called right before the changes open in a new dashboard. */
+  onOpenInNewDashboard?: () => void;
 }
 
 export const APPLY_AGENT_CHANGES_ERROR_TITLE = i18n.translate(
@@ -46,6 +48,7 @@ export const applyAgentChangesToDashboard = async ({
   dashboardState,
   dashboardLocator,
   toasts,
+  onOpenInNewDashboard,
 }: ApplyAgentChangesParams): Promise<ApplyAgentChangesOutcome> => {
   if (canApplyAgentChangesInPlace(api)) {
     api.setViewMode('edit');
@@ -55,6 +58,7 @@ export const applyAgentChangesToDashboard = async ({
     return 'applied';
   }
 
+  onOpenInNewDashboard?.();
   await openInDashboardApp(dashboardLocator, toDashboardLocatorParams(dashboardState));
   toasts.addWarning({
     title: i18n.translate('xpack.agentBuilderDashboards.applyAgentChanges.newDashboardToastTitle', {

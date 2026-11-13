@@ -16,6 +16,7 @@ import {
 } from './dashboard_integration/open_in_dashboard_app';
 import { APPLY_AGENT_CHANGES_ERROR_TITLE } from './dashboard_integration/apply_agent_changes';
 import { handleEditInDashboard } from './handle_edit_in_dashboard';
+import type { AttachmentLinks } from './dashboard_integration/attachment_links';
 
 interface HandlePreviewParams {
   attachment: DashboardAttachment;
@@ -25,6 +26,7 @@ interface HandlePreviewParams {
   dashboardLocator?: DashboardLocator;
   toasts: NotificationsStart['toasts'];
   checkSavedDashboardExist: (dashboardId: string) => Promise<boolean>;
+  attachmentLinks: AttachmentLinks;
   openCanvas?: () => void;
 }
 
@@ -42,6 +44,7 @@ const openPreview = async ({
   dashboardLocator,
   toasts,
   checkSavedDashboardExist,
+  attachmentLinks,
   openCanvas,
 }: HandlePreviewParams): Promise<void> => {
   // sidebar in dashboard experience - synchronize dashboard app to attachment
@@ -52,6 +55,7 @@ const openPreview = async ({
       dashboardLocator,
       toasts,
       checkSavedDashboardExist,
+      attachmentLinks,
     });
   }
 
@@ -69,6 +73,7 @@ const openPreview = async ({
         return exists ? attachment.origin : undefined;
       },
       dashboardLocatorParams: toDashboardLocatorParams(dashboardState),
+      onOpenNewDashboard: () => attachmentLinks.linkNextDashboard(attachment.id),
     });
   }
 

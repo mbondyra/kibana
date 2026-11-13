@@ -16,8 +16,8 @@ import type { ApplyAgentChangesOutcome } from './apply_agent_changes';
 export interface AgentLiveUpdatesSubscriptionParams {
   agentBuilder: AgentBuilderPluginStart;
   api: DashboardApi;
-  /** Whether the open dashboard staged the attachment, which is left unlinked when the user can't edit it. */
-  isStagedFromDashboard: (attachmentId: string) => boolean;
+  /** Whether the open dashboard staged or shows the attachment, which may not have its origin yet. */
+  isLinkedToDashboard: (attachmentId: string) => boolean;
   upsertAttachment: (attachment: DashboardAttachment) => void;
   /** Applies an update of the open dashboard. Updates stop once it opens them in a new dashboard. */
   onOpenDashboardUpdated: (
@@ -39,7 +39,7 @@ const isDashboardUpdatedUiEvent = (
 export const createAgentLiveUpdatesSubscription = ({
   agentBuilder,
   api,
-  isStagedFromDashboard,
+  isLinkedToDashboard,
   upsertAttachment,
   onOpenDashboardUpdated,
   onOtherDashboardUpdated,
@@ -49,7 +49,7 @@ export const createAgentLiveUpdatesSubscription = ({
     return (
       !currentSavedObjectId ||
       origin === currentSavedObjectId ||
-      (!origin && isStagedFromDashboard(id))
+      (!origin && isLinkedToDashboard(id))
     );
   };
 

@@ -23,6 +23,7 @@ import type {
 import type { UnifiedSearchPublicPluginStart } from '@kbn/unified-search-plugin/public';
 import type { AgentBuilderPluginStart } from '@kbn/agent-builder-browser';
 import type { DashboardCanvasAttachmentProps } from './async_services';
+import { createAttachmentLinks } from './dashboard_integration/attachment_links';
 
 export interface IdGenerator {
   readonly current: string;
@@ -72,6 +73,7 @@ export const registerDashboardAttachmentUiDefinition = ({
   toasts: NotificationsStart['toasts'];
 }): (() => void) => {
   let dashboardApi: DashboardApi | undefined;
+  const attachmentLinks = createAttachmentLinks();
   const findDashboardsServicePromise = dashboardPlugin.findDashboardsService();
   const checkSavedDashboardExist = async (dashboardId: string) => {
     const findDashboardsService = await findDashboardsServicePromise;
@@ -98,6 +100,9 @@ export const registerDashboardAttachmentUiDefinition = ({
       switchMap(([api, appId]) => {
         // maintains a dashboardApi reference for access in getActionButtons
         dashboardApi = api;
+        if (api) {
+          attachmentLinks.claimNextDashboardLink(api);
+        }
         // integrates dashboard app with agent only when both dashboard and chat are active
         const isAgentOpen = appId === 'agentBuilder';
         return api && isAgentOpen
@@ -112,6 +117,7 @@ export const registerDashboardAttachmentUiDefinition = ({
                   draftAttachmentId,
                   checkSavedDashboardExist,
                   getUpdateOrigin: (attachmentId) => updateOriginByAttachmentId.get(attachmentId),
+                  attachmentLinks,
                 })
               )
             )
@@ -170,6 +176,7 @@ export const registerDashboardAttachmentUiDefinition = ({
               dashboardLocator,
               toasts,
               checkSavedDashboardExist,
+              attachmentLinks,
               openCanvas,
             });
           },

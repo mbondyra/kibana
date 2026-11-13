@@ -30,6 +30,7 @@ import { createNewAttachmentIdRegenerationSubscription } from './new_attachment_
 import { createOriginSyncSubscription } from './origin_sync_subscription';
 import { createOtherDashboardUpdateNotifier } from './other_dashboard_update_notifier';
 import type { DashboardLocator } from './open_in_dashboard_app';
+import type { AttachmentLinks } from './attachment_links';
 import { handlePreview } from '../handle_preview';
 import type { IdGenerator } from '..';
 
@@ -51,6 +52,7 @@ export interface DashboardAppIntegrationParams {
   getUpdateOrigin: (
     attachmentId: string
   ) => ((origin: string) => Promise<UpdateOriginResponse | undefined>) | undefined;
+  attachmentLinks: AttachmentLinks;
 }
 
 interface State {
@@ -67,6 +69,7 @@ export const registerDashboardAppIntegration = ({
   draftAttachmentId,
   checkSavedDashboardExist,
   getUpdateOrigin,
+  attachmentLinks,
 }: DashboardAppIntegrationParams): (() => void) => {
   const state: State = {
     attachments: undefined,
@@ -74,26 +77,22 @@ export const registerDashboardAppIntegration = ({
   };
 
   let pendingAddAttachmentTimeout: ReturnType<typeof setTimeout> | undefined;
-  // Attachments staged from this dashboard without an origin, because agent changes to a dashboard
-  // the user can't edit open in a new dashboard, which the origin then follows on save. One per
-  // conversation started here, so switching back to an earlier conversation still finds its own.
-  const unlinkedStagedAttachmentIds = new Set<string>();
   let stagedAttachmentId: string | undefined;
 
   const addAttachmentFromDashboard = () => {
     const isLinkable = canWriteDashboards && canApplyAgentChangesInPlace(api);
     const dashboardId = isLinkable ? api.savedObjectId$.getValue() : undefined;
+    const attachments = state.attachments ?? [];
     const syncAttachment = isLinkable
-      ? state.attachments?.find(({ origin }) => origin === dashboardId)
+      ? attachmentLinks.findLinkedAttachment(api, attachments) ??
+        attachments.find(({ origin }) => origin === dashboardId)
       : undefined;
     const dashboardData = dashboardStateToAttachmentData(api.getSerializedState().attributes);
 
     // update an existing linked attachment, or add a draft attachment only when the conversation is new
     if (syncAttachment || !state.conversationId) {
       const attachmentId = syncAttachment?.id ?? draftAttachmentId.current;
-      if (!isLinkable) {
-        unlinkedStagedAttachmentIds.add(attachmentId);
-      }
+      attachmentLinks.link(api, attachmentId);
       stagedAttachmentId = attachmentId;
       agentBuilder.addAttachment({
         id: attachmentId,
@@ -166,6 +165,7 @@ export const registerDashboardAppIntegration = ({
         dashboardLocator,
         toasts,
         checkSavedDashboardExist,
+        attachmentLinks,
       }),
   });
 
@@ -190,12 +190,17 @@ export const registerDashboardAppIntegration = ({
   // never throws, since a throw would end the live updates subscription
   const applyToOpenDashboard = async (attachment: DashboardAttachment) => {
     try {
-      return await applyAgentChangesToDashboard({
+      const outcome = await applyAgentChangesToDashboard({
         api,
         dashboardState: attachmentDataToDashboardState(attachment.data),
         dashboardLocator,
         toasts,
+        onOpenInNewDashboard: () => attachmentLinks.linkNextDashboard(attachment.id, api),
       });
+      if (outcome === 'applied') {
+        attachmentLinks.link(api, attachment.id);
+      }
+      return outcome;
     } catch (error) {
       toasts.addError(error, { title: APPLY_AGENT_CHANGES_ERROR_TITLE });
       return undefined;
@@ -205,7 +210,7 @@ export const registerDashboardAppIntegration = ({
   const agentLiveUpdatesSubscription = createAgentLiveUpdatesSubscription({
     agentBuilder,
     api,
-    isStagedFromDashboard: (attachmentId) => unlinkedStagedAttachmentIds.has(attachmentId),
+    isLinkedToDashboard: (attachmentId) => attachmentLinks.isLinked(api, attachmentId),
     upsertAttachment: (attachment: DashboardAttachment) => {
       const otherAttachments = (state.attachments ?? []).filter(({ id }) => id !== attachment.id);
       state.attachments = [...otherAttachments, attachment];
@@ -229,8 +234,8 @@ export const registerDashboardAppIntegration = ({
 
   const originSyncSubscription = createOriginSyncSubscription({
     api,
-    checkSavedDashboardExist,
     getAttachments: () => state.attachments,
+    findLinkedAttachment: (attachments) => attachmentLinks.findLinkedAttachment(api, attachments),
     updateOrigin: (id: string, origin: string) => getUpdateOrigin(id)?.(origin),
   });
 

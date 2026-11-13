@@ -15,11 +15,17 @@ export const handleEditInDashboard = async ({
   locator,
   getExistingDashboardId,
   dashboardLocatorParams,
+  onOpenNewDashboard,
 }: {
   locator: DashboardLocator;
   getExistingDashboardId: () => Promise<string | undefined>;
   dashboardLocatorParams: DashboardLocatorParams;
+  /** Called right before a new dashboard opens, when there's no existing one. */
+  onOpenNewDashboard?: () => void;
 }) => {
   const dashboardId = await getExistingDashboardId();
+  if (!dashboardId) {
+    onOpenNewDashboard?.();
+  }
   await openInDashboardApp(locator, { ...dashboardLocatorParams, dashboardId });
 };
