@@ -739,6 +739,44 @@ describe('registerDashboardAppIntegration', () => {
     });
   });
 
+  it("doesn't stage the attachment a new dashboard opened with when it takes over its link", async () => {
+    const shownAttachment = createDashboardAttachment({ id: 'attachment-2' });
+    attachmentLinks.linkNextDashboard(shownAttachment.id);
+    attachmentLinks.claimNextDashboardLink(mockApi as unknown as DashboardApi);
+    register();
+
+    emitConversationChange({
+      id: 'conversation-1',
+      attachments: [createVersionedAttachment(shownAttachment)],
+    });
+    await jest.runOnlyPendingTimersAsync();
+
+    expect(addAttachment).not.toHaveBeenCalled();
+  });
+
+  it('stages the changed dashboard as the linked attachment when switching from a new conversation to an existing one', async () => {
+    const attachment = createDashboardAttachment({ origin: 'dashboard-1' });
+    mockApi.savedObjectId$.next('dashboard-1');
+    register();
+    emitConversationChange({});
+    jest.runOnlyPendingTimers();
+    addAttachment.mockClear();
+    mockApi.getSerializedState.mockReturnValue({ attributes: { title: 'Edited', panels: [] } });
+
+    emitConversationChange({
+      id: 'conversation-1',
+      attachments: [createVersionedAttachment(attachment)],
+    });
+    await jest.runOnlyPendingTimersAsync();
+
+    expect(addAttachment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'dashboard-attachment-id',
+        data: expect.objectContaining({ title: 'Edited' }),
+      })
+    );
+  });
+
   it('removes the attachment it staged in the chat input when the user leaves the dashboard', () => {
     register();
     emitConversationChange({});

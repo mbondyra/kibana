@@ -138,11 +138,8 @@ export const registerDashboardAppIntegration = ({
       }
 
       const { id: conversationId, conversation } = change;
-      // the same conversation fetched again, or a new one that got its id once its first message
-      // was sent, already has the dashboard staged or sent
-      const isConversationSwitch =
-        !hasActiveConversation ||
-        (state.conversationId !== undefined && state.conversationId !== conversationId);
+      const isNewConversationStart =
+        !conversationId && (!hasActiveConversation || state.conversationId !== undefined);
       hasActiveConversation = true;
       const dashboardAttachments = conversation?.attachments
         ?.filter(isDashboardAttachment)
@@ -163,8 +160,7 @@ export const registerDashboardAppIntegration = ({
 
       state.attachments = dashboardAttachments;
       state.conversationId = conversationId;
-      if (!isConversationSwitch) {
-        void addUnsentChangesFromDashboard();
+      if (!conversationId && !isNewConversationStart) {
         return;
       }
       // we have to defer adding the attachment from the dashboard until after the active conversation change has fully propagated, otherwise sidebarCallbacks from agent builder are null
@@ -173,7 +169,13 @@ export const registerDashboardAppIntegration = ({
       }
       pendingAddAttachmentTimeout = setTimeout(() => {
         pendingAddAttachmentTimeout = undefined;
-        addAttachmentFromDashboard();
+        // a new conversation needs the dashboard once; an existing one only what it doesn't have yet,
+        // whether it was switched to, fetched again, or just got its id
+        if (conversationId) {
+          void addUnsentChangesFromDashboard();
+        } else {
+          addAttachmentFromDashboard();
+        }
       });
     }
   );
