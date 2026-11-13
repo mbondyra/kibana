@@ -15,10 +15,8 @@ import type { ActiveConversation } from '@kbn/agent-builder-browser/events';
 import { DASHBOARD_ATTACHMENT_TYPE } from '@kbn/agent-builder-dashboards-common';
 import type { DashboardAttachment } from '@kbn/agent-builder-dashboards-common/types';
 import type { DashboardApi, DashboardSaveEvent } from '@kbn/dashboard-plugin/public';
-import {
-  MANUAL_CHANGES_DEBOUNCE_MS,
-  registerDashboardAppIntegration,
-} from './dashboard_app_integration';
+import { registerDashboardAppIntegration } from './dashboard_app_integration';
+import { MANUAL_CHANGES_DEBOUNCE_MS } from './agent_changes_state';
 import type { IdGenerator } from '..';
 import { DASHBOARD_UPDATED_UI_EVENT } from '../../../common';
 
@@ -51,6 +49,8 @@ interface MockDashboardApi {
   setState: jest.Mock;
   setViewMode: jest.Mock;
   getSerializedState: jest.Mock;
+  layout$: BehaviorSubject<{ panels: object; pinnedPanels: object }>;
+  getChildApi: jest.Mock;
 }
 
 const createMockDashboardApi = (anyStateChange$: Observable<void>): MockDashboardApi => ({
@@ -63,8 +63,10 @@ const createMockDashboardApi = (anyStateChange$: Observable<void>): MockDashboar
   getAppContext: () => ({ currentAppId: 'dashboards' }),
   isEditableByUser: true,
   isManaged: false,
-  setState: jest.fn(),
+  setState: jest.fn().mockResolvedValue(undefined),
   setViewMode: jest.fn(),
+  layout$: new BehaviorSubject({ panels: {}, pinnedPanels: {} }),
+  getChildApi: jest.fn().mockResolvedValue(undefined),
   getSerializedState: jest.fn().mockReturnValue({
     attributes: {
       title: 'Test Dashboard',
@@ -211,7 +213,7 @@ describe('registerDashboardAppIntegration', () => {
     });
   };
 
-  it('syncs manual dashboard changes for an existing dashboard attachment', () => {
+  it('syncs manual dashboard changes for an existing dashboard attachment', async () => {
     const attachment = createDashboardAttachment({ origin: 'dashboard-1' });
     mockApi.savedObjectId$.next('dashboard-1');
     register();
@@ -219,9 +221,11 @@ describe('registerDashboardAppIntegration', () => {
       id: 'conversation-1',
       attachments: [createVersionedAttachment(attachment)],
     });
+    jest.runOnlyPendingTimers();
+    addAttachment.mockClear();
 
     simulateDashboardStateChange();
-    jest.advanceTimersByTime(MANUAL_CHANGES_DEBOUNCE_MS);
+    await jest.advanceTimersByTimeAsync(MANUAL_CHANGES_DEBOUNCE_MS);
 
     expect(addAttachment).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -245,7 +249,7 @@ describe('registerDashboardAppIntegration', () => {
     );
   });
 
-  it('does not sync manual changes of a managed dashboard into an unlinked attachment of an existing conversation', () => {
+  it('does not sync manual changes of a managed dashboard into an unlinked attachment of an existing conversation', async () => {
     mockApi.savedObjectId$.next('managed-dashboard');
     mockApi.isManaged = true;
     register();
@@ -256,7 +260,7 @@ describe('registerDashboardAppIntegration', () => {
 
     jest.runOnlyPendingTimers();
     simulateDashboardStateChange();
-    jest.advanceTimersByTime(MANUAL_CHANGES_DEBOUNCE_MS);
+    await jest.advanceTimersByTimeAsync(MANUAL_CHANGES_DEBOUNCE_MS);
 
     expect(addAttachment).not.toHaveBeenCalled();
   });
@@ -332,7 +336,7 @@ describe('registerDashboardAppIntegration', () => {
     expect(toasts.remove).toHaveBeenCalledWith(toast);
   });
 
-  it('selects the matching existing dashboard attachment for manual sync', () => {
+  it('selects the matching existing dashboard attachment for manual sync', async () => {
     mockApi.savedObjectId$.next('dashboard-2');
     register();
     emitConversationChange({
@@ -352,9 +356,11 @@ describe('registerDashboardAppIntegration', () => {
         ),
       ],
     });
+    jest.runOnlyPendingTimers();
+    addAttachment.mockClear();
 
     simulateDashboardStateChange();
-    jest.advanceTimersByTime(MANUAL_CHANGES_DEBOUNCE_MS);
+    await jest.advanceTimersByTimeAsync(MANUAL_CHANGES_DEBOUNCE_MS);
 
     expect(addAttachment).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -424,7 +430,7 @@ describe('registerDashboardAppIntegration', () => {
     );
   });
 
-  it('creates a new attachment from the current dashboard state when switching away from a conversation', () => {
+  it('creates a new attachment from the current dashboard state when switching away from a conversation', async () => {
     const attachment = createDashboardAttachment({ origin: 'dashboard-1' });
     mockApi.savedObjectId$.next('dashboard-1');
     register();
@@ -436,7 +442,7 @@ describe('registerDashboardAppIntegration', () => {
     jest.runOnlyPendingTimers();
     addAttachment.mockClear();
     simulateDashboardStateChange();
-    jest.advanceTimersByTime(MANUAL_CHANGES_DEBOUNCE_MS);
+    await jest.advanceTimersByTimeAsync(MANUAL_CHANGES_DEBOUNCE_MS);
 
     expect(addAttachment).toHaveBeenCalledTimes(1);
 
@@ -487,13 +493,13 @@ describe('registerDashboardAppIntegration', () => {
     expect(addAttachment).not.toHaveBeenCalled();
   });
 
-  it('does not create an unsaved attachment from manual changes in an existing conversation', () => {
+  it('does not create an unsaved attachment from manual changes in an existing conversation', async () => {
     register();
     emitConversationChange({ id: 'conversation-1', attachments: [] });
 
     addAttachment.mockClear();
     simulateDashboardStateChange();
-    jest.advanceTimersByTime(MANUAL_CHANGES_DEBOUNCE_MS);
+    await jest.advanceTimersByTimeAsync(MANUAL_CHANGES_DEBOUNCE_MS);
 
     expect(addAttachment).not.toHaveBeenCalled();
 
@@ -536,5 +542,74 @@ describe('registerDashboardAppIntegration', () => {
       })
     );
     expect(addAttachment.mock.calls[0][0].id).not.toBe(firstDraftAttachment.id);
+  });
+
+  describe("doesn't stage the agent's own changes again", () => {
+    const attachment = createDashboardAttachment({ origin: 'dashboard-1' });
+
+    const openConversationWithAttachment = () => {
+      mockApi.savedObjectId$.next('dashboard-1');
+      register();
+      emitConversationChange({
+        id: 'conversation-1',
+        attachments: [createVersionedAttachment(attachment)],
+      });
+      jest.runOnlyPendingTimers();
+      addAttachment.mockClear();
+    };
+
+    it('when the conversation is fetched again after an agent round', () => {
+      openConversationWithAttachment();
+
+      emitConversationChange({
+        id: 'conversation-1',
+        attachments: [createVersionedAttachment(attachment)],
+      });
+      jest.runOnlyPendingTimers();
+
+      expect(addAttachment).not.toHaveBeenCalled();
+    });
+
+    it('when a new conversation gets its id once its first message is sent', () => {
+      register();
+      emitConversationChange({});
+      jest.runOnlyPendingTimers();
+      const [[draftAttachment]] = addAttachment.mock.calls;
+      addAttachment.mockClear();
+
+      emitConversationChange({
+        id: 'conversation-1',
+        attachments: [createVersionedAttachment(createDashboardAttachment(draftAttachment))],
+      });
+      jest.runOnlyPendingTimers();
+
+      expect(addAttachment).not.toHaveBeenCalled();
+    });
+
+    it('when the dashboard changes from applying them', async () => {
+      openConversationWithAttachment();
+
+      emitDashboardUpdated(attachment);
+      simulateDashboardStateChange();
+      await jest.advanceTimersByTimeAsync(2 * MANUAL_CHANGES_DEBOUNCE_MS);
+
+      expect(mockApi.setState).toHaveBeenCalled();
+      expect(addAttachment).not.toHaveBeenCalled();
+    });
+
+    it('but stages a manual change made after them', async () => {
+      openConversationWithAttachment();
+      emitDashboardUpdated(attachment);
+      simulateDashboardStateChange();
+      await jest.advanceTimersByTimeAsync(2 * MANUAL_CHANGES_DEBOUNCE_MS);
+
+      mockApi.getSerializedState.mockReturnValue({ attributes: { title: 'Edited', panels: [] } });
+      simulateDashboardStateChange();
+      await jest.advanceTimersByTimeAsync(MANUAL_CHANGES_DEBOUNCE_MS);
+
+      expect(addAttachment).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'dashboard-attachment-id', origin: 'dashboard-1' })
+      );
+    });
   });
 });

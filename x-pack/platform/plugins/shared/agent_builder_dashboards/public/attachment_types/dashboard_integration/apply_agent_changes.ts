@@ -9,6 +9,7 @@ import { i18n } from '@kbn/i18n';
 import type { NotificationsStart } from '@kbn/core/public';
 import type { DashboardState } from '@kbn/as-code-dashboard-schema';
 import type { DashboardApi } from '@kbn/dashboard-plugin/public';
+import { trackAgentChanges } from './agent_changes_state';
 import {
   openInDashboardApp,
   toDashboardLocatorParams,
@@ -48,7 +49,9 @@ export const applyAgentChangesToDashboard = async ({
 }: ApplyAgentChangesParams): Promise<ApplyAgentChangesOutcome> => {
   if (canApplyAgentChangesInPlace(api)) {
     api.setViewMode('edit');
-    await api.setState(dashboardState, { changedBy: ['agent'] });
+    const applied = api.setState(dashboardState, { changedBy: ['agent'] });
+    trackAgentChanges(api, applied);
+    await applied;
     return 'applied';
   }
 

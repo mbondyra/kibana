@@ -5,7 +5,7 @@
  * 2.0.
  */
 
-import { debounceTime, Observable } from 'rxjs';
+import { debounceTime, filter, Observable, switchMap } from 'rxjs';
 import type { AgentBuilderPluginStart } from '@kbn/agent-builder-browser';
 import { getLatestVersion } from '@kbn/agent-builder-common/attachments';
 import type { UpdateOriginResponse } from '@kbn/agent-builder-common';
@@ -19,11 +19,8 @@ import {
   dashboardStateToAttachmentData,
   DASHBOARD_ATTACHMENT_TYPE,
 } from '@kbn/agent-builder-dashboards-common';
-import {
-  CHILDREN_UNSAVED_CHANGES_DEBOUNCE,
-  UNSAVED_CHANGES_DEBOUNCE,
-} from '@kbn/presentation-publishing';
 import { createAgentLiveUpdatesSubscription } from './agent_live_updates_subscription';
+import { isShowingAgentChanges, MANUAL_CHANGES_DEBOUNCE_MS } from './agent_changes_state';
 import {
   APPLY_AGENT_CHANGES_ERROR_TITLE,
   applyAgentChangesToDashboard,
@@ -35,14 +32,6 @@ import { createOtherDashboardUpdateNotifier } from './other_dashboard_update_not
 import type { DashboardLocator } from './open_in_dashboard_app';
 import { handlePreview } from '../handle_preview';
 import type { IdGenerator } from '..';
-
-/**
- * Layout manager refreshes `getSerializedState()` panel configs only after
- * `UNSAVED_CHANGES_DEBOUNCE` then `CHILDREN_UNSAVED_CHANGES_DEBOUNCE`. Wait that
- * long (+ buffer) so manual sync is not one edit behind.
- */
-export const MANUAL_CHANGES_DEBOUNCE_MS =
-  UNSAVED_CHANGES_DEBOUNCE + CHILDREN_UNSAVED_CHANGES_DEBOUNCE + 50;
 
 export interface DashboardAppIntegrationParams {
   agentBuilder: AgentBuilderPluginStart;
@@ -113,15 +102,24 @@ export const registerDashboardAppIntegration = ({
     }
   };
 
+  let hasActiveConversation = false;
+
   const conversationChangesSubscription = agentBuilder.events.ui.activeConversation$.subscribe(
     (change) => {
       if (!change) {
         state.attachments = undefined;
         state.conversationId = undefined;
+        hasActiveConversation = false;
         return;
       }
 
       const { id: conversationId, conversation } = change;
+      // the same conversation fetched again, or a new one that got its id once its first message
+      // was sent, already has the dashboard staged or sent
+      const isConversationSwitch =
+        !hasActiveConversation ||
+        (state.conversationId !== undefined && state.conversationId !== conversationId);
+      hasActiveConversation = true;
       const dashboardAttachments = conversation?.attachments
         ?.filter(isDashboardAttachment)
         ?.flatMap((attachment): DashboardAttachment[] => {
@@ -141,6 +139,9 @@ export const registerDashboardAppIntegration = ({
 
       state.attachments = dashboardAttachments;
       state.conversationId = conversationId;
+      if (!isConversationSwitch) {
+        return;
+      }
       // we have to defer adding the attachment from the dashboard until after the active conversation change has fully propagated, otherwise sidebarCallbacks from agent builder are null
       if (pendingAddAttachmentTimeout !== undefined) {
         clearTimeout(pendingAddAttachmentTimeout);
@@ -232,7 +233,11 @@ export const registerDashboardAppIntegration = ({
   });
 
   const manualChangesSubscription = api.anyStateChange$
-    .pipe(debounceTime(MANUAL_CHANGES_DEBOUNCE_MS))
+    .pipe(
+      debounceTime(MANUAL_CHANGES_DEBOUNCE_MS),
+      switchMap(() => isShowingAgentChanges(api)),
+      filter((isAgentChanges) => !isAgentChanges)
+    )
     .subscribe(addAttachmentFromDashboard);
 
   return () => {

@@ -8,7 +8,9 @@
 import type { NotificationsStart } from '@kbn/core/public';
 import type { DashboardApi } from '@kbn/dashboard-plugin/public';
 import type { DashboardState } from '@kbn/as-code-dashboard-schema';
+import { BehaviorSubject } from 'rxjs';
 import { applyAgentChangesToDashboard } from './apply_agent_changes';
+import { isShowingAgentChanges, MANUAL_CHANGES_DEBOUNCE_MS } from './agent_changes_state';
 
 const agentDashboardState = {
   title: 'Agent dashboard',
@@ -28,6 +30,9 @@ const buildDashboardApi = ({
   isEditableByUser,
   setViewMode: jest.fn(),
   setState: jest.fn(),
+  layout$: new BehaviorSubject({ panels: {}, pinnedPanels: {} }),
+  getChildApi: jest.fn(),
+  getSerializedState: jest.fn(() => ({ attributes: agentDashboardState })),
 });
 
 const apply = ({
@@ -59,6 +64,17 @@ describe('applyAgentChangesToDashboard', () => {
     expect(api.setViewMode.mock.invocationCallOrder[0]).toBeLessThan(
       api.setState.mock.invocationCallOrder[0]
     );
+  });
+
+  it('marks the dashboard state the changes settle on as the agent changes, not manual ones', async () => {
+    jest.useFakeTimers();
+    const { api, result } = apply();
+    await result;
+
+    await jest.advanceTimersByTimeAsync(MANUAL_CHANGES_DEBOUNCE_MS);
+
+    await expect(isShowingAgentChanges(api as unknown as DashboardApi)).resolves.toBe(true);
+    jest.useRealTimers();
   });
 
   it('enters edit mode in place outside the Dashboard app', async () => {
