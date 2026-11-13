@@ -5,6 +5,7 @@
  * 2.0.
  */
 
+import deepEqual from 'fast-deep-equal';
 import { debounceTime, filter, Observable, switchMap } from 'rxjs';
 import type { AgentBuilderPluginStart } from '@kbn/agent-builder-browser';
 import { getLatestVersion } from '@kbn/agent-builder-common/attachments';
@@ -55,6 +56,10 @@ export interface DashboardAppIntegrationParams {
   attachmentLinks: AttachmentLinks;
 }
 
+// attachment data is persisted as JSON, which drops the undefined keys a serialized dashboard writes out
+const asPersisted = (data: DashboardAttachment['data']): DashboardAttachment['data'] =>
+  JSON.parse(JSON.stringify(data));
+
 interface State {
   attachments: DashboardAttachment[] | undefined;
   conversationId: string | undefined;
@@ -79,7 +84,7 @@ export const registerDashboardAppIntegration = ({
   let pendingAddAttachmentTimeout: ReturnType<typeof setTimeout> | undefined;
   let stagedAttachmentId: string | undefined;
 
-  const addAttachmentFromDashboard = () => {
+  const findSyncAttachment = () => {
     const isLinkable = canWriteDashboards && canApplyAgentChangesInPlace(api);
     const dashboardId = isLinkable ? api.savedObjectId$.getValue() : undefined;
     const attachments = state.attachments ?? [];
@@ -87,6 +92,11 @@ export const registerDashboardAppIntegration = ({
       ? attachmentLinks.findLinkedAttachment(api, attachments) ??
         attachments.find(({ origin }) => origin === dashboardId)
       : undefined;
+    return { dashboardId, syncAttachment };
+  };
+
+  const addAttachmentFromDashboard = () => {
+    const { dashboardId, syncAttachment } = findSyncAttachment();
     const dashboardData = dashboardStateToAttachmentData(api.getSerializedState().attributes);
 
     // update an existing linked attachment, or add a draft attachment only when the conversation is new
@@ -100,6 +110,19 @@ export const registerDashboardAppIntegration = ({
         type: DASHBOARD_ATTACHMENT_TYPE,
         data: dashboardData,
       });
+    }
+  };
+
+  // the chat input is cleared when a round ends, which drops manual changes staged during the round
+  const addUnsentChangesFromDashboard = async () => {
+    const { syncAttachment } = findSyncAttachment();
+    const dashboardData = dashboardStateToAttachmentData(api.getSerializedState().attributes);
+    if (
+      syncAttachment &&
+      !deepEqual(asPersisted(syncAttachment.data), asPersisted(dashboardData)) &&
+      !(await isShowingAgentChanges(api))
+    ) {
+      addAttachmentFromDashboard();
     }
   };
 
@@ -141,6 +164,7 @@ export const registerDashboardAppIntegration = ({
       state.attachments = dashboardAttachments;
       state.conversationId = conversationId;
       if (!isConversationSwitch) {
+        void addUnsentChangesFromDashboard();
         return;
       }
       // we have to defer adding the attachment from the dashboard until after the active conversation change has fully propagated, otherwise sidebarCallbacks from agent builder are null

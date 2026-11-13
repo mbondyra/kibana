@@ -643,19 +643,37 @@ describe('registerDashboardAppIntegration', () => {
       addAttachment.mockClear();
     };
 
-    it('when the conversation is fetched again after an agent round', () => {
+    it('when the conversation is fetched again after an agent round', async () => {
       openConversationWithAttachment();
 
       emitConversationChange({
         id: 'conversation-1',
         attachments: [createVersionedAttachment(attachment)],
       });
-      jest.runOnlyPendingTimers();
+      await jest.runOnlyPendingTimersAsync();
 
       expect(addAttachment).not.toHaveBeenCalled();
     });
 
-    it('when a new conversation gets its id once its first message is sent', () => {
+    it('but stages a manual change the conversation fetched again does not have', async () => {
+      openConversationWithAttachment();
+      mockApi.getSerializedState.mockReturnValue({ attributes: { title: 'Edited', panels: [] } });
+
+      emitConversationChange({
+        id: 'conversation-1',
+        attachments: [createVersionedAttachment(attachment)],
+      });
+      await jest.runOnlyPendingTimersAsync();
+
+      expect(addAttachment).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'dashboard-attachment-id',
+          data: expect.objectContaining({ title: 'Edited' }),
+        })
+      );
+    });
+
+    it('when a new conversation gets its id once its first message is sent', async () => {
       register();
       emitConversationChange({});
       jest.runOnlyPendingTimers();
@@ -666,7 +684,7 @@ describe('registerDashboardAppIntegration', () => {
         id: 'conversation-1',
         attachments: [createVersionedAttachment(createDashboardAttachment(draftAttachment))],
       });
-      jest.runOnlyPendingTimers();
+      await jest.runOnlyPendingTimersAsync();
 
       expect(addAttachment).not.toHaveBeenCalled();
     });
