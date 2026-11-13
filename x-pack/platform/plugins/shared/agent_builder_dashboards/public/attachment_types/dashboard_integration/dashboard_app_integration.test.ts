@@ -714,6 +714,29 @@ describe('registerDashboardAppIntegration', () => {
         expect.objectContaining({ id: 'dashboard-attachment-id', origin: 'dashboard-1' })
       );
     });
+
+    it('but stages a manual change back to them, so the staged attachment shows the dashboard', async () => {
+      const agentChangesState = mockApi.getSerializedState();
+      openConversationWithAttachment();
+      emitDashboardUpdated(attachment);
+      simulateDashboardStateChange();
+      await jest.advanceTimersByTimeAsync(2 * MANUAL_CHANGES_DEBOUNCE_MS);
+      mockApi.getSerializedState.mockReturnValue({ attributes: { title: 'Edited', panels: [] } });
+      simulateDashboardStateChange();
+      await jest.advanceTimersByTimeAsync(MANUAL_CHANGES_DEBOUNCE_MS);
+      addAttachment.mockClear();
+
+      mockApi.getSerializedState.mockReturnValue(agentChangesState);
+      simulateDashboardStateChange();
+      await jest.advanceTimersByTimeAsync(MANUAL_CHANGES_DEBOUNCE_MS);
+
+      expect(addAttachment).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'dashboard-attachment-id',
+          data: expect.objectContaining({ title: 'Test Dashboard' }),
+        })
+      );
+    });
   });
 
   it('removes the attachment it staged in the chat input when the user leaves the dashboard', () => {

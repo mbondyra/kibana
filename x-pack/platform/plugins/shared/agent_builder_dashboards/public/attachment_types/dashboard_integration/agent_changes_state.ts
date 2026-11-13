@@ -58,6 +58,14 @@ export const trackAgentChanges = (api: DashboardApi, applied: Promise<void>): vo
 
 /** Whether the dashboard still shows the agent's latest changes, once they have settled. */
 export const isShowingAgentChanges = async (api: DashboardApi): Promise<boolean> => {
-  const agentChangesState = await agentChangesStates.get(api);
-  return agentChangesState !== undefined && deepEqual(agentChangesState, getDashboardState(api));
+  const settled = agentChangesStates.get(api);
+  const agentChangesState = await settled;
+  if (agentChangesState !== undefined && deepEqual(agentChangesState, getDashboardState(api))) {
+    return true;
+  }
+  // once the user moved away from the agent's changes, a change back to them is theirs to stage
+  if (agentChangesStates.get(api) === settled) {
+    agentChangesStates.delete(api);
+  }
+  return false;
 };
