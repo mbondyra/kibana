@@ -11,7 +11,6 @@ import type { DashboardApi } from '@kbn/dashboard-plugin/public';
 import type { DashboardLocatorParams } from '@kbn/dashboard-plugin/common';
 import type { DashboardAttachment } from '@kbn/agent-builder-dashboards-common/types';
 import { attachmentDataToDashboardState } from '@kbn/agent-builder-dashboards-common';
-import { markAttachmentApplied } from './dashboard_equality';
 import {
   openInDashboardApp,
   toDashboardLocatorParams,
@@ -55,9 +54,7 @@ export const applyAttachment = async ({
   const dashboardState = attachmentDataToDashboardState(attachment.data);
   if (canApplyAgentChangesInPlace(api)) {
     api.setViewMode('edit');
-    const applied = api.setState(dashboardState, { changedBy: ['agent'] });
-    markAttachmentApplied(api, attachment.data, applied);
-    await applied;
+    await api.setState(dashboardState, { changedBy: ['agent'] });
     attachmentLinks.link(api, attachment.id);
     return 'applied';
   }

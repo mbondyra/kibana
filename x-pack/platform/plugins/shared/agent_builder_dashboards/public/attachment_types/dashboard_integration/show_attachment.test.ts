@@ -12,9 +12,7 @@ import {
   attachmentDataToDashboardState,
   DASHBOARD_ATTACHMENT_TYPE,
 } from '@kbn/agent-builder-dashboards-common';
-import { BehaviorSubject } from 'rxjs';
 import { applyAttachment } from './show_attachment';
-import { isShowing, MANUAL_CHANGES_DEBOUNCE_MS } from './dashboard_equality';
 import { createAttachmentLinks } from './attachment_links';
 
 const agentData = {
@@ -42,8 +40,6 @@ const buildDashboardApi = ({
   isEditableByUser,
   setViewMode: jest.fn(),
   setState: jest.fn(),
-  layout$: new BehaviorSubject({ panels: {}, pinnedPanels: {} }),
-  getChildApi: jest.fn(),
   getSerializedState: jest.fn(() => ({
     attributes: attachmentDataToDashboardState(agentData),
   })),
@@ -89,20 +85,6 @@ describe('applyAttachment', () => {
     await result;
 
     expect(attachmentLinks.isLinked(api as unknown as DashboardApi, 'attachment-1')).toBe(true);
-  });
-
-  it('recognizes the dashboard state the attachment settles on as showing it', async () => {
-    jest.useFakeTimers();
-    const settledState = { ...attachmentDataToDashboardState(agentData), tags: ['filled-in'] };
-    const api = buildDashboardApi();
-    const { result } = apply({ api });
-    await result;
-    api.getSerializedState.mockReturnValue({ attributes: settledState });
-
-    await jest.advanceTimersByTimeAsync(MANUAL_CHANGES_DEBOUNCE_MS);
-
-    await expect(isShowing(api as unknown as DashboardApi, agentData)).resolves.toBe(true);
-    jest.useRealTimers();
   });
 
   it('enters edit mode in place outside the Dashboard app', async () => {
