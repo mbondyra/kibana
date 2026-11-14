@@ -7,17 +7,29 @@
 
 import type { NotificationsStart } from '@kbn/core/public';
 import type { DashboardApi } from '@kbn/dashboard-plugin/public';
-import type { DashboardState } from '@kbn/as-code-dashboard-schema';
+import type { DashboardAttachment } from '@kbn/agent-builder-dashboards-common/types';
+import {
+  attachmentDataToDashboardState,
+  DASHBOARD_ATTACHMENT_TYPE,
+} from '@kbn/agent-builder-dashboards-common';
 import { BehaviorSubject } from 'rxjs';
-import { applyAgentChangesToDashboard } from './apply_agent_changes';
-import { isShowingAgentChanges, MANUAL_CHANGES_DEBOUNCE_MS } from './agent_changes_state';
+import { applyAttachment } from './show_attachment';
+import { isShowing, MANUAL_CHANGES_DEBOUNCE_MS } from './dashboard_equality';
+import { createAttachmentLinks } from './attachment_links';
 
-const agentDashboardState = {
+const agentData = {
   title: 'Agent dashboard',
   description: 'Built by the agent',
   panels: [],
   time_range: { from: 'now-7d', to: 'now' },
-} as unknown as DashboardState;
+} as unknown as DashboardAttachment['data'];
+
+const buildAttachment = (data = agentData): DashboardAttachment => ({
+  id: 'attachment-1',
+  type: DASHBOARD_ATTACHMENT_TYPE,
+  origin: 'dashboard-1',
+  data,
+});
 
 const buildDashboardApi = ({
   isManaged = false,
@@ -32,48 +44,64 @@ const buildDashboardApi = ({
   setState: jest.fn(),
   layout$: new BehaviorSubject({ panels: {}, pinnedPanels: {} }),
   getChildApi: jest.fn(),
-  getSerializedState: jest.fn(() => ({ attributes: agentDashboardState })),
+  getSerializedState: jest.fn(() => ({
+    attributes: attachmentDataToDashboardState(agentData),
+  })),
 });
 
 const apply = ({
   api = buildDashboardApi(),
-  dashboardState = agentDashboardState,
+  attachment = buildAttachment(),
   hasLocator = true,
 }: {
   api?: ReturnType<typeof buildDashboardApi>;
-  dashboardState?: DashboardState;
+  attachment?: DashboardAttachment;
   hasLocator?: boolean;
 } = {}) => {
   const dashboardLocator = { navigate: jest.fn(), getRedirectUrl: jest.fn() };
   const toasts = { addWarning: jest.fn() };
-  const result = applyAgentChangesToDashboard({
+  const attachmentLinks = createAttachmentLinks();
+  const result = applyAttachment({
+    attachment,
     api: api as unknown as DashboardApi,
-    dashboardState,
     dashboardLocator: hasLocator ? dashboardLocator : undefined,
     toasts: toasts as unknown as NotificationsStart['toasts'],
+    attachmentLinks,
   });
-  return { api, dashboardLocator, toasts, result };
+  return { api, dashboardLocator, toasts, attachmentLinks, result };
 };
 
-describe('applyAgentChangesToDashboard', () => {
-  it('switches an editable dashboard to edit mode before applying the changes', async () => {
+describe('applyAttachment', () => {
+  it('switches an editable dashboard to edit mode before applying the attachment', async () => {
     const { api, result } = apply();
 
     await expect(result).resolves.toBe('applied');
-    expect(api.setState).toHaveBeenCalledWith(agentDashboardState, { changedBy: ['agent'] });
+    expect(api.setState).toHaveBeenCalledWith(attachmentDataToDashboardState(agentData), {
+      changedBy: ['agent'],
+    });
     expect(api.setViewMode.mock.invocationCallOrder[0]).toBeLessThan(
       api.setState.mock.invocationCallOrder[0]
     );
   });
 
-  it('marks the dashboard state the changes settle on as the agent changes, not manual ones', async () => {
-    jest.useFakeTimers();
-    const { api, result } = apply();
+  it('links the dashboard it applied the attachment to', async () => {
+    const { api, attachmentLinks, result } = apply();
     await result;
+
+    expect(attachmentLinks.isLinked(api as unknown as DashboardApi, 'attachment-1')).toBe(true);
+  });
+
+  it('recognizes the dashboard state the attachment settles on as showing it', async () => {
+    jest.useFakeTimers();
+    const settledState = { ...attachmentDataToDashboardState(agentData), tags: ['filled-in'] };
+    const api = buildDashboardApi();
+    const { result } = apply({ api });
+    await result;
+    api.getSerializedState.mockReturnValue({ attributes: settledState });
 
     await jest.advanceTimersByTimeAsync(MANUAL_CHANGES_DEBOUNCE_MS);
 
-    await expect(isShowingAgentChanges(api as unknown as DashboardApi)).resolves.toBe(true);
+    await expect(isShowing(api as unknown as DashboardApi, agentData)).resolves.toBe(true);
     jest.useRealTimers();
   });
 
@@ -83,7 +111,9 @@ describe('applyAgentChangesToDashboard', () => {
     });
     await result;
 
-    expect(api.setState).toHaveBeenCalledWith(agentDashboardState, { changedBy: ['agent'] });
+    expect(api.setState).toHaveBeenCalledWith(attachmentDataToDashboardState(agentData), {
+      changedBy: ['agent'],
+    });
     expect(api.setViewMode).toHaveBeenCalledWith('edit');
     expect(dashboardLocator.navigate).not.toHaveBeenCalled();
   });
@@ -96,39 +126,46 @@ describe('applyAgentChangesToDashboard', () => {
       { isManaged: true, currentAppId: 'securitySolutionUI' },
     ],
   ])(
-    'opens the changes in a new dashboard and warns, leaving the dashboard untouched, when %s',
+    'opens the attachment in a new linked dashboard and warns, leaving the dashboard untouched, when %s',
     async (_, apiOptions) => {
-      const { api, dashboardLocator, toasts, result } = apply({
+      const { api, dashboardLocator, toasts, attachmentLinks, result } = apply({
         api: buildDashboardApi(apiOptions),
       });
 
       await expect(result).resolves.toBe('opened-new-dashboard');
       expect(api.setState).not.toHaveBeenCalled();
-      expect(dashboardLocator.navigate).toHaveBeenCalledWith({
-        title: 'Agent dashboard',
-        description: 'Built by the agent',
-        panels: [],
-        time_range: { from: 'now-7d', to: 'now' },
-        preserveSavedFilters: false,
-        viewMode: 'edit',
-        changedBy: ['agent'],
-      });
+      expect(dashboardLocator.navigate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Agent dashboard',
+          description: 'Built by the agent',
+          panels: [],
+          time_range: { from: 'now-7d', to: 'now' },
+          preserveSavedFilters: false,
+          viewMode: 'edit',
+          changedBy: ['agent'],
+        })
+      );
       expect(toasts.addWarning).toHaveBeenCalledTimes(1);
+      const newDashboardApi = {
+        savedObjectId$: { getValue: () => undefined },
+      } as unknown as DashboardApi;
+      attachmentLinks.claimNextDashboardLink(newDashboardApi);
+      expect(attachmentLinks.isLinked(newDashboardApi, 'attachment-1')).toBe(true);
     }
   );
 
   it('opens the full dashboard state in a new dashboard, with filters and query in their stored form', async () => {
     const { dashboardLocator, result } = apply({
       api: buildDashboardApi({ isManaged: true }),
-      dashboardState: {
-        ...agentDashboardState,
+      attachment: buildAttachment({
+        ...agentData,
         query: { expression: 'host.name: a', language: 'kql' },
         filters: [
           { type: 'condition', condition: { field: 'host.name', operator: 'is', value: 'a' } },
         ],
         pinned_panels: [{ type: 'options_list_control', id: 'control-1', config: {} }],
         refresh_interval: { pause: false, value: 60000 },
-      } as unknown as DashboardState,
+      } as unknown as DashboardAttachment['data']),
     });
     await result;
 

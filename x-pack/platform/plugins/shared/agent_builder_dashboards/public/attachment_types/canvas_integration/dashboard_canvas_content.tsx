@@ -21,6 +21,7 @@ import type { UseEuiTheme } from '@elastic/eui';
 import { DashboardRenderer } from '@kbn/dashboard-plugin/public';
 import { useMemoCss } from '@kbn/css-utils/public/use_memo_css';
 import type { DashboardAttachment } from '@kbn/agent-builder-dashboards-common/types';
+import type { AttachmentLinks } from '../dashboard_integration/attachment_links';
 import type { SavedObjectStatus } from './use_register_canvas_action_buttons';
 import { useDashboardPreviewUnifiedSearch } from './use_dashboard_preview_unified_search';
 import { useRegisterCanvasActionButtons } from './use_register_canvas_action_buttons';
@@ -63,6 +64,7 @@ export const DashboardCanvasContent = ({
   data,
   checkSavedDashboardExist,
   canWriteDashboards,
+  attachmentLinks,
 }: AttachmentRenderProps<DashboardAttachment> & {
   dashboardState: DashboardState;
   registerActionButtons: (buttons: ActionButton[]) => void;
@@ -74,6 +76,7 @@ export const DashboardCanvasContent = ({
   data: DataPublicPluginStart;
   checkSavedDashboardExist: (dashboardId: string) => Promise<boolean>;
   canWriteDashboards: boolean;
+  attachmentLinks: AttachmentLinks;
 }) => {
   const [dashboardApi, setDashboardApi] = useState<DashboardApi | undefined>();
   const styles = useMemoCss(dashboardCanvasContentStyles);
@@ -143,6 +146,7 @@ export const DashboardCanvasContent = ({
   );
 
   useRegisterCanvasActionButtons({
+    attachmentId: attachment.id,
     dashboardApi,
     registerActionButtons,
     updateOrigin,
@@ -151,6 +155,7 @@ export const DashboardCanvasContent = ({
     dashboardLocatorParams,
     getExistingDashboardId,
     closeCanvas,
+    attachmentLinks,
   });
 
   return (

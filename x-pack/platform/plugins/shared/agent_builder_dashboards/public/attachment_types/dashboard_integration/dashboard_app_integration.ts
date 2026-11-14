@@ -5,29 +5,23 @@
  * 2.0.
  */
 
-import deepEqual from 'fast-deep-equal';
-import { debounceTime, filter, Observable, switchMap } from 'rxjs';
+import { concatMap, debounceTime, filter, map, merge, Observable, takeWhile, tap } from 'rxjs';
 import type { AgentBuilderPluginStart } from '@kbn/agent-builder-browser';
-import { getLatestVersion } from '@kbn/agent-builder-common/attachments';
 import type { UpdateOriginResponse } from '@kbn/agent-builder-common';
 import { i18n } from '@kbn/i18n';
 import type { NotificationsStart } from '@kbn/core/public';
 import type { DashboardApi } from '@kbn/dashboard-plugin/public';
 import type { DashboardAttachment } from '@kbn/agent-builder-dashboards-common/types';
-import {
-  isDashboardAttachment,
-  attachmentDataToDashboardState,
-  dashboardStateToAttachmentData,
-  DASHBOARD_ATTACHMENT_TYPE,
-} from '@kbn/agent-builder-dashboards-common';
-import { createAgentLiveUpdatesSubscription } from './agent_live_updates_subscription';
-import { isShowingAgentChanges, MANUAL_CHANGES_DEBOUNCE_MS } from './agent_changes_state';
+import { dashboardStateToAttachmentData } from '@kbn/agent-builder-dashboards-common';
+import { createChatAdapter } from './chat_adapter';
+import { isShowing, MANUAL_CHANGES_DEBOUNCE_MS } from './dashboard_equality';
+import { findDashboardAttachment, isOpenDashboardUpdate, reconcileStaging } from './reconcile';
 import {
   APPLY_AGENT_CHANGES_ERROR_TITLE,
-  applyAgentChangesToDashboard,
+  applyAttachment,
   canApplyAgentChangesInPlace,
-} from './apply_agent_changes';
-import { createNewAttachmentIdRegenerationSubscription } from './new_attachment_id_regeneration_subscription';
+  type ApplyAttachmentOutcome,
+} from './show_attachment';
 import { createOriginSyncSubscription } from './origin_sync_subscription';
 import { createOtherDashboardUpdateNotifier } from './other_dashboard_update_notifier';
 import type { DashboardLocator } from './open_in_dashboard_app';
@@ -56,14 +50,7 @@ export interface DashboardAppIntegrationParams {
   attachmentLinks: AttachmentLinks;
 }
 
-// attachment data is persisted as JSON, which drops the undefined keys a serialized dashboard writes out
-const asPersisted = (data: DashboardAttachment['data']): DashboardAttachment['data'] =>
-  JSON.parse(JSON.stringify(data));
-
-interface State {
-  attachments: DashboardAttachment[] | undefined;
-  conversationId: string | undefined;
-}
+type JobOutcome = ApplyAttachmentOutcome | undefined;
 
 export const registerDashboardAppIntegration = ({
   agentBuilder,
@@ -76,109 +63,42 @@ export const registerDashboardAppIntegration = ({
   getUpdateOrigin,
   attachmentLinks,
 }: DashboardAppIntegrationParams): (() => void) => {
-  const state: State = {
-    attachments: undefined,
-    conversationId: undefined,
-  };
+  const chat = createChatAdapter({ agentBuilder, draftAttachmentId, getUpdateOrigin });
+  let attachments: DashboardAttachment[] | undefined;
 
-  let pendingAddAttachmentTimeout: ReturnType<typeof setTimeout> | undefined;
-  let stagedAttachmentId: string | undefined;
+  // a dashboard that can't be linked, e.g. a managed one, is staged as a new attachment every time
+  const isLinkable = () => canWriteDashboards && canApplyAgentChangesInPlace(api);
 
-  const findSyncAttachment = () => {
-    const isLinkable = canWriteDashboards && canApplyAgentChangesInPlace(api);
-    const dashboardId = isLinkable ? api.savedObjectId$.getValue() : undefined;
-    const attachments = state.attachments ?? [];
-    const syncAttachment = isLinkable
-      ? attachmentLinks.findLinkedAttachment(api, attachments) ??
-        attachments.find(({ origin }) => origin === dashboardId)
+  const findOpenDashboardAttachment = () =>
+    isLinkable()
+      ? findDashboardAttachment({
+          attachments: attachments ?? [],
+          dashboardId: api.savedObjectId$.getValue(),
+          findLinkedAttachment: (candidates) =>
+            attachmentLinks.findLinkedAttachment(api, candidates),
+        })
       : undefined;
-    return { dashboardId, syncAttachment };
-  };
 
-  const addAttachmentFromDashboard = () => {
-    const { dashboardId, syncAttachment } = findSyncAttachment();
-    const dashboardData = dashboardStateToAttachmentData(api.getSerializedState().attributes);
-
-    // update an existing linked attachment, or add a draft attachment only when the conversation is new
-    if (syncAttachment || !state.conversationId) {
-      const attachmentId = syncAttachment?.id ?? draftAttachmentId.current;
-      attachmentLinks.link(api, attachmentId);
-      stagedAttachmentId = attachmentId;
-      agentBuilder.addAttachment({
-        id: attachmentId,
-        origin: dashboardId,
-        type: DASHBOARD_ATTACHMENT_TYPE,
-        data: dashboardData,
-      });
+  const reconcile = async (): Promise<JobOutcome> => {
+    const dashboardAttachment = findOpenDashboardAttachment();
+    const isShown = dashboardAttachment ? await isShowing(api, dashboardAttachment.data) : false;
+    const action = reconcileStaging({
+      dashboardAttachmentId: dashboardAttachment?.id,
+      isShown,
+      draftAttachmentId: draftAttachmentId.current,
+    });
+    if (action.type === 'unstage') {
+      chat.unstage();
+      return undefined;
     }
+    attachmentLinks.link(api, action.attachmentId);
+    chat.stage({
+      id: action.attachmentId,
+      origin: isLinkable() ? api.savedObjectId$.getValue() : undefined,
+      data: dashboardStateToAttachmentData(api.getSerializedState().attributes),
+    });
+    return undefined;
   };
-
-  // the chat input is cleared when a round ends, which drops manual changes staged during the round
-  const addUnsentChangesFromDashboard = async () => {
-    const { syncAttachment } = findSyncAttachment();
-    const dashboardData = dashboardStateToAttachmentData(api.getSerializedState().attributes);
-    if (
-      syncAttachment &&
-      !deepEqual(asPersisted(syncAttachment.data), asPersisted(dashboardData)) &&
-      !(await isShowingAgentChanges(api))
-    ) {
-      addAttachmentFromDashboard();
-    }
-  };
-
-  let hasActiveConversation = false;
-
-  const conversationChangesSubscription = agentBuilder.events.ui.activeConversation$.subscribe(
-    (change) => {
-      if (!change) {
-        state.attachments = undefined;
-        state.conversationId = undefined;
-        hasActiveConversation = false;
-        return;
-      }
-
-      const { id: conversationId, conversation } = change;
-      const isNewConversationStart =
-        !conversationId && (!hasActiveConversation || state.conversationId !== undefined);
-      hasActiveConversation = true;
-      const dashboardAttachments = conversation?.attachments
-        ?.filter(isDashboardAttachment)
-        ?.flatMap((attachment): DashboardAttachment[] => {
-          const latestVersionData = getLatestVersion(attachment)?.data;
-
-          return latestVersionData
-            ? [
-                {
-                  id: attachment.id,
-                  type: attachment.type,
-                  data: latestVersionData,
-                  origin: attachment.origin,
-                },
-              ]
-            : [];
-        });
-
-      state.attachments = dashboardAttachments;
-      state.conversationId = conversationId;
-      if (!conversationId && !isNewConversationStart) {
-        return;
-      }
-      // we have to defer adding the attachment from the dashboard until after the active conversation change has fully propagated, otherwise sidebarCallbacks from agent builder are null
-      if (pendingAddAttachmentTimeout !== undefined) {
-        clearTimeout(pendingAddAttachmentTimeout);
-      }
-      pendingAddAttachmentTimeout = setTimeout(() => {
-        pendingAddAttachmentTimeout = undefined;
-        // a new conversation needs the dashboard once; an existing one only what it doesn't have yet,
-        // whether it was switched to, fetched again, or just got its id
-        if (conversationId) {
-          void addUnsentChangesFromDashboard();
-        } else {
-          addAttachmentFromDashboard();
-        }
-      });
-    }
-  );
 
   const otherDashboardUpdateNotifier = createOtherDashboardUpdateNotifier({
     toasts,
@@ -196,9 +116,9 @@ export const registerDashboardAppIntegration = ({
   });
 
   let hasWarnedAboutWritePermission = false;
-  const warnAboutWritePermissionOnce = async () => {
+  const warnAboutWritePermissionOnce = () => {
     if (hasWarnedAboutWritePermission) {
-      return undefined;
+      return;
     }
     hasWarnedAboutWritePermission = true;
     toasts.addWarning({
@@ -210,87 +130,87 @@ export const registerDashboardAppIntegration = ({
           "You don't have permission to edit dashboards. Preview the dashboard attachment in the chat to see the changes.",
       }),
     });
-    return undefined;
   };
 
-  // never throws, since a throw would end the live updates subscription
-  const applyToOpenDashboard = async (attachment: DashboardAttachment) => {
-    try {
-      const outcome = await applyAgentChangesToDashboard({
-        api,
-        dashboardState: attachmentDataToDashboardState(attachment.data),
-        dashboardLocator,
-        toasts,
-        onOpenInNewDashboard: () => attachmentLinks.linkNextDashboard(attachment.id, api),
-      });
-      if (outcome === 'applied') {
-        attachmentLinks.link(api, attachment.id);
+  // never throws, since a throw would end the integration
+  const handleAgentUpdate = async (attachment: DashboardAttachment): Promise<JobOutcome> => {
+    const isOpenDashboard = isOpenDashboardUpdate({
+      attachment,
+      dashboardId: api.savedObjectId$.getValue(),
+      isLinked: (attachmentId) => attachmentLinks.isLinked(api, attachmentId),
+    });
+    // without write access, opening another dashboard would show unsaved changes that look saved
+    if (!canWriteDashboards) {
+      if (isOpenDashboard) {
+        warnAboutWritePermissionOnce();
       }
-      return outcome;
+      return undefined;
+    }
+    if (!isOpenDashboard) {
+      otherDashboardUpdateNotifier.notify(attachment);
+      return undefined;
+    }
+    try {
+      return await applyAttachment({ attachment, api, dashboardLocator, toasts, attachmentLinks });
     } catch (error) {
       toasts.addError(error, { title: APPLY_AGENT_CHANGES_ERROR_TITLE });
       return undefined;
     }
   };
 
-  const agentLiveUpdatesSubscription = createAgentLiveUpdatesSubscription({
-    agentBuilder,
-    api,
-    isLinkedToDashboard: (attachmentId) => attachmentLinks.isLinked(api, attachmentId),
-    upsertAttachment: (attachment: DashboardAttachment) => {
-      const otherAttachments = (state.attachments ?? []).filter(({ id }) => id !== attachment.id);
-      state.attachments = [...otherAttachments, attachment];
-    },
-    // without write access, opening another dashboard would show unsaved changes that look saved
-    ...(canWriteDashboards
-      ? {
-          onOpenDashboardUpdated: applyToOpenDashboard,
-          onOtherDashboardUpdated: otherDashboardUpdateNotifier.notify,
-        }
-      : {
-          onOpenDashboardUpdated: warnAboutWritePermissionOnce,
-          onOtherDashboardUpdated: () => {},
-        }),
-  });
+  const conversationReconciles$ = chat.conversationChanges$.pipe(
+    tap((change) => {
+      attachments = change?.attachments;
+    }),
+    // a new conversation needs the dashboard once; an existing one is reconciled whenever it was
+    // switched to, fetched again, or just got its id
+    filter((change) => Boolean(change && (change.conversationId || change.isNewConversationStart))),
+    // the chat can only stage attachments once the change of the conversation has propagated
+    debounceTime(0),
+    map(() => reconcile)
+  );
 
-  const newAttachmentIdRegenerationSubscription = createNewAttachmentIdRegenerationSubscription({
-    agentBuilder,
-    draftAttachmentId,
-  });
+  const dashboardChangeReconciles$ = api.anyStateChange$.pipe(
+    debounceTime(MANUAL_CHANGES_DEBOUNCE_MS),
+    map(() => reconcile)
+  );
+
+  const agentUpdates$ = chat.dashboardUpdates$.pipe(
+    tap((attachment) => {
+      const otherAttachments = (attachments ?? []).filter(({ id }) => id !== attachment.id);
+      attachments = [...otherAttachments, attachment];
+    }),
+    map((attachment) => () => handleAgentUpdate(attachment))
+  );
+
+  // one job at a time, so the dashboard is compared only once the agent's changes are applied, and
+  // updates that arrive while a new dashboard opens don't open more
+  const integrationSubscription = merge(
+    conversationReconciles$,
+    dashboardChangeReconciles$,
+    agentUpdates$
+  )
+    .pipe(
+      concatMap((job) => job()),
+      // the new dashboard replaces this one
+      takeWhile((outcome) => outcome !== 'opened-new-dashboard')
+    )
+    .subscribe();
 
   const originSyncSubscription = createOriginSyncSubscription({
     api,
-    getAttachments: () => state.attachments,
-    findLinkedAttachment: (attachments) => attachmentLinks.findLinkedAttachment(api, attachments),
-    updateOrigin: (id: string, origin: string) => getUpdateOrigin(id)?.(origin),
+    getAttachments: () => attachments,
+    findLinkedAttachment: (candidates) => attachmentLinks.findLinkedAttachment(api, candidates),
+    updateOrigin: chat.updateOrigin,
   });
 
-  const manualChangesSubscription = api.anyStateChange$
-    .pipe(
-      debounceTime(MANUAL_CHANGES_DEBOUNCE_MS),
-      switchMap(() => isShowingAgentChanges(api)),
-      filter((isAgentChanges) => !isAgentChanges)
-    )
-    .subscribe(addAttachmentFromDashboard);
-
   return () => {
-    agentLiveUpdatesSubscription.unsubscribe();
-    newAttachmentIdRegenerationSubscription.unsubscribe();
+    integrationSubscription.unsubscribe();
     originSyncSubscription.unsubscribe();
-    manualChangesSubscription.unsubscribe();
-    conversationChangesSubscription.unsubscribe();
     otherDashboardUpdateNotifier.removeAll();
     // a dashboard the user left is no longer context for their next message; attachments already
     // sent stay in the conversation
-    if (stagedAttachmentId) {
-      agentBuilder.removeAttachment(stagedAttachmentId);
-    }
-    if (pendingAddAttachmentTimeout !== undefined) {
-      clearTimeout(pendingAddAttachmentTimeout);
-      pendingAddAttachmentTimeout = undefined;
-    }
-    state.attachments = undefined;
-    state.conversationId = undefined;
+    chat.unstage();
   };
 };
 

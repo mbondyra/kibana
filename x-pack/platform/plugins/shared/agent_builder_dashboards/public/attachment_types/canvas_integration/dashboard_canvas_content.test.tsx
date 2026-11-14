@@ -16,6 +16,7 @@ import type { DashboardAttachment } from '@kbn/agent-builder-dashboards-common/t
 import type { Filter, Query, TimeRange } from '@kbn/es-query';
 import { renderWithKibanaRenderContext } from '@kbn/test-jest-helpers';
 import { DashboardCanvasAttachment } from './dashboard_canvas_attachment';
+import { createAttachmentLinks } from '../dashboard_integration/attachment_links';
 import * as agentBuilderDashboardsCommon from '@kbn/agent-builder-dashboards-common';
 import { DASHBOARD_ATTACHMENT_TYPE } from '@kbn/agent-builder-dashboards-common';
 
@@ -144,6 +145,7 @@ describe('DashboardCanvasAttachment', () => {
     isSidebar: false,
     dashboardLocator: undefined,
     searchBarComponent: MockSearchBar as any,
+    attachmentLinks: createAttachmentLinks(),
   };
 
   beforeEach(() => {

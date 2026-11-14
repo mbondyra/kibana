@@ -145,6 +145,7 @@ export const registerDashboardAttachmentUiDefinition = ({
           data={data}
           checkSavedDashboardExist={checkSavedDashboardExist}
           canWriteDashboards={canWriteDashboards}
+          attachmentLinks={attachmentLinks}
         />
       </React.Suspense>
     ),

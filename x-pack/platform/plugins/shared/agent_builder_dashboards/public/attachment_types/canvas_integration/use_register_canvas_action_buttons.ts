@@ -12,7 +12,8 @@ import type { DashboardLocatorParams } from '@kbn/dashboard-plugin/common';
 import type { DashboardApi } from '@kbn/dashboard-plugin/public';
 import { i18n } from '@kbn/i18n';
 import useLatest from 'react-use/lib/useLatest';
-import { handleEditInDashboard } from '../handle_edit_in_dashboard';
+import { openAttachmentInDashboardApp } from '../dashboard_integration/show_attachment';
+import type { AttachmentLinks } from '../dashboard_integration/attachment_links';
 
 export type SavedObjectStatus =
   | { status: 'idle' }
@@ -20,6 +21,7 @@ export type SavedObjectStatus =
   | { status: 'resolved'; exists: boolean };
 
 interface UseRegisterCanvasActionButtonsParams {
+  attachmentId: string;
   dashboardApi: DashboardApi | undefined;
   registerActionButtons: (buttons: ActionButton[]) => void;
   updateOrigin: (origin: string) => Promise<unknown>;
@@ -28,9 +30,11 @@ interface UseRegisterCanvasActionButtonsParams {
   closeCanvas: () => void;
   openSidebarConversation?: () => void;
   canWriteDashboards: boolean;
+  attachmentLinks: AttachmentLinks;
 }
 
 export const useRegisterCanvasActionButtons = ({
+  attachmentId,
   dashboardApi,
   registerActionButtons,
   updateOrigin,
@@ -39,6 +43,7 @@ export const useRegisterCanvasActionButtons = ({
   canWriteDashboards,
   dashboardLocatorParams,
   getExistingDashboardId,
+  attachmentLinks,
 }: UseRegisterCanvasActionButtonsParams) => {
   const dashboardLocatorParamsRef = useLatest(dashboardLocatorParams);
   const getExistingDashboardIdRef = useLatest(getExistingDashboardId);
@@ -102,10 +107,12 @@ export const useRegisterCanvasActionButtons = ({
           if (isWriteActionDisabled) {
             return;
           }
-          await handleEditInDashboard({
-            locator,
-            getExistingDashboardId: async () => getExistingDashboardIdRef.current(),
+          await openAttachmentInDashboardApp({
+            attachmentId,
+            savedDashboardId: getExistingDashboardIdRef.current(),
+            dashboardLocator: locator,
             dashboardLocatorParams: dashboardLocatorParamsRef.current,
+            attachmentLinks,
           });
           closeCanvas();
           openSidebarConversationRef.current?.();
@@ -141,6 +148,8 @@ export const useRegisterCanvasActionButtons = ({
     });
     registerActionButtons(buttons);
   }, [
+    attachmentId,
+    attachmentLinks,
     dashboardApi,
     registerActionButtons,
     updateOrigin,
