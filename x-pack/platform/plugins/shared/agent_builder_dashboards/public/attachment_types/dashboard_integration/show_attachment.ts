@@ -62,7 +62,7 @@ export const applyAttachment = async ({
     return 'applied';
   }
 
-  attachmentLinks.linkNextDashboard(attachment.id, api);
+  attachmentLinks.linkNextDashboard(attachment.id, { fromApi: api });
   await openInDashboardApp(dashboardLocator, toDashboardLocatorParams(dashboardState));
   toasts.addWarning({
     title: i18n.translate('xpack.agentBuilderDashboards.applyAgentChanges.newDashboardToastTitle', {
@@ -102,7 +102,7 @@ export const openAttachmentInDashboardApp = async ({
   fromApi?: DashboardApi;
 }): Promise<void> => {
   if (!savedDashboardId) {
-    attachmentLinks.linkNextDashboard(attachmentId, fromApi);
+    attachmentLinks.linkNextDashboard(attachmentId, { fromApi });
   }
   await openInDashboardApp(dashboardLocator, {
     ...dashboardLocatorParams,

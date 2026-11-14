@@ -37,7 +37,7 @@ describe('createAttachmentLinks', () => {
     const fromApi = buildDashboardApi('managed-dashboard');
     const newApi = buildDashboardApi();
 
-    links.linkNextDashboard('attachment-1', fromApi);
+    links.linkNextDashboard('attachment-1', { fromApi });
     links.claimNextDashboardLink(fromApi);
     links.claimNextDashboardLink(newApi);
 

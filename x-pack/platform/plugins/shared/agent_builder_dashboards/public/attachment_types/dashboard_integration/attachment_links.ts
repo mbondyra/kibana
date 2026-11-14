@@ -11,6 +11,13 @@ import type { DashboardApi } from '@kbn/dashboard-plugin/public';
 // the link was left for, so a dashboard opened later must not take it over
 export const NEXT_DASHBOARD_LINK_TTL_MS = 60000;
 
+interface NextDashboard {
+  /** The dashboard the link is left from, which keeps its own links. */
+  fromApi?: DashboardApi;
+  /** The saved id of the dashboard to link, `undefined` for an unsaved one. */
+  dashboardId?: string;
+}
+
 export interface AttachmentLinks {
   /** Links the attachment to the dashboard it was staged from or applied to. */
   link: (api: DashboardApi, attachmentId: string) => void;
@@ -20,8 +27,12 @@ export interface AttachmentLinks {
     api: DashboardApi,
     attachments: T[]
   ) => T | undefined;
-  /** Links the next unsaved dashboard that opens, e.g. a new one opened with the attachment's state. */
-  linkNextDashboard: (attachmentId: string, fromApi?: DashboardApi) => void;
+  /**
+   * Links the next dashboard that opens with the given saved id, an unsaved one by default, e.g. a
+   * new one opened with the attachment's state, or the one that replaces a dashboard saved under a
+   * new id.
+   */
+  linkNextDashboard: (attachmentId: string, next?: NextDashboard) => void;
   /** Lets a dashboard that opens take over the link `linkNextDashboard` left. */
   claimNextDashboardLink: (api: DashboardApi) => void;
 }
@@ -33,9 +44,7 @@ export interface AttachmentLinks {
  */
 export const createAttachmentLinks = (): AttachmentLinks => {
   const linkedAttachmentIds = new WeakMap<DashboardApi, string[]>();
-  let nextDashboardLink:
-    | { attachmentId: string; fromApi?: DashboardApi; expiresAt: number }
-    | undefined;
+  let nextDashboardLink: (NextDashboard & { attachmentId: string; expiresAt: number }) | undefined;
 
   const link = (api: DashboardApi, attachmentId: string) => {
     const attachmentIds = (linkedAttachmentIds.get(api) ?? []).filter((id) => id !== attachmentId);
@@ -51,10 +60,11 @@ export const createAttachmentLinks = (): AttachmentLinks => {
         .filter(({ id }) => attachmentIds.includes(id))
         .sort((a, b) => attachmentIds.indexOf(b.id) - attachmentIds.indexOf(a.id))[0];
     },
-    linkNextDashboard: (attachmentId, fromApi) => {
+    linkNextDashboard: (attachmentId, { fromApi, dashboardId } = {}) => {
       nextDashboardLink = {
         attachmentId,
         fromApi,
+        dashboardId,
         expiresAt: Date.now() + NEXT_DASHBOARD_LINK_TTL_MS,
       };
     },
@@ -63,9 +73,9 @@ export const createAttachmentLinks = (): AttachmentLinks => {
       if (!nextDashboardLink || nextDashboardLink.fromApi === api) {
         return;
       }
-      const { attachmentId, expiresAt } = nextDashboardLink;
+      const { attachmentId, dashboardId, expiresAt } = nextDashboardLink;
       nextDashboardLink = undefined;
-      if (Date.now() < expiresAt && !api.savedObjectId$.getValue()) {
+      if (Date.now() < expiresAt && api.savedObjectId$.getValue() === dashboardId) {
         link(api, attachmentId);
       }
     },

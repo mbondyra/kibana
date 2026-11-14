@@ -13,13 +13,15 @@ import type { UpdateOriginResponse } from '@kbn/agent-builder-common';
 /*
  * keep the attachment's origin in sync with the dashboard's saved object id on dashboard save,
  * so that the attachment always points to the correct dashboard even after saving to a new dashboard
- * or saving an unsaved dashboard
+ * or saving an unsaved dashboard. A dashboard saved under a new id is opened again as a new
+ * dashboard, which takes over the link, since the conversation may not have the new origin yet.
  */
 export const createOriginSyncSubscription = ({
   api,
   getAttachments,
   findLinkedAttachment,
   updateOrigin,
+  linkNextDashboard,
 }: {
   api: DashboardApi;
   getAttachments: () => undefined | DashboardAttachment[];
@@ -28,6 +30,7 @@ export const createOriginSyncSubscription = ({
     attachmentId: string,
     origin: string
   ) => Promise<UpdateOriginResponse | undefined> | undefined;
+  linkNextDashboard: (attachmentId: string, dashboardId: string) => void;
 }): Subscription => {
   return api.onSave$.subscribe(({ previousDashboardId, dashboardId }: DashboardSaveEvent) => {
     if (!dashboardId) {
@@ -40,8 +43,12 @@ export const createOriginSyncSubscription = ({
     const attachmentToSync =
       findLinkedAttachment(attachments) ??
       attachments.find(({ origin }) => origin === previousDashboardId || origin === dashboardId);
-    if (attachmentToSync) {
-      return updateOrigin(attachmentToSync.id, dashboardId);
+    if (!attachmentToSync) {
+      return;
     }
+    if (dashboardId !== previousDashboardId) {
+      linkNextDashboard(attachmentToSync.id, dashboardId);
+    }
+    return updateOrigin(attachmentToSync.id, dashboardId);
   });
 };

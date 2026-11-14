@@ -202,6 +202,8 @@ export const registerDashboardAppIntegration = ({
     getAttachments: () => attachments,
     findLinkedAttachment: (candidates) => attachmentLinks.findLinkedAttachment(api, candidates),
     updateOrigin: chat.updateOrigin,
+    linkNextDashboard: (attachmentId, dashboardId) =>
+      attachmentLinks.linkNextDashboard(attachmentId, { fromApi: api, dashboardId }),
   });
 
   return () => {
