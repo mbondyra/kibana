@@ -53,11 +53,8 @@ const toPanelContent = (data: VisualizationAttachmentData): PanelContent => {
 };
 
 /**
- * Reads a visualization attachment, or a dashboard panel pointer, from the conversation and turns
- * it into panel content, so the model can place a visualization it already created, or copy a
- * panel the user pointed at, without copying the payload back through a tool call. Failures are
- * returned, not thrown, so one bad attachment fails only its own panel — the same way an
- * unresolvable panel request behaves.
+ * Turns a visualization attachment or a panel pointer into panel content, so the model never copies
+ * the payload through a tool call. Failures are returned, not thrown, so they fail only their panel.
  */
 export const createAttachmentPanelResolver = ({
   attachments,
@@ -73,8 +70,7 @@ export const createAttachmentPanelResolver = ({
     }
 
     if (isDashboardPanelAttachment(record)) {
-      // The copy is taken from the dashboard attachment's latest persisted version, so changes made
-      // earlier in the same tool call are not reflected.
+      // copies the latest persisted version, without changes made earlier in this call
       const resolution = resolvePointedPanel(attachments, attachmentId);
       if ('error' in resolution) {
         return fail(resolution.error);

@@ -40,10 +40,7 @@ export const registerAgentBuilderDashboardsAnalyticsEvents = once(
   }
 );
 
-/**
- * Reports the dashboard details of an "Add to chat" click; the action reports the shared agent
- * builder event. Telemetry failures never break the action.
- */
+/** Dashboard details of an "Add to chat" click; the action reports the shared event. */
 export const reportAddToChatClicked = (
   analytics: AnalyticsServiceStart,
   event: AddToChatClickedEvent

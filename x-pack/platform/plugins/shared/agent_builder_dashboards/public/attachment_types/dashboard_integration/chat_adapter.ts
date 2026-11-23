@@ -49,7 +49,7 @@ export interface ChatAdapter {
   stage: (attachment: Omit<DashboardAttachment, 'type'>) => void;
   /** Removes the attachment from the chat input when it is the one staged. */
   unstage: (attachmentId: string) => void;
-  /** Removes the pointers to these panels of these dashboard attachments from the chat input. Sent pointers stay. */
+  /** Removes staged pointers to these panels of these dashboard attachments. */
   unstagePanelPointers: (pointers: {
     dashboardAttachmentIds: Iterable<string>;
     panelIds: Iterable<string>;
@@ -108,10 +108,7 @@ export const createChatAdapter = ({
     }),
     map((change) =>
       change
-        ? {
-            conversationId: change.id,
-            attachments: toDashboardAttachments(change.conversation),
-          }
+        ? { conversationId: change.id, attachments: toDashboardAttachments(change.conversation) }
         : null
     )
   );

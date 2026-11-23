@@ -19,7 +19,6 @@ export interface AgentBuilderVisualizationsPluginPublicSetup {}
 
 export interface AgentBuilderVisualizationsPluginPublicStart {
   addToChat: {
-    /** Lets a plugin decide what the "Add to chat" panel action sends for the panels it handles. */
     registerProvider: (provider: AddToChatProvider) => void;
   };
 }

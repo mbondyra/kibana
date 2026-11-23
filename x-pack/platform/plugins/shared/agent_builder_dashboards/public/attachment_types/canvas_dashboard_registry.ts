@@ -10,20 +10,18 @@ import type { DashboardApi } from '@kbn/dashboard-plugin/public';
 export interface CanvasDashboard {
   /** The dashboard attachment the canvas renders. */
   attachmentId: string;
-  /** Closes the canvas, which covers the sidebar chat input. */
   closeCanvas: () => void;
 }
 
 export interface CanvasDashboardRegistry {
-  /** Records a dashboard rendered in the canvas; the returned callback removes it. */
+  /** Returns a callback that unregisters the dashboard. */
   register: (api: DashboardApi, canvasDashboard: CanvasDashboard) => () => void;
   get: (api: unknown) => CanvasDashboard | undefined;
 }
 
 /**
- * Tracks the dashboards rendered in the sidebar chat canvas and the dashboard attachment each one
- * shows. The full-page chat does not receive attachments added from other apps, so its canvas is
- * not tracked.
+ * Dashboards rendered in the sidebar chat canvas. The full-page canvas isn't tracked, since
+ * `addAttachment` doesn't reach the full-page chat.
  */
 export const createCanvasDashboardRegistry = (): CanvasDashboardRegistry => {
   const canvasDashboards = new Map<unknown, CanvasDashboard>();

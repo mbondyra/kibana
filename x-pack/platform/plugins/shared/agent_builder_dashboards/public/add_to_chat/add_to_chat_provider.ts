@@ -17,7 +17,7 @@ import {
   dashboardStateToAttachmentData,
   findPanelById,
   getDashboardPanelAttachmentId,
-  getPanelLabel as getAttachmentPanelLabel,
+  getPanelLabel,
   isDashboardAttachment,
   type DashboardAttachmentData,
   type PendingDashboardAttachment,
@@ -40,7 +40,6 @@ import type { CanvasDashboard, CanvasDashboardRegistry, IdGenerator } from '../a
 import { resolveDashboardAttachmentLink } from '../attachment_types/dashboard_integration/reconcile';
 import { reportAddToChatClicked, type AddToChatChatState } from '../telemetry';
 
-/** The pathway the shared "Add to chat" event reports for dashboard panels. */
 export const DASHBOARD_PANEL_ADD_TO_CHAT_PROVIDER_ID = 'dashboard_panel';
 
 export interface DashboardAddToChatProviderDeps {
@@ -54,14 +53,11 @@ export interface DashboardAddToChatProviderDeps {
 
 interface PanelDashboard {
   dashboardApi: DashboardApi;
-  /** Set when the dashboard is rendered in the sidebar chat canvas. */
+  /** Set when rendered in the sidebar chat canvas. */
   canvasDashboard?: CanvasDashboard;
 }
 
-/**
- * The panel must belong to the dashboard open in the dashboard app or to a dashboard rendered in
- * the sidebar chat canvas. Other dashboard renderers never get this action.
- */
+/** The dashboard app's or the sidebar canvas's dashboard holding the panel. */
 const getPanelDashboard = (
   embeddable: unknown,
   { dashboardAppApi$, canvasDashboards }: DashboardAddToChatProviderDeps
@@ -85,26 +81,21 @@ const isRefinablePanel = (embeddable: unknown): embeddable is HasUniqueId =>
       apiPublishesEsql(embeddable) &&
       embeddable.esql$.getValue().length > 0));
 
-/**
- * The panel title when it has one, else a label derived from the chart config in the dashboard
- * state (for example the primary metric of an untitled metric chart). Untitled custom panels keep
- * their "Custom panel" type name; Lens's generic "visualization" type name is never used.
- */
-const getPanelLabel = (embeddable: HasUniqueId, dashboardData: DashboardAttachmentData): string => {
+/** Title, else a label derived from the config, else the custom panel type name. */
+const getPointerLabel = (
+  embeddable: HasUniqueId,
+  dashboardData: DashboardAttachmentData
+): string => {
   const title = apiPublishesTitle(embeddable) ? getTitle(embeddable) : undefined;
   const panel = findPanelById(dashboardData.panels, embeddable.uuid);
-  const derived = panel ? getAttachmentPanelLabel(panel) : undefined;
+  const derived = panel ? getPanelLabel(panel) : undefined;
   const typeDisplayName = apiIsOfType(embeddable, CUSTOM_CONTENT_EMBEDDABLE_TYPE)
     ? (embeddable as Partial<HasTypeDisplayName>).getTypeDisplayName?.()
     : undefined;
   return (title || derived || typeDisplayName || '').slice(0, DASHBOARD_PANEL_LABEL_MAX_LENGTH);
 };
 
-/**
- * Handles "Add to chat" for ES|QL Lens and custom panels of the dashboard open in the dashboard app
- * or in the sidebar chat canvas: it sends a pointer to the panel, with the dashboard when the chat
- * has no attachment for it yet.
- */
+/** Sends a pointer to an ES|QL Lens or custom panel, plus the dashboard when the chat lacks it. */
 export const createDashboardAddToChatProvider = (
   deps: DashboardAddToChatProviderDeps
 ): AddToChatProvider => {
@@ -126,7 +117,7 @@ export const createDashboardAddToChatProvider = (
         : undefined,
     execute: async (embeddable) => {
       const panelDashboard = getPanelDashboard(embeddable, deps);
-      if (!panelDashboard || !isRefinablePanel(embeddable) || !isCompatible(embeddable)) {
+      if (!canWriteDashboards || !panelDashboard || !isRefinablePanel(embeddable)) {
         return undefined;
       }
       const { dashboardApi, canvasDashboard } = panelDashboard;
@@ -164,13 +155,12 @@ export const createDashboardAddToChatProvider = (
         data: {
           dashboard_attachment_id: dashboardAttachmentId,
           panel_id: embeddable.uuid,
-          label: getPanelLabel(embeddable, dashboardData),
+          label: getPointerLabel(embeddable, dashboardData),
           panel_type: panelType,
         },
       });
 
-      // The canvas renders a dashboard attachment of the open conversation: point at it directly,
-      // then close the canvas so the chat input shows the pointer.
+      // close the canvas, which covers the chat input
       if (canvasDashboard) {
         reportClicked('canvas');
         agentBuilder.addAttachment(buildPanelPointer(canvasDashboard.attachmentId));
@@ -179,7 +169,6 @@ export const createDashboardAddToChatProvider = (
       }
 
       const activeConversation = await firstValueFrom(agentBuilder.events.ui.activeConversation$);
-      // the same link the dashboard app integration stages the dashboard with
       const { origin, attachment: linkedAttachment } = resolveDashboardAttachmentLink({
         api: dashboardApi,
         canWriteDashboards,
@@ -187,7 +176,6 @@ export const createDashboardAddToChatProvider = (
           activeConversation?.conversation?.attachments?.filter(isDashboardAttachment) ?? [],
       });
 
-      // No chat surface is bound: open a new conversation with the dashboard and the pointer.
       if (!activeConversation) {
         reportClicked('new_conversation');
         agentBuilder.openChat({
@@ -201,15 +189,13 @@ export const createDashboardAddToChatProvider = (
         return dashboardAndPointer;
       }
 
-      // The sidebar is open: point at the dashboard attachment already linked to this dashboard.
       if (linkedAttachment) {
         reportClicked('linked_attachment');
         agentBuilder.addAttachment(buildPanelPointer(linkedAttachment.id));
         return pointerOnly;
       }
 
-      // New conversation, or a dashboard the sidebar integration did not attach, e.g. an unlinkable
-      // one: stage the dashboard under the draft id (merging with any staged copy) and point at it.
+      // no linked attachment, e.g. an unlinkable dashboard: stage it under the draft id
       reportClicked('staged_attachment');
       agentBuilder.addAttachment(buildDashboardAttachment(draftAttachmentId.current, origin));
       agentBuilder.addAttachment(buildPanelPointer(draftAttachmentId.current));

@@ -13,11 +13,7 @@ import { isSection } from './types';
 const nonEmptyString = (value: unknown): string | undefined =>
   typeof value === 'string' && value.trim().length > 0 ? value : undefined;
 
-/**
- * The name to show for a dashboard panel: its title when it has one, otherwise a label derived
- * from the chart config for ES|QL Lens panels. Custom panels and other types have no derivable
- * name and yield undefined when untitled.
- */
+/** The panel title, else a label derived from an ES|QL Lens config. */
 export const getPanelLabel = (
   panel: Pick<AttachmentPanel, 'type' | 'config'>
 ): string | undefined => {

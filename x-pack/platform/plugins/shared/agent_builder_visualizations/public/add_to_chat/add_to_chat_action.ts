@@ -48,10 +48,7 @@ const reportClicked = (
   }
 };
 
-/**
- * The "Add to chat" panel action. It is offered when agent builder is usable and a registered
- * provider handles the panel; that provider decides what reaches the chat.
- */
+/** Runs the first compatible provider when agent builder is usable. */
 export const createAddToChatAction = ({
   agentBuilder,
   analytics,

@@ -47,19 +47,16 @@ export const isAttachmentShownInDashboard = async ({
 };
 
 export interface DashboardAttachmentLink<TAttachment> {
-  /** Whether the agent's changes to the dashboard's attachment apply to the open dashboard. */
+  /** Whether agent changes apply to the open dashboard. */
   linkable: boolean;
-  /** The origin to stage the dashboard with: its saved id, `undefined` when unsaved or not linkable. */
+  /** The saved id to stage with; `undefined` when unsaved or not linkable. */
   origin: string | undefined;
-  /** The conversation's attachment the dashboard stands for, if any. */
   attachment: TAttachment | undefined;
 }
 
 /**
- * Links the open dashboard to the conversation attachment it stands for: the one whose origin is
- * the dashboard, which for an unsaved dashboard is one without an origin. A dashboard the agent's
- * changes can't be applied to, e.g. a managed one or one the user can't write, is never linked:
- * it is staged without an origin, as a new attachment every time.
+ * Finds the attachment whose origin is the open dashboard (none for an unsaved one). Dashboards the
+ * agent can't change in place, e.g. managed ones, are never linked.
  */
 export const resolveDashboardAttachmentLink = <TAttachment extends { origin?: string }>({
   api,
@@ -81,7 +78,7 @@ export const resolveDashboardAttachmentLink = <TAttachment extends { origin?: st
   };
 };
 
-/** The ids of the dashboard's panels, including the ones inside sections. */
+/** Panel ids, including those inside sections. */
 export const getPanelIds = ({ panels }: DashboardAttachmentData): string[] =>
   panels.flatMap((widget) => (isSection(widget) ? widget.panels : [widget])).map(({ id }) => id);
 

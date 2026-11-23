@@ -204,10 +204,7 @@ type PanelKind = (typeof PANEL_KINDS)[number];
 export const findPanelKind = (embeddableType: string): PanelKind | undefined =>
   PANEL_KINDS.find((kind) => kind.embeddableType === embeddableType);
 
-/**
- * The content `type` that edits panels stored as the given embeddable type with a natural language
- * `query`, or `undefined` when no request kind stores that type.
- */
+/** The request content `type` that edits panels of this embeddable type, if any. */
 export const getRequestPanelContentType = (embeddableType: string): string | undefined =>
   REQUEST_PANEL_KINDS.find((kind) => kind.embeddableType === embeddableType)?.type;
 

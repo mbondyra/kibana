@@ -18,9 +18,7 @@ const getFallbackLabel = (panelType: string | undefined): string => {
   if (panelType === CUSTOM_CONTENT_EMBEDDABLE_TYPE) {
     return i18n.translate(
       'xpack.agentBuilderDashboards.attachments.dashboardPanel.customPanelLabel',
-      {
-        defaultMessage: 'Custom panel',
-      }
+      { defaultMessage: 'Custom panel' }
     );
   }
   if (panelType === LENS_EMBEDDABLE_TYPE) {
@@ -34,10 +32,7 @@ const getFallbackLabel = (panelType: string | undefined): string => {
   });
 };
 
-/**
- * Registers the pill-only UI for dashboard panel pointers. The pointer never renders inline or
- * in the canvas: the refined panel is shown through the dashboard attachment instead.
- */
+/** Panel pointers render only as a pill; edits show through the dashboard attachment. */
 export const registerDashboardPanelAttachmentUiDefinition = (
   agentBuilder: AgentBuilderPluginStart
 ): void => {

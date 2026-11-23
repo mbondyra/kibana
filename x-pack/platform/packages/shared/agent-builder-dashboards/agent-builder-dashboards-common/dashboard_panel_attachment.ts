@@ -16,10 +16,7 @@ import { DASHBOARD_PANEL_ATTACHMENT_TYPE } from './constants';
 const MAX_ID_LENGTH = 256;
 export const DASHBOARD_PANEL_LABEL_MAX_LENGTH = 512;
 
-/**
- * A dashboard panel attachment is a thin pointer: it names one panel on a dashboard attachment in the
- * same conversation and never carries the panel configuration itself.
- */
+/** Points at one panel of a dashboard attachment; never carries the panel config. */
 export const dashboardPanelAttachmentDataSchema = lazySchema(() =>
   z.object({
     dashboard_attachment_id: z.string().min(1).max(MAX_ID_LENGTH),
@@ -42,9 +39,8 @@ export type PendingDashboardPanelAttachment = AttachmentInput<
 >;
 
 /**
- * Deterministic attachment id for a panel pointer, so re-sending the same panel replaces the
- * previous pointer instead of adding a duplicate, and tools can find it without a lookup. It names
- * the dashboard attachment too, since copies of a dashboard share their panel ids.
+ * Deterministic, so re-sending a panel replaces its pointer. Includes the dashboard attachment id
+ * because dashboard copies share panel ids.
  */
 export const getDashboardPanelAttachmentId = ({
   dashboardAttachmentId,

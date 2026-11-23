@@ -110,8 +110,7 @@ export const registerDashboardAppIntegration = ({
   // agent updates carry no version until the conversation that has them is published
   let attachments: Array<DashboardAttachment & { version?: number }> | undefined;
   let conversationId: string | undefined;
-  // the dashboard attachments and panels a pointer may have been staged for, so pointers can be
-  // unstaged when their panel is removed or the user leaves the dashboard
+  // where panel pointers may be staged, to unstage them when a panel is removed or on leave
   const pointedDashboardAttachmentIds = new Set<string>();
   let knownPanelIds = new Set<string>();
   // Attachments staged from this dashboard without an origin, because agent changes to a dashboard
@@ -145,10 +144,8 @@ export const registerDashboardAppIntegration = ({
       isNewConversation: !conversationId,
       draftAttachmentId: draftAttachmentId.current,
     });
-    for (const id of [dashboardAttachment?.id, attachmentId]) {
-      if (id) {
-        pointedDashboardAttachmentIds.add(id);
-      }
+    if (attachmentId) {
+      pointedDashboardAttachmentIds.add(attachmentId);
     }
     unstageRemovedPanelPointers(dashboardData);
     const isShown = dashboardAttachment
@@ -299,8 +296,7 @@ export const registerDashboardAppIntegration = ({
     originSyncSubscription.unsubscribe();
     setShownAttachmentVersion(undefined);
     otherDashboardUpdateNotifier.removeAll();
-    // the pointers of a dashboard the user left are no longer context for their next message;
-    // pointers already sent stay in the conversation
+    // sent pointers stay in the conversation
     chat.unstagePanelPointers({
       dashboardAttachmentIds: [...pointedDashboardAttachmentIds, draftAttachmentId.current],
       panelIds: knownPanelIds,

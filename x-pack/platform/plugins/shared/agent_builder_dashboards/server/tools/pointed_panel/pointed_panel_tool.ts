@@ -38,7 +38,7 @@ const MAX_QUERY_LENGTH = 2048;
 const ESQL_PARAM_PATTERN = /\?{1,2}([A-Za-z_]\w*)/g;
 const TIME_RANGE_PARAMS: ReadonlySet<string> = new Set(['_tstart', '_tend']);
 
-/** Named ES|QL params other than the time range ones, which only the dashboard's controls fill. */
+/** Named ES|QL params other than the time range ones, which only dashboard controls fill. */
 const getControlParams = (queries: readonly string[]): string[] => [
   ...new Set(
     queries.flatMap((query) =>
@@ -72,28 +72,15 @@ const pointedPanelSchema = lazySchema(() =>
   })
 );
 
-/** A custom panel's ES|QL queries, in the order its template reads them. */
-const getCustomContentQueries = (panel: AttachmentPanel): string[] =>
-  (panel.config as Partial<CustomContentState>).esql_query ?? [];
-
-/** The panel's ES|QL: a Lens panel's one query, or a custom panel's queries in template order. */
-const getPanelEsql = (panel: AttachmentPanel): string | string[] | undefined => {
+/** The panel's ES|QL queries; a custom panel's in the order its template reads them. */
+const getPanelQueries = (panel: AttachmentPanel): string[] => {
   if (panel.type === CUSTOM_CONTENT_EMBEDDABLE_TYPE) {
-    const queries = getCustomContentQueries(panel);
-    return queries.length ? queries : undefined;
+    return (panel.config as Partial<CustomContentState>).esql_query ?? [];
   }
-  if (panel.type === LENS_EMBEDDABLE_TYPE) {
-    const [esql] = extractEsqlQueries([panel]);
-    return esql;
-  }
-  return undefined;
+  return panel.type === LENS_EMBEDDABLE_TYPE ? extractEsqlQueries([panel]) : [];
 };
 
-/**
- * Maps a dashboard panel onto the visualization attachment payload its renderer expects, plus the
- * tool result describing it. This is the reverse of the attachment panel resolver: ES|QL Lens
- * panels carry their Lens API config, custom panels carry their template and optional query.
- */
+/** The reverse of the attachment panel resolver: a panel as a visualization attachment. */
 const panelToVisualization = (
   panel: AttachmentPanel,
   query: string
@@ -101,10 +88,8 @@ const panelToVisualization = (
   attachmentData: VisualizationAttachmentData;
   resultData: UnpersistedVisualizationResultData;
 } => {
-  const panelEsql = getPanelEsql(panel);
-  const controlParams = getControlParams(
-    typeof panelEsql === 'string' ? [panelEsql] : panelEsql ?? []
-  );
+  const queries = getPanelQueries(panel);
+  const controlParams = getControlParams(queries);
   if (controlParams.length > 0) {
     throw new Error(
       `This panel's ES|QL reads dashboard control values (${controlParams
@@ -120,7 +105,6 @@ const panelToVisualization = (
     if (!config.template) {
       throw new Error('This custom panel has no template yet, so there is nothing to show.');
     }
-    const queries = getCustomContentQueries(panel);
     const [firstQuery] = queries;
     const title = getPanelLabel(panel);
     return {
@@ -140,7 +124,7 @@ const panelToVisualization = (
   }
 
   if (panel.type === LENS_EMBEDDABLE_TYPE) {
-    const [esql] = extractEsqlQueries([panel]);
+    const [esql] = queries;
     if (!esql) {
       throw new Error(
         'Only ES|QL Lens panels can be shown as a visualization; this Lens panel is not backed by ES|QL.'
@@ -177,10 +161,7 @@ const errorResult = (message: string, panelAttachmentId: string) => ({
   ],
 });
 
-/**
- * Works on the one dashboard panel a pointer names: reads its config, or copies it into a
- * standalone visualization attachment so the agent can show it inline without regenerating it.
- */
+/** Reads the pointed panel, or copies it into a visualization attachment to show inline. */
 export const createPointedPanelTool = (): BuiltinToolDefinition<typeof pointedPanelSchema> => ({
   id: dashboardTools.pointedPanel,
   type: ToolType.builtin,
@@ -209,7 +190,6 @@ This tool never changes the panel; edits go through \`${dashboardTools.generateD
     const { pointerData, dashboardData, panel } = resolution;
     const { panel_id: panelId } = pointerData;
     const title = getPanelLabel(panel) ?? pointerData.label;
-    // Only a dashboard that stores its time range has one; otherwise it follows the chat's range.
     const timeRange = dashboardData.time_range
       ? { time_range: { from: dashboardData.time_range.from, to: dashboardData.time_range.to } }
       : {};

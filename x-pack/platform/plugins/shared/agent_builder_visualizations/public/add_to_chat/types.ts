@@ -7,22 +7,17 @@
 
 import type { Observable } from 'rxjs';
 
-/** What a provider added to the chat, reported with the shared "Add to chat" event. */
 export interface AddToChatResult {
   attachmentTypes: readonly string[];
 }
 
-/**
- * Decides what the "Add to chat" panel action sends for the panels it handles, for example a
- * dashboard panel pointer. The action runs the first registered provider compatible with a panel.
- */
+/** Decides what "Add to chat" sends for the panels it handles. */
 export interface AddToChatProvider {
-  /** Unique id, reported as the pathway of the shared "Add to chat" event. */
+  /** Reported as the event pathway. */
   id: string;
   isCompatible: (embeddable: unknown) => boolean | Promise<boolean>;
-  /** Emits when the panel may have become compatible or incompatible. */
   getCompatibilityChangesSubject?: (embeddable: unknown) => Observable<undefined> | undefined;
-  /** Adds the panel to the chat; returns undefined when it added nothing. */
+  /** Returns undefined when nothing was added. */
   execute: (embeddable: unknown) => Promise<AddToChatResult | undefined>;
 }
 

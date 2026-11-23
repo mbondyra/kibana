@@ -14,12 +14,7 @@ import {
 import { getRequestPanelContentType } from '@kbn/dashboard-agent-authoring';
 import { dashboardTools } from '../../common';
 
-/**
- * Creates the definition for the dashboard panel pointer attachment type.
- *
- * The agent sees a pointer only by its id and type, so the agent description holds every rule;
- * a pointer's own text, returned only when the agent reads it, just names its panel.
- */
+/** The agent sees pointers only by id and type, so every rule lives in the agent description. */
 export const createDashboardPanelAttachmentType = (): AttachmentTypeDefinition<
   typeof DASHBOARD_PANEL_ATTACHMENT_TYPE,
   DashboardPanelAttachment['data']
