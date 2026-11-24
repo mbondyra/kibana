@@ -36,7 +36,7 @@ import {
   type HasTypeDisplayName,
   type HasUniqueId,
 } from '@kbn/presentation-publishing';
-import type { CanvasDashboard, CanvasDashboardRegistry, IdGenerator } from '../attachment_types';
+import type { IdGenerator } from '../attachment_types';
 import { resolveDashboardAttachmentLink } from '../attachment_types/dashboard_integration/reconcile';
 import { reportAddToChatClicked, type AddToChatChatState } from '../telemetry';
 
@@ -45,33 +45,20 @@ export const DASHBOARD_PANEL_ADD_TO_CHAT_PROVIDER_ID = 'dashboard_panel';
 export interface DashboardAddToChatProviderDeps {
   agentBuilder: Pick<AgentBuilderPluginStart, 'openChat' | 'addAttachment' | 'events'>;
   dashboardAppApi$: DashboardStart['dashboardAppClientApi$'];
-  canvasDashboards: Pick<CanvasDashboardRegistry, 'get'>;
   analytics: AnalyticsServiceStart;
   canWriteDashboards: boolean;
   draftAttachmentId: IdGenerator;
 }
 
-interface PanelDashboard {
-  dashboardApi: DashboardApi;
-  /** Set when rendered in the sidebar chat canvas. */
-  canvasDashboard?: CanvasDashboard;
-}
-
-/** The dashboard app's or the sidebar canvas's dashboard holding the panel. */
+/** The dashboard open in the dashboard app, when it holds the panel. */
 const getPanelDashboard = (
   embeddable: unknown,
-  { dashboardAppApi$, canvasDashboards }: DashboardAddToChatProviderDeps
-): PanelDashboard | undefined => {
-  if (!apiHasParentApi(embeddable)) {
-    return undefined;
-  }
-  const { parentApi } = embeddable;
+  { dashboardAppApi$ }: DashboardAddToChatProviderDeps
+): DashboardApi | undefined => {
   const dashboardAppApi = dashboardAppApi$.getValue();
-  if (dashboardAppApi && parentApi === dashboardAppApi) {
-    return { dashboardApi: dashboardAppApi };
-  }
-  const canvasDashboard = canvasDashboards.get(parentApi);
-  return canvasDashboard ? { dashboardApi: parentApi as DashboardApi, canvasDashboard } : undefined;
+  return dashboardAppApi && apiHasParentApi(embeddable) && embeddable.parentApi === dashboardAppApi
+    ? dashboardAppApi
+    : undefined;
 };
 
 const isRefinablePanel = (embeddable: unknown): embeddable is HasUniqueId =>
@@ -116,11 +103,10 @@ export const createDashboardAddToChatProvider = (
           )
         : undefined,
     execute: async (embeddable) => {
-      const panelDashboard = getPanelDashboard(embeddable, deps);
-      if (!canWriteDashboards || !panelDashboard || !isRefinablePanel(embeddable)) {
+      const dashboardApi = getPanelDashboard(embeddable, deps);
+      if (!canWriteDashboards || !dashboardApi || !isRefinablePanel(embeddable)) {
         return undefined;
       }
-      const { dashboardApi, canvasDashboard } = panelDashboard;
 
       const dashboardData = dashboardStateToAttachmentData(
         dashboardApi.getSerializedState().attributes
@@ -159,14 +145,6 @@ export const createDashboardAddToChatProvider = (
           panel_type: panelType,
         },
       });
-
-      // close the canvas, which covers the chat input
-      if (canvasDashboard) {
-        reportClicked('canvas');
-        agentBuilder.addAttachment(buildPanelPointer(canvasDashboard.attachmentId));
-        canvasDashboard.closeCanvas();
-        return pointerOnly;
-      }
 
       const activeConversation = await firstValueFrom(agentBuilder.events.ui.activeConversation$);
       const { origin, attachment: linkedAttachment } = resolveDashboardAttachmentLink({

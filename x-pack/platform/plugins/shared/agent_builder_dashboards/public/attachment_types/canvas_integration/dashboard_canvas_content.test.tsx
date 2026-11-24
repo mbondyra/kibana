@@ -144,7 +144,6 @@ describe('DashboardCanvasAttachment', () => {
     isSidebar: false,
     dashboardLocator: undefined,
     searchBarComponent: MockSearchBar as any,
-    registerCanvasDashboard: jest.fn(() => jest.fn()),
   };
 
   beforeEach(() => {
@@ -227,34 +226,6 @@ describe('DashboardCanvasAttachment', () => {
       openSidebarConversation,
     };
   };
-
-  it('registers a sidebar canvas dashboard for panel actions until unmount', async () => {
-    const unregister = jest.fn();
-    const registerCanvasDashboard = jest.fn(() => unregister);
-    const { mockApi, closeCanvas, unmount } = await renderDashboardCanvasAttachment({
-      isSidebar: true,
-      registerCanvasDashboard,
-    });
-
-    await waitFor(() => {
-      expect(registerCanvasDashboard).toHaveBeenCalledWith(mockApi, {
-        attachmentId: mockAttachment.id,
-        closeCanvas,
-      });
-    });
-    unmount();
-    expect(unregister).toHaveBeenCalled();
-  });
-
-  it('does not register a full-page canvas dashboard for panel actions', async () => {
-    const registerCanvasDashboard = jest.fn(() => jest.fn());
-    const { registerActionButtons } = await renderDashboardCanvasAttachment({
-      registerCanvasDashboard,
-    });
-
-    await waitFor(() => expect(registerActionButtons).toHaveBeenCalled());
-    expect(registerCanvasDashboard).not.toHaveBeenCalled();
-  });
 
   it('renders the dashboard renderer and search bar', async () => {
     const { container } = await renderDashboardCanvasAttachment();

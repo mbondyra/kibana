@@ -8,11 +8,7 @@
 export const DASHBOARD_PANEL_ADD_TO_CHAT_CLICKED = 'dashboard_panel_add_to_chat_clicked';
 
 /** How the action reached the chat when the user clicked "Add to chat". */
-export type AddToChatChatState =
-  | 'new_conversation'
-  | 'linked_attachment'
-  | 'staged_attachment'
-  | 'canvas';
+export type AddToChatChatState = 'new_conversation' | 'linked_attachment' | 'staged_attachment';
 
 export interface AddToChatClickedEvent {
   panel_type: string;

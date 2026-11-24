@@ -19,7 +19,7 @@ import {
 import { CUSTOM_CONTENT_EMBEDDABLE_TYPE } from '@kbn/custom-content-common';
 import type { DashboardApi } from '@kbn/dashboard-plugin/public';
 import { LENS_EMBEDDABLE_TYPE } from '@kbn/lens-common';
-import { createCanvasDashboardRegistry, type IdGenerator } from '../attachment_types';
+import type { IdGenerator } from '../attachment_types';
 import { DASHBOARD_PANEL_ADD_TO_CHAT_CLICKED } from '../telemetry/event_types';
 import {
   createDashboardAddToChatProvider,
@@ -98,18 +98,12 @@ const expectedPointer = (dashboardAttachmentId: string, label = 'CPU usage') => 
   },
 });
 
-const CANVAS_ATTACHMENT_ID = 'canvas-attachment-id';
-
 const createProvider = ({
   dashboardApi = createDashboardApi(),
-  canvasDashboardApi,
-  closeCanvas = jest.fn(),
   active = null,
   canWriteDashboards = true,
 }: {
   dashboardApi?: DashboardApi;
-  canvasDashboardApi?: DashboardApi;
-  closeCanvas?: () => void;
   active?: ActiveConversation | null;
   canWriteDashboards?: boolean;
 } = {}) => {
@@ -124,17 +118,9 @@ const createProvider = ({
       ui: { activeConversation$: new BehaviorSubject<ActiveConversation | null>(active) },
     },
   } as unknown as DashboardAddToChatProviderDeps['agentBuilder'];
-  const canvasDashboards = createCanvasDashboardRegistry();
-  if (canvasDashboardApi) {
-    canvasDashboards.register(canvasDashboardApi, {
-      attachmentId: CANVAS_ATTACHMENT_ID,
-      closeCanvas,
-    });
-  }
   const provider = createDashboardAddToChatProvider({
     agentBuilder,
     dashboardAppApi$: new BehaviorSubject<DashboardApi | undefined>(dashboardApi),
-    canvasDashboards,
     analytics: { reportEvent } as unknown as AnalyticsServiceStart,
     canWriteDashboards,
     draftAttachmentId,
@@ -192,7 +178,7 @@ describe('createDashboardAddToChatProvider', () => {
       ).resolves.toBe(false);
     });
 
-    it('rejects panels that do not belong to the dashboard open in the app or the canvas', async () => {
+    it('rejects panels that do not belong to the dashboard open in the app', async () => {
       const { provider } = createProvider();
 
       await expect(
@@ -207,15 +193,6 @@ describe('createDashboardAddToChatProvider', () => {
 
       await expect(
         isCompatible(provider, createEmbeddable({ parentApi: dashboardApi }))
-      ).resolves.toBe(true);
-    });
-
-    it('accepts panels of a dashboard rendered in the chat canvas', async () => {
-      const canvasDashboardApi = createDashboardApi({ viewMode: 'view' });
-      const { provider } = createProvider({ canvasDashboardApi });
-
-      await expect(
-        isCompatible(provider, createEmbeddable({ parentApi: canvasDashboardApi }))
       ).resolves.toBe(true);
     });
 
@@ -330,36 +307,6 @@ describe('createDashboardAddToChatProvider', () => {
         DASHBOARD_PANEL_ADD_TO_CHAT_CLICKED,
         expect.objectContaining({ chat_state: 'staged_attachment' })
       );
-    });
-
-    it('points at the dashboard attachment a canvas panel belongs to', async () => {
-      const canvasDashboardApi = createDashboardApi({ viewMode: 'view' });
-      const { provider, openChat, addAttachment, reportEvent } = createProvider({
-        canvasDashboardApi,
-        active: activeConversation(),
-      });
-
-      const result = await execute(provider, createEmbeddable({ parentApi: canvasDashboardApi }));
-
-      expect(openChat).not.toHaveBeenCalled();
-      expect(addAttachment).toHaveBeenCalledTimes(1);
-      expect(addAttachment).toHaveBeenCalledWith(expectedPointer(CANVAS_ATTACHMENT_ID));
-      expect(reportEvent).toHaveBeenCalledWith(
-        DASHBOARD_PANEL_ADD_TO_CHAT_CLICKED,
-        expect.objectContaining({ chat_state: 'canvas' })
-      );
-      expect(result).toEqual({ attachmentTypes: [DASHBOARD_PANEL_ATTACHMENT_TYPE] });
-    });
-
-    it('closes the canvas after adding the pointer so the chat input shows it', async () => {
-      const canvasDashboardApi = createDashboardApi({ viewMode: 'view' });
-      const closeCanvas = jest.fn();
-      const { provider, addAttachment } = createProvider({ canvasDashboardApi, closeCanvas });
-
-      await execute(provider, createEmbeddable({ parentApi: canvasDashboardApi }));
-
-      expect(addAttachment).toHaveBeenCalledWith(expectedPointer(CANVAS_ATTACHMENT_ID));
-      expect(closeCanvas).toHaveBeenCalledTimes(1);
     });
 
     it('leaves the label empty for an untitled Lens panel', async () => {

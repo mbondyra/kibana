@@ -18,7 +18,6 @@ import type {
   AgentBuilderDashboardsPluginPublicStartDependencies,
 } from './types';
 import {
-  createCanvasDashboardRegistry,
   createIdGenerator,
   registerDashboardAttachmentUiDefinition,
   registerDashboardPanelAttachmentUiDefinition,
@@ -55,7 +54,6 @@ export class AgentBuilderDashboardsPlugin
     plugins: AgentBuilderDashboardsPluginPublicStartDependencies
   ): AgentBuilderDashboardsPluginPublicStart {
     const draftAttachmentId = createIdGenerator();
-    const canvasDashboards = createCanvasDashboardRegistry();
     const canWriteDashboards =
       core.application.capabilities.dashboard_v2?.showWriteControls === true;
 
@@ -69,7 +67,6 @@ export class AgentBuilderDashboardsPlugin
       dashboardPlugin: plugins.dashboard,
       draftAttachmentId,
       toasts: core.notifications.toasts,
-      canvasDashboards,
     });
     registerDashboardPanelAttachmentUiDefinition(plugins.agentBuilder);
 
@@ -86,7 +83,6 @@ export class AgentBuilderDashboardsPlugin
           agentBuilder: plugins.agentBuilder,
           analytics: core.analytics,
           dashboardAppApi$: plugins.dashboard.dashboardAppClientApi$,
-          canvasDashboards,
           canWriteDashboards,
           draftAttachmentId,
         })

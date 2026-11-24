@@ -17,10 +17,6 @@ import type { AgentBuilderDashboardsPluginPublicStartDependencies } from './type
 jest.mock('./attachment_types', () => ({
   registerDashboardAttachmentUiDefinition: jest.fn(() => jest.fn()),
   registerDashboardPanelAttachmentUiDefinition: jest.fn(),
-  createCanvasDashboardRegistry: jest.fn(() => ({
-    register: jest.fn(),
-    get: jest.fn(),
-  })),
   createIdGenerator: () => ({
     current: 'draft-id',
     next: jest.fn(),
