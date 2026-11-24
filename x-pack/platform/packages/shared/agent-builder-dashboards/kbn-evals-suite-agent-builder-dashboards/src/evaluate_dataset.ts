@@ -264,27 +264,27 @@ export function createEvaluateDataset({
     const answered = answer ?? opening;
     const answeredSteps = answer ? combineTurnSteps(opening.steps, answer.steps) : opening.steps;
 
-    const followUp =
-      input?.followUp && answered.conversationId
+    const laterMessage =
+      input?.laterMessage && answered.conversationId
         ? await agentBuilderClient.converse({
             agentId,
             conversationId: answered.conversationId,
-            input: input.followUp,
+            input: input.laterMessage,
           })
         : undefined;
-    const last = followUp ?? answered;
-    const steps = followUp ? [...answeredSteps, ...followUp.steps] : answeredSteps;
+    const last = laterMessage ?? answered;
+    const steps = laterMessage ? [...answeredSteps, ...laterMessage.steps] : answeredSteps;
 
     return {
       errors: getToolErrors(steps),
       messages: [{ message: last.message }],
       steps,
       agentTraceId: last.traceId,
-      agentTraceIds: [opening.traceId, answer?.traceId, followUp?.traceId].filter(
+      agentTraceIds: [opening.traceId, answer?.traceId, laterMessage?.traceId].filter(
         (traceId): traceId is string => traceId !== undefined
       ),
-      turns: 1 + (answer ? 1 : 0) + (followUp ? 1 : 0),
-      ...(followUp ? { followUpSteps: followUp.steps } : {}),
+      turns: 1 + (answer ? 1 : 0) + (laterMessage ? 1 : 0),
+      ...(laterMessage ? { laterMessageSteps: laterMessage.steps } : {}),
       openingPrompts: opening.prompts,
       openingToolIds: getToolIds({ errors: [], messages: [], steps: opening.steps }),
       ...(await readDashboards(last, steps, seededDashboard !== undefined)),

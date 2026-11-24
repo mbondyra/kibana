@@ -21,20 +21,20 @@ export const panelPointerScopeEvaluator: DashboardAgentEvaluator = {
   kind: 'CODE',
   direction: 'maximize',
   evaluate: async ({ expected, output }) => {
-    if (!expected?.followUpKeepsDashboard) {
+    if (!expected?.laterMessageKeepsDashboard) {
       return skippedResult('No panel pointer scope gold.');
     }
-    const { followUpSteps } = output;
-    if (!followUpSteps) {
-      return skippedResult('The follow-up turn did not run.');
+    const { laterMessageSteps } = output;
+    if (!laterMessageSteps) {
+      return skippedResult('The later message turn did not run.');
     }
-    const writtenId = getLastWrittenDashboardId(followUpSteps);
+    const writtenId = getLastWrittenDashboardId(laterMessageSteps);
     return writtenId === undefined
-      ? { score: 1, label: 'scoped', explanation: 'The follow-up did not write the dashboard.' }
+      ? { score: 1, label: 'scoped', explanation: 'The later message did not write the dashboard.' }
       : {
           score: 0,
           label: 'leaked',
-          explanation: `The follow-up wrote dashboard "${writtenId}" although it is not about the pointed panels.`,
+          explanation: `The later message wrote dashboard "${writtenId}" although it is not about the pointed panels.`,
         };
   },
 };

@@ -207,7 +207,7 @@ export const discoverResultsExample = ({
  * and where the prompt puts things; the other gold covers what else the
  * prompt asks of the edit. `visualizations` are charts the agent created
  * earlier in the conversation. `panelPointerAttachments` are seed panels the user points
- * at with the question, and `followUp` a later message. `edit_scenario` tags
+ * at with the question, and `laterMessage` a later message. `edit_scenario` tags
  * the edits beyond moving ES|QL panels.
  */
 export const layoutEditExample = ({
@@ -215,7 +215,7 @@ export const layoutEditExample = ({
   controls,
   visualizations,
   panelPointerAttachments,
-  followUp,
+  laterMessage,
   dashboard = SECTIONED_LOGS_DASHBOARD,
   behaviour = 'layout_edit',
   ...gold
@@ -227,10 +227,10 @@ export const layoutEditExample = ({
   controls?: Omit<ControlsGold, 'mappedFields'>;
   replaceConfirmation?: ReplaceConfirmationGold;
   unavailableRequests?: readonly UnavailableRequestGold[];
-  followUpKeepsDashboard?: boolean;
+  laterMessageKeepsDashboard?: boolean;
   visualizations?: readonly VisualizationAttachment[];
   panelPointerAttachments?: readonly string[];
-  followUp?: string;
+  laterMessage?: string;
   dashboard?: DashboardAttachmentData;
   behaviour?: 'layout_edit' | 'edit_scenario';
 }): DashboardDatasetExample => ({
@@ -239,7 +239,7 @@ export const layoutEditExample = ({
     dashboard,
     ...(visualizations ? { visualizations } : {}),
     ...(panelPointerAttachments ? { panelPointerAttachments } : {}),
-    ...(followUp ? { followUp } : {}),
+    ...(laterMessage ? { laterMessage } : {}),
   },
   metadata: { behaviour, dataSource: 'logs' } satisfies ExampleMetadata,
   output: {
