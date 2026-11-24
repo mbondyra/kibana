@@ -190,7 +190,7 @@ export type DashboardDatasetExample = Example<
     /** Visualizations the agent created earlier in the conversation, sent as attachments. */
     visualizations?: readonly VisualizationAttachment[];
     /** Seeded dashboard panels the opening turn points at, attached as panel pointers. */
-    panelPointers?: readonly string[];
+    panelPointerAttachments?: readonly string[];
     /** A later message, sent in its own turn without attachments. */
     followUp?: string;
   },

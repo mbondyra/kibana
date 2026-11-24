@@ -113,7 +113,10 @@ const useAgentTraceIds = (evaluator: Evaluator): DashboardAgentEvaluator => ({
 });
 
 /** Pointers to seeded panels, shaped the way the add to chat action stages them. */
-const toPanelPointers = (dashboard: DashboardAttachmentData, panelIds: readonly string[]) => {
+const toPanelPointerAttachments = (
+  dashboard: DashboardAttachmentData,
+  panelIds: readonly string[]
+) => {
   const panels = getLeafPanels(dashboard);
   return panelIds.map((panelId) => {
     const panel = panels.find(({ id }) => id === panelId);
@@ -219,7 +222,7 @@ export function createEvaluateDataset({
       ...(seededDashboard
         ? [
             { id: SEEDED_DASHBOARD_ID, type: DASHBOARD_ATTACHMENT_TYPE, data: seededDashboard },
-            ...toPanelPointers(seededDashboard, input?.panelPointers ?? []),
+            ...toPanelPointerAttachments(seededDashboard, input?.panelPointerAttachments ?? []),
           ]
         : []),
       ...(seededResults

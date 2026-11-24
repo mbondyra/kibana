@@ -150,7 +150,7 @@ export const DASHBOARD_EDIT_SCENARIO_EXAMPLES: DashboardDatasetExample[] = [
   }),
   editScenario({
     question: 'make these red',
-    panelPointers: ['errors-4xx', 'errors-5xx'],
+    panelPointerAttachments: ['errors-4xx', 'errors-5xx'],
     followUp: 'which operating system sends the most requests?',
     layoutEdit: { changes: [] },
     panelEdits: [
