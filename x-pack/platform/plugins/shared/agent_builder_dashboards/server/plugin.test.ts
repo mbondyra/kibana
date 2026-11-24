@@ -13,7 +13,6 @@ import { AgentBuilderDashboardsPlugin } from './plugin';
 const setupPlugin = (coreSetup = coreMock.createSetup()) => {
   const registerAttachmentType = jest.fn<void, [AttachmentTypeDefinition]>();
   const registerSkill = jest.fn();
-  const registerTool = jest.fn();
   const registerSmlType = jest.fn<void, [SmlTypeDefinition]>();
 
   const plugin = new AgentBuilderDashboardsPlugin(coreMock.createPluginInitializerContext());
@@ -24,7 +23,6 @@ const setupPlugin = (coreSetup = coreMock.createSetup()) => {
       agentBuilder: {
         attachments: { registerType: registerAttachmentType },
         skills: { register: registerSkill },
-        tools: { register: registerTool },
       },
       agentBuilderSml: {
         registerType: registerSmlType,
@@ -32,12 +30,12 @@ const setupPlugin = (coreSetup = coreMock.createSetup()) => {
     } as never
   );
 
-  return { registerAttachmentType, registerSkill, registerTool, registerSmlType };
+  return { registerAttachmentType, registerSkill, registerSmlType };
 };
 
 describe('AgentBuilderDashboardsPlugin', () => {
   it('registers the dashboard attachment type, skill, and SML type', () => {
-    const { registerAttachmentType, registerSkill, registerTool, registerSmlType } = setupPlugin();
+    const { registerAttachmentType, registerSkill, registerSmlType } = setupPlugin();
 
     expect(registerAttachmentType).toHaveBeenCalledTimes(2);
     expect(registerAttachmentType).toHaveBeenCalledWith(
@@ -45,9 +43,6 @@ describe('AgentBuilderDashboardsPlugin', () => {
     );
     expect(registerAttachmentType).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'platform.dashboard.panel', isReadonly: true })
-    );
-    expect(registerTool).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'platform.dashboard.pointed_panel' })
     );
     expect(registerSkill).toHaveBeenCalledTimes(1);
     expect(registerSkill).toHaveBeenCalledWith(expect.objectContaining({ id: 'dashboards' }));

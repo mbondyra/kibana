@@ -14,7 +14,7 @@ import {
 import { getRequestPanelContentType } from '@kbn/dashboard-agent-authoring';
 import { dashboardTools } from '../../common';
 
-/** The agent sees pointers only by id and type, so every rule lives in the agent description. */
+/** A pointer carries only ids: the agent reads it and the dashboard through `attachment_read`. */
 export const createDashboardPanelAttachmentType = (): AttachmentTypeDefinition<
   typeof DASHBOARD_PANEL_ATTACHMENT_TYPE,
   DashboardPanelAttachment['data']
@@ -34,14 +34,12 @@ export const createDashboardPanelAttachmentType = (): AttachmentTypeDefinition<
     }),
   }),
   getAgentDescription: () =>
-    `A dashboard panel attachment points at one panel of a dashboard attachment in this conversation: the user is referring to that panel in the message it is attached to. It carries no configuration. Pass its attachment id as \`panel_attachment_id\` to \`${dashboardTools.pointedPanel}\`: \`action: "read"\` returns the panel's \`dashboard_attachment_id\`, id, type and config.
+    `A dashboard panel attachment points at one panel of a dashboard attachment in this conversation: the user is referring to that panel in the message it is attached to. It carries no configuration: read it with \`attachment_read\` to get its \`dashboard_attachment_id\`, panel id and type. The panel's config, with its ES|QL, and the dashboard's \`time_range\` are in the dashboard attachment: read that by its \`dashboard_attachment_id\` and find the panel by id.
 - The message a pointer is attached to is about that panel, even when it does not mention it. A message with several pointers is about all of their panels. Tell from the message what the user wants:
   - A question about the panel or its data (what it shows, why a value looks the way it does, an error): read the panel, then answer in chat with whichever skill fits the question. Do not change the dashboard.
   - A change to the panel: load the dashboards skill and edit the panel in place through \`${dashboardTools.generateDashboard}\`, with \`dashboardId\` set to its \`dashboard_attachment_id\` and a panel request carrying its panel id and \`query: <the change>\`. Never create a new visualization attachment or add a new panel to refine a panel that already exists. After editing, render only the dashboard attachment.
 - A pointer from an earlier message does not make later messages about its panel: handle a later message on its own, unless it mentions the panel or continues the same change.
-- To show the panel itself inline in the chat, use \`${dashboardTools.pointedPanel}\` with \`action: "show"\`; never regenerate it with the visualization creation tool.
 - If the panel no longer exists, tell the user instead of recreating it.`,
-  getTools: () => [dashboardTools.pointedPanel],
 });
 
 const getEditContentType = (panelType: string): string => {
