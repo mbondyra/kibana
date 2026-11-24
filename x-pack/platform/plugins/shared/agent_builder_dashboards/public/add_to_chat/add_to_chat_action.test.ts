@@ -20,7 +20,7 @@ import { CUSTOM_CONTENT_EMBEDDABLE_TYPE } from '@kbn/custom-content-common';
 import type { DashboardApi } from '@kbn/dashboard-plugin/public';
 import { LENS_EMBEDDABLE_TYPE } from '@kbn/lens-common';
 import { ON_OPEN_PANEL_MENU } from '@kbn/ui-actions-plugin/common/trigger_ids';
-import type { IdGenerator } from '../attachment_types';
+import { createCanvasDashboardRegistry, type IdGenerator } from '../attachment_types';
 import {
   createDashboardAddToChatAction,
   DASHBOARD_PANEL_ADD_TO_CHAT_PATHWAY,
@@ -111,12 +111,18 @@ const expectedPointer = (dashboardAttachmentId: string, label = 'CPU usage') => 
   },
 });
 
+const CANVAS_ATTACHMENT_ID = 'canvas-attachment-id';
+
 const createAction = ({
   dashboardApi = createDashboardApi(),
+  canvasDashboardApi,
+  closeCanvas = jest.fn(),
   active = null,
   canWriteDashboards = true,
 }: {
   dashboardApi?: DashboardApi;
+  canvasDashboardApi?: DashboardApi;
+  closeCanvas?: () => void;
   active?: ActiveConversation | null;
   canWriteDashboards?: boolean;
 } = {}) => {
@@ -134,9 +140,17 @@ const createAction = ({
       ui: { activeConversation$: new BehaviorSubject<ActiveConversation | null>(active) },
     },
   } as unknown as DashboardAddToChatActionDeps['agentBuilder'];
+  const canvasDashboards = createCanvasDashboardRegistry();
+  if (canvasDashboardApi) {
+    canvasDashboards.register(canvasDashboardApi, {
+      attachmentId: CANVAS_ATTACHMENT_ID,
+      closeCanvas,
+    });
+  }
   const action = createDashboardAddToChatAction({
     agentBuilder,
     dashboardAppApi$: new BehaviorSubject<DashboardApi | undefined>(dashboardApi),
+    canvasDashboards,
     analytics: { reportEvent } as unknown as AnalyticsServiceStart,
     canWriteDashboards,
     draftAttachmentId,
@@ -155,6 +169,8 @@ const expectReported = (reportEvent: jest.Mock, attachments: string[]) =>
     pathway: DASHBOARD_PANEL_ADD_TO_CHAT_PATHWAY,
     attachments,
   });
+
+const canvasDashboardApi = createDashboardApi({ viewMode: 'view' });
 
 describe('createDashboardAddToChatAction', () => {
   it.each<[string, Parameters<typeof createAction>[0], Partial<EmbeddableOptions>, boolean]>([
@@ -175,6 +191,12 @@ describe('createDashboardAddToChatAction', () => {
     ['rejects other panel types', {}, { type: 'markdown' }, false],
     ['rejects panels of another dashboard', {}, { parentApi: createDashboardApi() }, false],
     ['rejects without dashboard write access', { canWriteDashboards: false }, {}, false],
+    [
+      'accepts panels of a dashboard in the chat canvas',
+      { canvasDashboardApi },
+      { parentApi: canvasDashboardApi },
+      true,
+    ],
   ])('isCompatible %s', async (_, actionOptions, embeddableOptions, expected) => {
     const { action, dashboardApi } = createAction(actionOptions);
 
@@ -237,6 +259,22 @@ describe('createDashboardAddToChatAction', () => {
         [expectedPointer(DRAFT_ID)],
       ]);
       expectReported(reportEvent, [DASHBOARD_ATTACHMENT_TYPE, DASHBOARD_PANEL_ATTACHMENT_TYPE]);
+    });
+
+    it('points at the dashboard attachment of a canvas panel and closes the canvas', async () => {
+      const closeCanvas = jest.fn();
+      const { action, openChat, addAttachment, reportEvent } = createAction({
+        canvasDashboardApi,
+        closeCanvas,
+        active: activeConversation(),
+      });
+
+      await execute(action, createEmbeddable({ parentApi: canvasDashboardApi }));
+
+      expect(openChat).not.toHaveBeenCalled();
+      expect(addAttachment.mock.calls).toEqual([[expectedPointer(CANVAS_ATTACHMENT_ID)]]);
+      expect(closeCanvas).toHaveBeenCalledTimes(1);
+      expectReported(reportEvent, [DASHBOARD_PANEL_ATTACHMENT_TYPE]);
     });
 
     it.each<[string, unknown[], Partial<EmbeddableOptions>, string, string]>([

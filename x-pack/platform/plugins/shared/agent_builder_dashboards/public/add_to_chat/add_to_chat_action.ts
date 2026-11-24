@@ -40,7 +40,7 @@ import {
   type HasUniqueId,
 } from '@kbn/presentation-publishing';
 import type { UiActionsActionDefinition as ActionDefinition } from '@kbn/ui-actions-plugin/public';
-import type { IdGenerator } from '../attachment_types';
+import type { CanvasDashboard, CanvasDashboardRegistry, IdGenerator } from '../attachment_types';
 import { resolveDashboardAttachmentLink } from '../attachment_types/dashboard_integration/reconcile';
 
 export const DASHBOARD_PANEL_ADD_TO_CHAT_PATHWAY = 'dashboard_panel';
@@ -51,20 +51,33 @@ export interface DashboardAddToChatActionDeps {
     'openChat' | 'addAttachment' | 'events' | 'getAgentBuilderAccess'
   >;
   dashboardAppApi$: DashboardStart['dashboardAppClientApi$'];
+  canvasDashboards: Pick<CanvasDashboardRegistry, 'get'>;
   analytics: AnalyticsServiceStart;
   canWriteDashboards: boolean;
   draftAttachmentId: IdGenerator;
 }
 
-/** The dashboard open in the dashboard app, when it holds the panel. */
+interface PanelDashboard {
+  dashboardApi: DashboardApi;
+  /** Set when rendered in the sidebar chat canvas. */
+  canvasDashboard?: CanvasDashboard;
+}
+
+/** The dashboard app's or the sidebar canvas's dashboard holding the panel. */
 const getPanelDashboard = (
   embeddable: unknown,
-  { dashboardAppApi$ }: DashboardAddToChatActionDeps
-): DashboardApi | undefined => {
+  { dashboardAppApi$, canvasDashboards }: DashboardAddToChatActionDeps
+): PanelDashboard | undefined => {
+  if (!apiHasParentApi(embeddable)) {
+    return undefined;
+  }
+  const { parentApi } = embeddable;
   const dashboardAppApi = dashboardAppApi$.getValue();
-  return dashboardAppApi && apiHasParentApi(embeddable) && embeddable.parentApi === dashboardAppApi
-    ? dashboardAppApi
-    : undefined;
+  if (dashboardAppApi && parentApi === dashboardAppApi) {
+    return { dashboardApi: dashboardAppApi };
+  }
+  const canvasDashboard = canvasDashboards.get(parentApi);
+  return canvasDashboard ? { dashboardApi: parentApi as DashboardApi, canvasDashboard } : undefined;
 };
 
 const isRefinablePanel = (embeddable: unknown): embeddable is HasUniqueId =>
@@ -108,13 +121,15 @@ export const createDashboardAddToChatAction = (
 ): ActionDefinition<EmbeddableApiContext> => {
   const { agentBuilder, analytics, canWriteDashboards, draftAttachmentId } = deps;
 
-  const getRefinableDashboard = async (embeddable: unknown): Promise<DashboardApi | undefined> => {
-    const dashboardApi = getPanelDashboard(embeddable, deps);
-    if (!canWriteDashboards || !dashboardApi || !isRefinablePanel(embeddable)) {
+  const getRefinableDashboard = async (
+    embeddable: unknown
+  ): Promise<PanelDashboard | undefined> => {
+    const panelDashboard = getPanelDashboard(embeddable, deps);
+    if (!canWriteDashboards || !panelDashboard || !isRefinablePanel(embeddable)) {
       return undefined;
     }
     const { hasRequiredLicense, hasLlmConnector } = await agentBuilder.getAgentBuilderAccess();
-    return hasRequiredLicense && hasLlmConnector ? dashboardApi : undefined;
+    return hasRequiredLicense && hasLlmConnector ? panelDashboard : undefined;
   };
 
   return {
@@ -135,10 +150,11 @@ export const createDashboardAddToChatAction = (
           )
         : undefined,
     execute: async ({ embeddable }) => {
-      const dashboardApi = await getRefinableDashboard(embeddable);
-      if (!dashboardApi || !isRefinablePanel(embeddable)) {
+      const panelDashboard = await getRefinableDashboard(embeddable);
+      if (!panelDashboard || !isRefinablePanel(embeddable)) {
         return;
       }
+      const { dashboardApi, canvasDashboard } = panelDashboard;
 
       const dashboardData = dashboardStateToAttachmentData(
         dashboardApi.getSerializedState().attributes
@@ -167,6 +183,14 @@ export const createDashboardAddToChatAction = (
           panel_type: panelType,
         },
       });
+
+      // close the canvas, which covers the chat input
+      if (canvasDashboard) {
+        agentBuilder.addAttachment(buildPanelPointer(canvasDashboard.attachmentId));
+        canvasDashboard.closeCanvas();
+        reportClicked(analytics, [DASHBOARD_PANEL_ATTACHMENT_TYPE]);
+        return;
+      }
 
       const activeConversation = await firstValueFrom(agentBuilder.events.ui.activeConversation$);
       const { origin, attachment: linkedAttachment } = resolveDashboardAttachmentLink({
