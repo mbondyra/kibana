@@ -12,16 +12,12 @@ import type { EmbeddableStart } from '@kbn/embeddable-plugin/public';
 import type { LensPublicStart } from '@kbn/lens-plugin/public';
 import type { UiActionsStart } from '@kbn/ui-actions-plugin/public';
 import type { UnifiedSearchPublicPluginStart } from '@kbn/unified-search-plugin/public';
-import type { AddToChatProvider } from './add_to_chat';
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface AgentBuilderVisualizationsPluginPublicSetup {}
 
-export interface AgentBuilderVisualizationsPluginPublicStart {
-  addToChat: {
-    registerProvider: (provider: AddToChatProvider) => void;
-  };
-}
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+export interface AgentBuilderVisualizationsPluginPublicStart {}
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface AgentBuilderVisualizationsPluginPublicSetupDependencies {}

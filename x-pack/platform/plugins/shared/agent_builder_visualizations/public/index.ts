@@ -14,7 +14,6 @@ export type {
   AgentBuilderVisualizationsPluginPublicSetupDependencies,
   AgentBuilderVisualizationsPluginPublicStartDependencies,
 } from './types';
-export type { AddToChatProvider, AddToChatResult } from './add_to_chat';
 
 export const plugin = (initializerContext: PluginInitializerContext) =>
   new AgentBuilderVisualizationsPublicPlugin(initializerContext);
