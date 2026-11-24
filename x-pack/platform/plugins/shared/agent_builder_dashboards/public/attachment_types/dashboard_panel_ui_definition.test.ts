@@ -40,18 +40,13 @@ const registerDefinition = (): AttachmentUIDefinition<DashboardPanelAttachment> 
 };
 
 describe('registerDashboardPanelAttachmentUiDefinition', () => {
-  it('labels the pill with the panel title', () => {
-    expect(registerDefinition().getLabel(pointer('CPU usage', LENS_EMBEDDABLE_TYPE))).toBe(
-      'CPU usage'
-    );
-  });
-
   it.each([
-    [LENS_EMBEDDABLE_TYPE, 'Visualization'],
-    [CUSTOM_CONTENT_EMBEDDABLE_TYPE, 'Custom panel'],
-    ['markdown', 'Dashboard panel'],
-  ])('falls back by panel type for %s', (panelType, expected) => {
-    expect(registerDefinition().getLabel(pointer('', panelType))).toBe(expected);
+    ['CPU usage', LENS_EMBEDDABLE_TYPE, 'CPU usage'],
+    ['', LENS_EMBEDDABLE_TYPE, 'Visualization'],
+    ['', CUSTOM_CONTENT_EMBEDDABLE_TYPE, 'Custom panel'],
+    ['', 'markdown', 'Dashboard panel'],
+  ])('labels the pill "%s" of a %s panel as "%s"', (label, panelType, expected) => {
+    expect(registerDefinition().getLabel(pointer(label, panelType))).toBe(expected);
   });
 
   it('renders as a pill only', () => {

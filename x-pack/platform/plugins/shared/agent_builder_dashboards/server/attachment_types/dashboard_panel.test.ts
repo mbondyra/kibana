@@ -45,17 +45,12 @@ const formatPointer = async (data: DashboardPanelAttachmentData): Promise<string
 };
 
 describe('createDashboardPanelAttachmentType', () => {
-  it('is a read-only type exposing the pointed panel tool', () => {
+  it('is a read-only type exposing the pointed panel tool and validating pointer data', async () => {
     const definition = createDashboardPanelAttachmentType();
 
     expect(definition.id).toBe(DASHBOARD_PANEL_ATTACHMENT_TYPE);
     expect(definition.isReadonly).toBe(true);
     expect(definition.getTools?.()).toEqual([dashboardTools.pointedPanel]);
-  });
-
-  it('validates pointer data against the schema', async () => {
-    const definition = createDashboardPanelAttachmentType();
-
     expect(await definition.validate(pointerData)).toEqual({ valid: true, data: pointerData });
     expect(await definition.validate({ panel_id: 'panel-1' })).toMatchObject({ valid: false });
   });
@@ -85,7 +80,7 @@ describe('createDashboardPanelAttachmentType', () => {
     expect(text).not.toContain('""');
   });
 
-  it('routes questions to a read and changes through the dashboard', () => {
+  it('routes questions to a read, changes through the dashboard, and ids through the tool', () => {
     const description = createDashboardPanelAttachmentType().getAgentDescription?.() ?? '';
 
     expect(description).toContain('A question about the panel or its data');
@@ -94,11 +89,6 @@ describe('createDashboardPanelAttachmentType', () => {
     expect(description).toContain('edit the panel in place through');
     expect(description).toContain('A pointer from an earlier message does not make later messages');
     expect(description).toContain('Never create a new visualization attachment');
-  });
-
-  it('tells the agent how to get the panel ids without reading the pointer', () => {
-    const description = createDashboardPanelAttachmentType().getAgentDescription?.() ?? '';
-
     expect(description).toContain(
       `Pass its attachment id as \`panel_attachment_id\` to \`${dashboardTools.pointedPanel}\``
     );

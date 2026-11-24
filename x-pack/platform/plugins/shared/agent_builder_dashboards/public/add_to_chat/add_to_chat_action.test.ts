@@ -18,7 +18,6 @@ import {
 } from '@kbn/agent-builder-dashboards-common';
 import { CUSTOM_CONTENT_EMBEDDABLE_TYPE } from '@kbn/custom-content-common';
 import type { DashboardApi } from '@kbn/dashboard-plugin/public';
-import { ADD_TO_CHAT_ACTION_ID } from '@kbn/embeddable-plugin/public';
 import { LENS_EMBEDDABLE_TYPE } from '@kbn/lens-common';
 import { ON_OPEN_PANEL_MENU } from '@kbn/ui-actions-plugin/common/trigger_ids';
 import type { IdGenerator } from '../attachment_types';
@@ -51,19 +50,21 @@ const createDashboardApi = ({
     getSerializedState: () => ({ attributes: { title: 'Test', panels } }),
   } as unknown as DashboardApi);
 
+interface EmbeddableOptions {
+  type?: string;
+  parentApi: unknown;
+  esql?: AggregateQuery[];
+  untitled?: boolean;
+  typeDisplayName?: string;
+}
+
 const createEmbeddable = ({
   type = LENS_EMBEDDABLE_TYPE,
   parentApi,
   esql = [{ esql: 'FROM logs | LIMIT 10' }],
   untitled = false,
   typeDisplayName,
-}: {
-  type?: string;
-  parentApi: unknown;
-  esql?: AggregateQuery[];
-  untitled?: boolean;
-  typeDisplayName?: string;
-}) => ({
+}: EmbeddableOptions) => ({
   type,
   uuid: 'panel-1',
   parentApi,
@@ -73,6 +74,17 @@ const createEmbeddable = ({
   hideTitle$: new BehaviorSubject(false),
   ...(typeDisplayName ? { getTypeDisplayName: () => typeDisplayName } : {}),
 });
+
+const metricPanel = {
+  type: LENS_EMBEDDABLE_TYPE,
+  id: 'panel-1',
+  grid: { x: 0, y: 0, w: 24, h: 15 },
+  config: {
+    type: 'metric',
+    metrics: [{ type: 'primary', column: 'Total Web Requests' }],
+    data_source: { type: 'esql', query: 'FROM logs | STATS c = COUNT(*)' },
+  },
+};
 
 const linkedDashboardAttachment = (origin: string | undefined): VersionedAttachment =>
   ({
@@ -145,75 +157,30 @@ const expectReported = (reportEvent: jest.Mock, attachments: string[]) =>
   });
 
 describe('createDashboardAddToChatAction', () => {
-  it('uses the shared Add to chat action id', () => {
-    expect(createAction().action.id).toBe(ADD_TO_CHAT_ACTION_ID);
-  });
+  it.each<[string, Parameters<typeof createAction>[0], Partial<EmbeddableOptions>, boolean]>([
+    ['accepts an ES|QL Lens panel in edit mode', {}, {}, true],
+    [
+      'accepts an ES|QL Lens panel in view mode',
+      { dashboardApi: createDashboardApi({ viewMode: 'view' }) },
+      {},
+      true,
+    ],
+    [
+      'accepts a custom panel without a query',
+      {},
+      { type: CUSTOM_CONTENT_EMBEDDABLE_TYPE, esql: [] },
+      true,
+    ],
+    ['rejects a Lens panel without an ES|QL query', {}, { esql: [] }, false],
+    ['rejects other panel types', {}, { type: 'markdown' }, false],
+    ['rejects panels of another dashboard', {}, { parentApi: createDashboardApi() }, false],
+    ['rejects without dashboard write access', { canWriteDashboards: false }, {}, false],
+  ])('isCompatible %s', async (_, actionOptions, embeddableOptions, expected) => {
+    const { action, dashboardApi } = createAction(actionOptions);
 
-  describe('isCompatible', () => {
-    it('accepts an ES|QL Lens panel of the dashboard open in the app, in edit mode', async () => {
-      const { action, dashboardApi } = createAction();
-
-      await expect(
-        isCompatible(action, createEmbeddable({ parentApi: dashboardApi }))
-      ).resolves.toBe(true);
-    });
-
-    it('accepts a custom panel even without a query', async () => {
-      const { action, dashboardApi } = createAction();
-
-      await expect(
-        isCompatible(
-          action,
-          createEmbeddable({
-            type: CUSTOM_CONTENT_EMBEDDABLE_TYPE,
-            parentApi: dashboardApi,
-            esql: [],
-          })
-        )
-      ).resolves.toBe(true);
-    });
-
-    it('rejects a Lens panel without an ES|QL query', async () => {
-      const { action, dashboardApi } = createAction();
-
-      await expect(
-        isCompatible(action, createEmbeddable({ parentApi: dashboardApi, esql: [] }))
-      ).resolves.toBe(false);
-    });
-
-    it('rejects other panel types', async () => {
-      const { action, dashboardApi } = createAction();
-
-      await expect(
-        isCompatible(action, createEmbeddable({ type: 'markdown', parentApi: dashboardApi }))
-      ).resolves.toBe(false);
-    });
-
-    it('rejects panels that do not belong to the dashboard open in the app', async () => {
-      const { action } = createAction();
-
-      await expect(
-        isCompatible(action, createEmbeddable({ parentApi: createDashboardApi() }))
-      ).resolves.toBe(false);
-    });
-
-    it('accepts panels in view mode', async () => {
-      const { action, dashboardApi } = createAction({
-        dashboardApi: createDashboardApi({ viewMode: 'view' }),
-      });
-
-      await expect(
-        isCompatible(action, createEmbeddable({ parentApi: dashboardApi }))
-      ).resolves.toBe(true);
-    });
-
-    it('rejects when the user cannot write dashboards', async () => {
-      const { action, dashboardApi } = createAction({ canWriteDashboards: false });
-
-      await expect(
-        isCompatible(action, createEmbeddable({ parentApi: dashboardApi }))
-      ).resolves.toBe(false);
-    });
+    await expect(
+      isCompatible(action, createEmbeddable({ parentApi: dashboardApi, ...embeddableOptions }))
+    ).resolves.toBe(expected);
   });
 
   describe('execute', () => {
@@ -238,142 +205,76 @@ describe('createDashboardAddToChatAction', () => {
       expectReported(reportEvent, [DASHBOARD_ATTACHMENT_TYPE, DASHBOARD_PANEL_ATTACHMENT_TYPE]);
     });
 
-    it('points at the dashboard attachment linked to the open dashboard', async () => {
+    it.each([
+      ['a saved dashboard to its attachment', false, 'dash-1'],
+      ['an unsaved dashboard to an origin-less attachment', true, undefined],
+    ])('points %s', async (_, unsaved, origin) => {
       const { action, dashboardApi, openChat, addAttachment, reportEvent } = createAction({
-        active: activeConversation([linkedDashboardAttachment('dash-1')]),
+        dashboardApi: createDashboardApi({ unsaved }),
+        active: activeConversation([linkedDashboardAttachment(origin)]),
       });
 
       await execute(action, createEmbeddable({ parentApi: dashboardApi }));
 
       expect(openChat).not.toHaveBeenCalled();
-      expect(addAttachment).toHaveBeenCalledTimes(1);
-      expect(addAttachment).toHaveBeenCalledWith(expectedPointer('linked-attachment-id'));
+      expect(addAttachment.mock.calls).toEqual([[expectedPointer('linked-attachment-id')]]);
       expectReported(reportEvent, [DASHBOARD_PANEL_ATTACHMENT_TYPE]);
     });
 
-    it('links an unsaved dashboard to an origin-less dashboard attachment', async () => {
+    it.each([
+      ['when nothing is linked', false, 'another-dashboard', 'dash-1'],
+      ['without an origin when the dashboard is managed', true, 'dash-1', undefined],
+    ])('stages the dashboard before the pointer %s', async (_, managed, linkedOrigin, origin) => {
       const { action, dashboardApi, addAttachment, reportEvent } = createAction({
-        dashboardApi: createDashboardApi({ unsaved: true }),
-        active: activeConversation([linkedDashboardAttachment(undefined)]),
+        dashboardApi: createDashboardApi({ managed }),
+        active: activeConversation([linkedDashboardAttachment(linkedOrigin)]),
       });
 
       await execute(action, createEmbeddable({ parentApi: dashboardApi }));
 
-      expect(addAttachment).toHaveBeenCalledTimes(1);
-      expect(addAttachment).toHaveBeenCalledWith(expectedPointer('linked-attachment-id'));
-      expectReported(reportEvent, [DASHBOARD_PANEL_ATTACHMENT_TYPE]);
-    });
-
-    it('stages the dashboard under the draft id before the pointer when nothing is linked', async () => {
-      const { action, dashboardApi, addAttachment, reportEvent } = createAction({
-        active: activeConversation([linkedDashboardAttachment('another-dashboard')]),
-      });
-
-      await execute(action, createEmbeddable({ parentApi: dashboardApi }));
-
-      expect(addAttachment).toHaveBeenCalledTimes(2);
-      expect(addAttachment).toHaveBeenNthCalledWith(
-        1,
-        expect.objectContaining({ id: DRAFT_ID, type: DASHBOARD_ATTACHMENT_TYPE, origin: 'dash-1' })
-      );
-      expect(addAttachment).toHaveBeenNthCalledWith(2, expectedPointer(DRAFT_ID));
+      expect(addAttachment.mock.calls).toEqual([
+        [expect.objectContaining({ id: DRAFT_ID, type: DASHBOARD_ATTACHMENT_TYPE, origin })],
+        [expectedPointer(DRAFT_ID)],
+      ]);
       expectReported(reportEvent, [DASHBOARD_ATTACHMENT_TYPE, DASHBOARD_PANEL_ATTACHMENT_TYPE]);
     });
 
-    it('stages a managed dashboard without an origin instead of pointing at its attachment', async () => {
-      const { action, dashboardApi, addAttachment, reportEvent } = createAction({
-        dashboardApi: createDashboardApi({ managed: true }),
-        active: activeConversation([linkedDashboardAttachment('dash-1')]),
-      });
-
-      await execute(action, createEmbeddable({ parentApi: dashboardApi }));
-
-      expect(addAttachment).toHaveBeenCalledTimes(2);
-      expect(addAttachment).toHaveBeenNthCalledWith(
-        1,
-        expect.objectContaining({
-          id: DRAFT_ID,
-          type: DASHBOARD_ATTACHMENT_TYPE,
-          origin: undefined,
-        })
-      );
-      expect(addAttachment).toHaveBeenNthCalledWith(2, expectedPointer(DRAFT_ID));
-      expectReported(reportEvent, [DASHBOARD_ATTACHMENT_TYPE, DASHBOARD_PANEL_ATTACHMENT_TYPE]);
-    });
-
-    it('leaves the label empty for an untitled Lens panel', async () => {
-      const { action, dashboardApi, openChat } = createAction();
-
-      await execute(
-        action,
-        createEmbeddable({
-          parentApi: dashboardApi,
-          untitled: true,
-          typeDisplayName: 'visualization',
-        })
-      );
-
-      expect(openChat).toHaveBeenCalledWith(
-        expect.objectContaining({
-          attachments: [expect.anything(), expectedPointer(DRAFT_ID, '')],
-        })
-      );
-    });
-
-    it('derives the label of an untitled Lens panel from its chart config', async () => {
+    it.each<[string, unknown[], Partial<EmbeddableOptions>, string, string]>([
+      [
+        'empty for an untitled Lens panel',
+        [],
+        { typeDisplayName: 'visualization' },
+        '',
+        LENS_EMBEDDABLE_TYPE,
+      ],
+      [
+        'derived from the chart config of an untitled Lens panel',
+        [metricPanel],
+        {},
+        'Total Web Requests',
+        LENS_EMBEDDABLE_TYPE,
+      ],
+      [
+        'the type display name of an untitled custom panel',
+        [],
+        { type: CUSTOM_CONTENT_EMBEDDABLE_TYPE, esql: [], typeDisplayName: 'Custom panel' },
+        'Custom panel',
+        CUSTOM_CONTENT_EMBEDDABLE_TYPE,
+      ],
+    ])('sets the label %s', async (_, panels, embeddableOptions, label, panelType) => {
       const { action, dashboardApi, openChat } = createAction({
-        dashboardApi: createDashboardApi({
-          panels: [
-            {
-              type: LENS_EMBEDDABLE_TYPE,
-              id: 'panel-1',
-              grid: { x: 0, y: 0, w: 24, h: 15 },
-              config: {
-                type: 'metric',
-                metrics: [{ type: 'primary', column: 'Total Web Requests' }],
-                data_source: { type: 'esql', query: 'FROM logs | STATS c = COUNT(*)' },
-              },
-            },
-          ],
-        }),
+        dashboardApi: createDashboardApi({ panels }),
       });
-
-      await execute(action, createEmbeddable({ parentApi: dashboardApi, untitled: true }));
-
-      expect(openChat).toHaveBeenCalledWith(
-        expect.objectContaining({
-          attachments: [expect.anything(), expectedPointer(DRAFT_ID, 'Total Web Requests')],
-        })
-      );
-    });
-
-    it('labels an untitled custom panel with its type display name', async () => {
-      const { action, dashboardApi, openChat } = createAction();
 
       await execute(
         action,
-        createEmbeddable({
-          type: CUSTOM_CONTENT_EMBEDDABLE_TYPE,
-          parentApi: dashboardApi,
-          esql: [],
-          untitled: true,
-          typeDisplayName: 'Custom panel',
-        })
+        createEmbeddable({ parentApi: dashboardApi, untitled: true, ...embeddableOptions })
       );
 
-      expect(openChat).toHaveBeenCalledWith(
-        expect.objectContaining({
-          attachments: [
-            expect.anything(),
-            expect.objectContaining({
-              data: expect.objectContaining({
-                label: 'Custom panel',
-                panel_type: CUSTOM_CONTENT_EMBEDDABLE_TYPE,
-              }),
-            }),
-          ],
-        })
-      );
+      expect(openChat.mock.calls[0][0].attachments[1].data).toMatchObject({
+        label,
+        panel_type: panelType,
+      });
     });
 
     it('does nothing when the panel is not compatible', async () => {

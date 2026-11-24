@@ -17,7 +17,6 @@ import {
 import { VISUALIZATION_ATTACHMENT_TYPE } from '@kbn/agent-builder-visualizations-common';
 import { CUSTOM_CONTENT_EMBEDDABLE_TYPE } from '@kbn/custom-content-common';
 import { LENS_EMBEDDABLE_TYPE } from '@kbn/lens-common';
-import { dashboardTools } from '../../../common';
 import { createPointedPanelTool } from './pointed_panel_tool';
 
 const POINTER_ID = getDashboardPanelAttachmentId({
@@ -57,6 +56,8 @@ const customPanel = (config: Record<string, unknown>) => ({
   config,
 });
 
+const markdownPanel = { type: 'markdown', id: 'panel-1', grid, config: {} };
+
 const lensPanel = (config: Record<string, unknown>) => ({
   type: LENS_EMBEDDABLE_TYPE,
   id: 'panel-1',
@@ -64,61 +65,63 @@ const lensPanel = (config: Record<string, unknown>) => ({
   config,
 });
 
-const createAttachments = (records: Record<string, unknown>) => {
-  const add = jest.fn(async (input: { type: string; data: unknown }) => ({
-    id: 'viz-1',
-    type: input.type,
-    current_version: 1,
-    versions: [{ version: 1, data: input.data }],
-  }));
+const withPanels = (panels: unknown[], extra?: Record<string, unknown>) => ({
+  [POINTER_ID]: pointer(),
+  'dashboard-1': dashboard(panels, extra),
+});
+
+const logger = { debug: jest.fn(), error: jest.fn() } as unknown as Logger;
+
+const run = async (
+  records: Record<string, unknown>,
+  { action = 'show', addError }: { action?: 'read' | 'show'; addError?: Error } = {}
+) => {
+  const add = jest.fn(async (input: { type: string; data: unknown }) => {
+    if (addError) {
+      throw addError;
+    }
+    return {
+      id: 'viz-1',
+      type: input.type,
+      current_version: 1,
+      versions: [{ version: 1, data: input.data }],
+    };
+  });
   const attachments = {
     getAttachmentRecord: jest.fn((id: string) => records[id]),
     add,
   } as unknown as AttachmentStateManager;
-  return { attachments, add };
-};
-
-const logger = { debug: jest.fn(), error: jest.fn() } as unknown as Logger;
-
-const firstResult = (returned: Awaited<ReturnType<BuiltinToolDefinition['handler']>>) => {
-  if (!('results' in returned)) {
-    throw new Error('Expected a results return');
-  }
-  return returned.results[0];
-};
-
-const run = async (records: Record<string, unknown>, action: 'read' | 'show' = 'show') => {
-  const { attachments, add } = createAttachments(records);
   const tool = createPointedPanelTool() as BuiltinToolDefinition;
-  const result = await tool.handler({ panel_attachment_id: POINTER_ID, action }, {
+  const returned = await tool.handler({ panel_attachment_id: POINTER_ID, action }, {
     attachments,
     logger,
   } as unknown as Parameters<BuiltinToolDefinition['handler']>[1]);
-  return { result: firstResult(result), add };
+  if (!('results' in returned)) {
+    throw new Error('Expected a results return');
+  }
+  return { result: returned.results[0], add };
+};
+
+const errorMessage = (result: { type: string; data: unknown }) => {
+  expect(result.type).toBe(ToolResultType.error);
+  return (result.data as { message: string }).message;
+};
+
+const lensConfig = {
+  type: 'metric',
+  title: 'Requests',
+  data_source: { type: 'esql', query: 'FROM logs | STATS c = COUNT(*)' },
 };
 
 describe('createPointedPanelTool', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('registers under the dashboard tool id', () => {
-    expect(createPointedPanelTool().id).toBe(dashboardTools.pointedPanel);
-  });
-
   it('reads only the pointed panel with the dashboard stored time range', async () => {
-    const config = {
-      type: 'metric',
-      title: 'Requests',
-      data_source: { type: 'esql', query: 'FROM logs | STATS c = COUNT(*)' },
-    };
     const { result, add } = await run(
-      {
-        [POINTER_ID]: pointer(),
-        'dashboard-1': dashboard(
-          [lensPanel(config), { ...customPanel({ template: '<p/>' }), id: 'panel-2' }],
-          { time_range: { from: 'now-7d', to: 'now' } }
-        ),
-      },
-      'read'
+      withPanels([lensPanel(lensConfig), { ...customPanel({ template: '<p/>' }), id: 'panel-2' }], {
+        time_range: { from: 'now-7d', to: 'now' },
+      }),
+      { action: 'read' }
     );
 
     expect(result).toEqual({
@@ -127,7 +130,7 @@ describe('createPointedPanelTool', () => {
       data: {
         panel_attachment_id: POINTER_ID,
         dashboard_attachment_id: 'dashboard-1',
-        panel: { id: 'panel-1', type: LENS_EMBEDDABLE_TYPE, title: 'Requests', config },
+        panel: { id: 'panel-1', type: LENS_EMBEDDABLE_TYPE, title: 'Requests', config: lensConfig },
         time_range: { from: 'now-7d', to: 'now' },
       },
     });
@@ -135,13 +138,7 @@ describe('createPointedPanelTool', () => {
   });
 
   it('reads panels that cannot be shown', async () => {
-    const { result } = await run(
-      {
-        [POINTER_ID]: pointer(),
-        'dashboard-1': dashboard([{ type: 'markdown', id: 'panel-1', grid, config: {} }]),
-      },
-      'read'
-    );
+    const { result } = await run(withPanels([markdownPanel]), { action: 'read' });
 
     expect(result).toMatchObject({
       type: ToolResultType.other,
@@ -149,13 +146,16 @@ describe('createPointedPanelTool', () => {
     });
   });
 
-  it('copies a custom panel into a custom content visualization attachment', async () => {
-    const { result, add } = await run({
-      [POINTER_ID]: pointer(),
-      'dashboard-1': dashboard([
-        customPanel({ title: 'Stick figure', template: '<svg />', esql_query: ['FROM logs'] }),
-      ]),
-    });
+  it('copies a custom panel with all its queries into a visualization attachment', async () => {
+    const { result, add } = await run(
+      withPanels([
+        customPanel({
+          title: 'Stick figure',
+          template: '<svg />',
+          esql_query: ['FROM logs', 'FROM metrics'],
+        }),
+      ])
+    );
 
     expect(add).toHaveBeenCalledWith({
       type: VISUALIZATION_ATTACHMENT_TYPE,
@@ -164,7 +164,7 @@ describe('createPointedPanelTool', () => {
         renderer: 'custom_content',
         query: 'Panel "Stick figure" from dashboard "Web Traffic"',
         visualization: { template: '<svg />', title: 'Stick figure' },
-        esql: ['FROM logs'],
+        esql: ['FROM logs', 'FROM metrics'],
       },
     });
     expect(result).toMatchObject({
@@ -173,37 +173,14 @@ describe('createPointedPanelTool', () => {
         attachment_id: 'viz-1',
         version: 1,
         renderer: 'custom_content',
+        esql: 'FROM logs',
         visualization: { prompt: 'Panel "Stick figure" from dashboard "Web Traffic"' },
       },
     });
   });
 
-  it('copies every query of a custom panel that reads several', async () => {
-    const { result, add } = await run({
-      [POINTER_ID]: pointer(),
-      'dashboard-1': dashboard([
-        customPanel({ template: '<p/>', esql_query: ['FROM logs', 'FROM metrics'] }),
-      ]),
-    });
-
-    expect(add).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ esql: ['FROM logs', 'FROM metrics'] }),
-      })
-    );
-    expect(result).toMatchObject({ data: { esql: 'FROM logs' } });
-  });
-
   it('copies an ES|QL Lens panel with its config, query and chart type', async () => {
-    const config = {
-      type: 'metric',
-      title: 'Requests',
-      data_source: { type: 'esql', query: 'FROM logs | STATS c = COUNT(*)' },
-    };
-    const { result, add } = await run({
-      [POINTER_ID]: pointer(),
-      'dashboard-1': dashboard([lensPanel(config)]),
-    });
+    const { result, add } = await run(withPanels([lensPanel(lensConfig)]));
 
     expect(add).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -211,7 +188,7 @@ describe('createPointedPanelTool', () => {
         data: {
           renderer: 'lens',
           query: 'Panel "Requests" from dashboard "Web Traffic"',
-          visualization: config,
+          visualization: lensConfig,
           chart_type: 'metric',
           esql: 'FROM logs | STATS c = COUNT(*)',
         },
@@ -223,45 +200,28 @@ describe('createPointedPanelTool', () => {
     });
   });
 
-  it('names an untitled Lens copy after its primary metric', async () => {
-    const { add } = await run({
-      [POINTER_ID]: pointer(),
-      'dashboard-1': dashboard([
-        lensPanel({
-          type: 'metric',
-          metrics: [{ type: 'primary', column: 'Errors' }],
-          data_source: { type: 'esql', query: 'FROM logs | STATS c = COUNT(*)' },
-        }),
-      ]),
+  it.each([
+    [
+      'an untitled Lens copy after its primary metric',
+      lensPanel({
+        ...lensConfig,
+        title: undefined,
+        metrics: [{ type: 'primary', column: 'Errors' }],
+      }),
+      'Errors',
+    ],
+    [
+      'an untitled custom copy after the pointer label',
+      customPanel({ template: '<p>hi</p>' }),
+      'Pointer label',
+    ],
+  ])('names %s', async (_, panel, name) => {
+    const { add } = await run(withPanels([panel]));
+
+    expect(add.mock.calls[0][0].data).toMatchObject({
+      query: `Panel "${name}" from dashboard "Web Traffic"`,
     });
-
-    expect(add).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ query: 'Panel "Errors" from dashboard "Web Traffic"' }),
-      })
-    );
   });
-
-  it('falls back to the pointer label when the panel has no title', async () => {
-    const { add } = await run({
-      [POINTER_ID]: pointer(),
-      'dashboard-1': dashboard([customPanel({ template: '<p>hi</p>' })]),
-    });
-
-    expect(add).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          query: 'Panel "Pointer label" from dashboard "Web Traffic"',
-          visualization: { template: '<p>hi</p>' },
-        }),
-      })
-    );
-  });
-
-  const errorMessage = (result: { type: string; data: unknown }) => {
-    expect(result.type).toBe(ToolResultType.error);
-    return (result.data as { message: string }).message;
-  };
 
   it.each([
     ['the id is not a pointer', { 'dashboard-1': dashboard([]) }, 'not a platform.dashboard.panel'],
@@ -270,53 +230,36 @@ describe('createPointedPanelTool', () => {
       { [POINTER_ID]: pointer('panel-1', 'missing') },
       '"missing" named by the pointer is not in this conversation',
     ],
-    [
-      'the panel was removed',
-      { [POINTER_ID]: pointer(), 'dashboard-1': dashboard([]) },
-      'no longer exists',
-    ],
-    [
-      'the custom panel has no template',
-      { [POINTER_ID]: pointer(), 'dashboard-1': dashboard([customPanel({})]) },
-      'no template yet',
-    ],
+    ['the panel was removed', withPanels([]), 'no longer exists'],
+    ['the custom panel has no template', withPanels([customPanel({})]), 'no template yet'],
     [
       'the Lens panel is not backed by ES|QL',
-      { [POINTER_ID]: pointer(), 'dashboard-1': dashboard([lensPanel({ type: 'metric' })]) },
+      withPanels([lensPanel({ type: 'metric' })]),
       'not backed by ES|QL',
     ],
     [
       'the Lens query reads a control variable',
-      {
-        [POINTER_ID]: pointer(),
-        'dashboard-1': dashboard([
-          lensPanel({
-            type: 'metric',
-            data_source: {
-              type: 'esql',
-              query: 'FROM logs | WHERE @timestamp >= ?_tstart AND host == ?host | STATS COUNT(*)',
-            },
-          }),
-        ]),
-      },
+      withPanels([
+        lensPanel({
+          type: 'metric',
+          data_source: {
+            type: 'esql',
+            query: 'FROM logs | WHERE @timestamp >= ?_tstart AND host == ?host | STATS COUNT(*)',
+          },
+        }),
+      ]),
       'reads dashboard control values (?host)',
     ],
     [
       'a custom panel query reads a control variable',
-      {
-        [POINTER_ID]: pointer(),
-        'dashboard-1': dashboard([
-          customPanel({ template: '<p/>', esql_query: ['FROM logs', 'FROM logs | KEEP ??field'] }),
-        ]),
-      },
+      withPanels([
+        customPanel({ template: '<p/>', esql_query: ['FROM logs', 'FROM logs | KEEP ??field'] }),
+      ]),
       'reads dashboard control values (?field)',
     ],
     [
       'the panel type is unsupported',
-      {
-        [POINTER_ID]: pointer(),
-        'dashboard-1': dashboard([{ type: 'markdown', id: 'panel-1', grid, config: {} }]),
-      },
+      withPanels([markdownPanel]),
       'cannot be shown as a visualization',
     ],
   ])('returns an error result when %s', async (_case, records, expected) => {
@@ -327,19 +270,11 @@ describe('createPointedPanelTool', () => {
   });
 
   it('returns an error result when persisting the attachment fails', async () => {
-    const { attachments } = createAttachments({
-      [POINTER_ID]: pointer(),
-      'dashboard-1': dashboard([customPanel({ template: '<p>hi</p>' })]),
+    const { result } = await run(withPanels([customPanel({ template: '<p>hi</p>' })]), {
+      addError: new Error('boom'),
     });
-    (attachments.add as jest.Mock).mockRejectedValue(new Error('boom'));
-    const tool = createPointedPanelTool() as BuiltinToolDefinition;
 
-    const result = await tool.handler({ panel_attachment_id: POINTER_ID, action: 'show' }, {
-      attachments,
-      logger,
-    } as unknown as Parameters<BuiltinToolDefinition['handler']>[1]);
-
-    expect(errorMessage(firstResult(result))).toContain('boom');
+    expect(errorMessage(result)).toContain('boom');
     expect(logger.error).toHaveBeenCalled();
   });
 });

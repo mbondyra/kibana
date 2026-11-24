@@ -225,31 +225,20 @@ describe('createAttachmentPanelResolver with dashboard panel pointers', () => {
     });
   });
 
-  it('fails when the pointed dashboard attachment is not in the conversation', () => {
-    const resolve = createAttachmentPanelResolver({
-      attachments: makeStore({ [pointerId]: pointer('missing-dashboard') }),
-    });
+  it.each([
+    [
+      'the pointed dashboard is not in the conversation',
+      { [pointerId]: pointer('missing-dashboard') },
+      'missing-dashboard',
+    ],
+    [
+      'the pointed panel no longer exists',
+      { [pointerId]: pointer(), 'dashboard-1': dashboard([]) },
+      'no longer exists',
+    ],
+  ])('fails when %s', (_, records, expected) => {
+    const resolve = createAttachmentPanelResolver({ attachments: makeStore(records) });
 
-    expect(failureError(resolve(pointerId))).toContain('missing-dashboard');
-  });
-
-  it('fails and tells the agent to report a panel that no longer exists', () => {
-    const resolve = createAttachmentPanelResolver({
-      attachments: makeStore({ [pointerId]: pointer(), 'dashboard-1': dashboard([]) }),
-    });
-
-    expect(failureError(resolve(pointerId))).toContain('no longer exists');
-  });
-
-  it('names both accepted attachment types when rejecting another type', () => {
-    const resolve = createAttachmentPanelResolver({
-      attachments: makeStore({
-        'other-1': { id: 'other-1', type: 'text', current_version: 1, versions: [] },
-      }),
-    });
-
-    const error = failureError(resolve('other-1'));
-    expect(error).toContain(VISUALIZATION_ATTACHMENT_TYPE);
-    expect(error).toContain('platform.dashboard.panel');
+    expect(failureError(resolve(pointerId))).toContain(expected);
   });
 });

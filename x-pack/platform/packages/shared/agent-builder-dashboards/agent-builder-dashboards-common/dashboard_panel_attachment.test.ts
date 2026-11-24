@@ -22,45 +22,32 @@ const validData = {
 };
 
 describe('dashboardPanelAttachmentDataSchema', () => {
-  it('accepts a complete pointer', () => {
-    expect(dashboardPanelAttachmentDataSchema.safeParse(validData).success).toBe(true);
-  });
-
-  it('accepts an empty label', () => {
-    expect(dashboardPanelAttachmentDataSchema.safeParse({ ...validData, label: '' }).success).toBe(
-      true
-    );
-  });
-
-  it.each(['dashboard_attachment_id', 'panel_id', 'panel_type'])('rejects an empty %s', (field) => {
+  it.each<[string, Record<string, string>, boolean]>([
+    ['a complete pointer', {}, true],
+    ['an empty label', { label: '' }, true],
+    ['an empty dashboard_attachment_id', { dashboard_attachment_id: '' }, false],
+    ['an empty panel_id', { panel_id: '' }, false],
+    ['an empty panel_type', { panel_type: '' }, false],
+    [
+      'a label above the length bound',
+      { label: 'x'.repeat(DASHBOARD_PANEL_LABEL_MAX_LENGTH + 1) },
+      false,
+    ],
+  ])('validates %s', (_, overrides, expected) => {
     expect(
-      dashboardPanelAttachmentDataSchema.safeParse({ ...validData, [field]: '' }).success
-    ).toBe(false);
-  });
-
-  it('rejects a label above the length bound', () => {
-    expect(
-      dashboardPanelAttachmentDataSchema.safeParse({
-        ...validData,
-        label: 'x'.repeat(DASHBOARD_PANEL_LABEL_MAX_LENGTH + 1),
-      }).success
-    ).toBe(false);
+      dashboardPanelAttachmentDataSchema.safeParse({ ...validData, ...overrides }).success
+    ).toBe(expected);
   });
 });
 
 describe('getDashboardPanelAttachmentId', () => {
-  it('derives a deterministic id from the dashboard attachment and panel ids', () => {
+  it('derives an id from the dashboard attachment and panel ids, distinct per dashboard copy', () => {
     expect(
       getDashboardPanelAttachmentId({ dashboardAttachmentId: 'dashboard-1', panelId: 'panel-1' })
     ).toBe(`${DASHBOARD_PANEL_ATTACHMENT_TYPE}-dashboard-1-panel-1`);
-  });
-
-  it('differs between copies of a dashboard that share panel ids', () => {
     expect(
-      getDashboardPanelAttachmentId({ dashboardAttachmentId: 'dashboard-1', panelId: 'panel-1' })
-    ).not.toBe(
       getDashboardPanelAttachmentId({ dashboardAttachmentId: 'dashboard-2', panelId: 'panel-1' })
-    );
+    ).toBe(`${DASHBOARD_PANEL_ATTACHMENT_TYPE}-dashboard-2-panel-1`);
   });
 });
 
